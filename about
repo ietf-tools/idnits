@@ -1,0 +1,7 @@
+
+
+	idnits looks for violations of Section 2.1 and 2.2 of the
+	requirements listed on http://www.ietf.org/ID-Checklist.html,
+	for violations of http://www.ietf.org/ietf/1id-guidelines.txt,
+	and for various other nits such as unused, un-defined, and
+	obsolete references.  And more...

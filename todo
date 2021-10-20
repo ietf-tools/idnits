@@ -1,0 +1,22 @@
+
+    * Change from line-based to paragraph-based content checking,
+      in order to catch draft references broken across lines, and
+      other text broken across lines.  (Collect paragraph before
+      call to checkline() .)
+
+    * Obsoletes:
+
+      - Warn when a document says it updates/obsoletes one at a higher  
+	standards level
+      - remove RFCs listed there from the Obsolete reference warnings
+
+    * Add warning for missing contact address
+
+    * Add a test for the existence of newer idnits versions, and
+      possibly download.
+
+    * Add more experimental warnings:
+
+      - URL reachability (needs paragraphs)
+      - ABNF verification
+    

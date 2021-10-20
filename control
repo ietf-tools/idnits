@@ -1,0 +1,15 @@
+Repository: idnits
+Version: 2.17.00
+Section: text
+Priority: optional
+Maintainer: Henrik Levkowetz <henrik@levkowetz.com>
+Package: idnits
+Architecture: any
+Category: author
+Depends: bash, awk, tee, coreutils
+Ietf:
+Url:
+Description: Check internet-drafts for submission nits
+	Use idnits to check that your draft has the desired formatting,
+	boilerplate, references consistency and more.
+

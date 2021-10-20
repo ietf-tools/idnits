@@ -1,0 +1,2324 @@
+idnits (2.17.00)
+
+  * Applied patch from rjsparks@nostrum.com to change location of
+    downloaded state files from tools.ietf.org to datatracker.ietf.org
+    URLs.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  24 Sep 2020 02:17:56 +0200
+
+idnits (2.16.05)
+
+  * Added a page-joining exception, to avoid a paragraph split after
+    "in effect on the date of publication of this document." in boilerplate
+    text.
+
+  * Added code to handle the "dd Mmm yyy" date format, in addition to the
+    legacy "Mmm dd, yyyy" format for document dates.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  24 Sep 2020 02:17:56 +0200
+
+idnits (2.16.04)
+
+  * Tweaked the code to split intended status from author information, to
+    match the minimum whitespace currently used by the xml2rfc v3 schema
+    text formatter.
+
+  * Changed the error on long lines to a mention if the long line has
+    non-ascii characters, to work around UTF-8 encoded input.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  02 Apr 2020 16:36:03 +0200
+
+idnits (2.16.03)
+
+  * Added a special case for boilerplate split across pages which is not
+    correctly reassembled to a single paragraph.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  04 Mar 2020 16:47:57 +0100
+
+idnits (2.16.02)
+
+  * Fixed a bug in the discovery of IPv6 example address ranges which
+    could result in erroneously commenting about the lack of same.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  14 Jan 2019 16:27:15 +0100
+
+idnits (2.16.01)
+
+  * Changed the identification of [RFC2119][RFC8174] boilerplate to permit
+    space or no space between the quotation square brackets.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  14 Nov 2018 03:44:28 +0100
+
+idnits (2.16.00)
+
+  * Modified idnits to be more discerning in identifying possible FQDNs,
+    in particular to not identify email localparts as FQDNs.
+
+  * After guidance from the IESG, changed the error for ASCII characters
+    in drafts to a warning.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  07 Oct 2018 14:54:28 +0200
+
+idnits (2.15.01)
+
+  * Fixed an issue with the recognition of RFC8174 boilerplate.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  17 Jan 2018 07:05:28 +0100
+
+idnits (2.15.00)
+
+  * Added support for https: URLs in boilerplate, and changed http: URLs
+    to https: in messages and otherwise internally.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  04 Sep 2017 22:35:06 +0200
+
+idnits (2.14.02)
+
+  * Added support for the RFC 8174 modification of RFC 2119.  Both
+    the RFC 8174 wording and previously accepted wordings are now
+    accepted.  At some point in the future, it is expected that
+    only the 8179 version will be accepted.
+
+  * Fixed a bug in setting up an array of long and short month-names.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  01 Jun 2017 15:00:26 +0200
+
+idnits (2.14.01)
+
+  * Added a comment about adding IPv6 examples for documents that uses
+    addresses from the IPv4 documentation range, without having any
+    from the IPV6 documentation range
+
+  * Changed some references to RFC5735 to instead mention RFC6980.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  06 Apr 2016 9:57:59 +0100
+
+idnits (2.14.00)
+
+  * Added a switch --nonascii, to disable reporting of non-ascii characters
+    as errors
+
+  * Added stripping of Byte Order Marks (BOMs)
+
+  * Changed a \047 to apostrophe in a help text snippet.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  02 Mar 2016 12:45 +0100
+
+idnits (2.13.02)
+
+  * Updated the expected signature of the rfc-status file.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  03 Nov 2014 17:16:37 +0100
+
+idnits (2.13.01)
+
+  * Added patterns so as to recognize symbolic references to ITU-T G-
+    series references, even if they do not match the default symbolic
+    reference strings.
+
+  * Added better handling of some draft references broken across lines.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  03 Nov 2014 17:16:37 +0100
+
+idnits (2.13.00)
+
+  * Recognise not only "Updates RFC1234 and RFC 5678" in the abstract,
+    but also "Updates [RFC1234] and [RFC 5678]", with square brackets.
+    (Note, however, that references should not be used in the absract,
+    and a warning will be issued for that).
+
+  * Added an error for the user of references in the abstract.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  31 Oct 2013 13:52:16 +0100
+
+idnits (2.12.18)
+
+  * Added better recognition of expiration dates in some places.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  24 May 2013 18:44:57 +0200
+
+idnits (2.12.17)
+
+  * Decreased the verbosity of state file download messages.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  24 May 2013 18:44:57 +0200
+
+idnits (2.12.16)
+
+  * Changed the test for Code Start markers to only look for the now
+    well-established <CODE BEGINS> marker, to avoid false positives
+    for the others (a case in point being draft-ietf-mmusic-rfc2326bis,
+    which inadvertently triggered one of the others).
+
+  * When running submission-checks only on a document, nothing was said in
+    previous idnits versions about too long lines, as it's not an error in this
+    case.  However, it's still undesirable, and can cause problems, so a warning
+    is appropriate.  Added this.
+
+  * Added a comment about text that looks like a code comment but is not
+    enclosed in <CODE BEGINS>...<CODE ENDS>.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  03 Apr 2013 16:54:56 +0200
+
+idnits (2.12.15)
+
+  * Added more logging during download phase, in order to make it easier
+    to debug cases where it looks like the callout to idnits from the
+    submission tool under Apache has been cut short.
+
+  * Changed the timeout value for state file downloads, in order to
+    (hopefully) reduce the risk that callouts to idnits from Apache
+    processes will be cut short.
+
+  * Changed verbosity for output about state file downloads, in order
+    to make it more likely that Apache processes will understand that
+    idnits is working and not stalled.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  05 Feb 2013 16:38:44 +0100
+
+idnits (2.12.14)
+
+  * Modified the handling of pre- and post-10-nov-2008 documents, to
+    give more more information and advice on when a pre-RFC5378
+    disclaimer is and isn't needed.
+
+  * Added a new nits level, 'flaw', between error and warning.  Added
+    a flaw indication for document names which clearly don't show
+    the required name components according to the guidelines.
+
+  * Changed the presentation of quoted paragraphs to not contain
+    surrouding quote marks, but instead have additional indentation,
+    according to style advice received.
+
+  * Fixed a bug related to identification of almost-matching boilerplate
+    text in a document.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  22 Nov 2012 16:53:25 +0100
+
+idnits (2.12.13)
+
+  * The use of the IETF Trust Provisions section 6.b License from
+    12 Sep 2009 rather than the newer notice from 28 Dec 2009 has
+    till now only been flagged as a warning -- turning this into
+    an error.
+
+  * Improved the heuretics for handling URLs broken across lines in
+    a paragraph.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  10 Jan 2012 16:17:46 +0100
+
+idnits (2.12.12)
+
+  * Recognize references in ABNF comments.  Since v2.08.03 references
+    in ABNF parts of a document have been ignored, to avoid spurious
+    warnings because of bracketed ABNF explressions; but within ABNF
+    comments it is appropriate to register references.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  25 May 2011 16:56:37 +0200
+
+idnits (2.12.11)
+
+  * Added support for explicitly noting downrefs for which excemptions
+    has been granted in the past (based on 
+    http://trac.tools.ietf.org/group/iesg/trac/wiki/DownrefRegistry)
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  06 May 2011 17:27:39 +0200
+
+idnits (2.12.10)
+
+  * Added diagnostic messages for various downloaded status files when
+    running in verbose mode.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  05 May 2011 15:15:12 +0200
+
+idnits (2.12.09)
+
+  * Tweaked the regex which detects mentions of 'obsoletes', 'updates',
+    and 'replaces' in the Abstract.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  30 Mar 2011 13:56:41 +0100
+
+idnits (2.12.08)
+
+  * Added code to call out to a grammar check utility, from Lars Eggert.
+
+  * Refined the detection of Modifies/Updates text in the abstract, and
+    the resulting comment messages. 
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  17 Feb 2011 16:23:52 +0100
+
+idnits (2.12.07)
+
+  * Check that the document is consistent in its handling of Obsoletes:
+    and Updates: indications, according to the I-D Checklist Section 3.1.D.
+
+  * Add support for another variation of the 'INTERNET-DRAFT      ...'
+    header line.
+
+  * Add some support for recognition of embedded C-code.  This reduces
+    the number of false warnings for things that looks like references,
+    but are not.  Also add support for code markers according to IETF
+    Trust Policy of 2009-12-28.
+
+  * Recognize another version of the 'Status of Memo' section title.
+
+  * Prevent false warnings for 2119 language when BSD license language
+    is encountered.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  17 Feb 2011 16:23:52 +0100
+
+idnits (2.12.06)
+
+  * Added a warning for use of 'NOT RECOMMENDED' without including it
+    in the list of RFC 2119 key words.
+
+  * Changed references to RFC 3330 to instead refer to RFC 5735 which
+    replaces it.  Also added a reference to RFC 5771 for the multicast
+    example range.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  03 Feb 2011 16:03:05 +0100
+
+idnits (2.12.05)
+
+  * Changed the error for non-RFC3849 IPv6 addresses to be a warning.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  24 Aug 2010 14:02:23 +0200
+
+idnits (2.12.04)
+
+  * Changed the warning about dates too far in the past or future to
+    be comments.  Warnings seem a bit too strong for this.
+
+  * Changed the error about the use of non-example FQDNs to a warning.
+    RFC 2606 only suggests the use of example.* or \*.example FQDNs,
+    and the IESG checklist http://www.ietf.org/id-info/checklist uses
+    'SHOULD', so an error seems inappropriate.
+
+  * Changed the reference for multicast example addresses from
+    draft-ietf-mboned-rfc3171bis to RFC5771.
+
+  * Added parsing of iso-format document dates.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  07 May 2010 10:33:37 +0200
+
+idnits (2.12.03)
+
+  * Moved the check for IPv6 addresses which don't comply with RFC 3849
+    from check_line() to check_para().  Changed paragraph assembly to
+    recognize split IPv6 addresses.
+
+  * Updated the comment on multicast example IPv4 addresses to reference
+    RFC 5771 instead of draft-ietf-mboned-rfc3171bis.
+
+  * More consistence in saying "RFC NNNN" rather then "RFCNNNN".
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  07 Apr 2010 13:35:30 +0200
+
+idnits (2.12.02)
+
+  * Added recognition of additional 'Intended Status: ' strings, such as
+    'Standard Track' for 'Standards Track', etc.
+
+  * Fixed a bug which resulted in unrecognized 'Intended Status: ' strings
+    not being reported as such (with a warning) and improved the warning
+    text.
+
+  * Added a warning if the document date is too different from todays
+    date.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  25 Mar 2010 10:12:57 -0700
+
+idnits (2.12.01)
+
+  * The order of final double-quote and sentence stop in the ID-guidelines
+    paragraph 5 text differed between the idnits expectations and the
+    web page.  Changed to accept both.
+
+  * The ID-guidelines document combines the trust-specified statement of
+    conformance with BCP 78 and 79 with the following statement of drafts
+    being working documents into one paragraph, while idnits only would
+    recognize them as separate paragraphs.  Fixed to accept both.
+
+  * Idnits expected the final URL in the ID-guidelines section 5 para 7
+    to end in a slash, while the guidelines specifies it without slash.
+    Changed to accept both.
+
+  * Changed the ID-Checklist URL from http://www.ietf.org/ID-Checklist.html
+    to http://www.ietf.org/id-info/checklist
+
+  * Added a warning for the format of Obsoletes: and Updates: indications
+    in drafts.  The list of obsoleted/updated RFCs should consist only
+    of numbers, without any 'RFC' label.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  04 Feb 2010 12:13:24 +0100
+
+idnits (2.12.00)
+
+  * Added recognition of the new 28 Dec 2009 boilerplate, and made it
+    an error to use 12 Feb 2009 boilerplate.
+
+  * Many minor tweaks to the error and warning language.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  19 Jan 2010 16:23:45 +0100
+
+idnits (2.11.17)
+
+  * Applied a patch from Lars Eggert to permit a shorter first-page draft
+    boilerplate which eliminates the listing of internet-draft shadow
+    directories.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  14 Jan 2010 16:46:30 +0100
+
+idnits (2.11.16)
+
+  * Added new IPv4 ranges for use in documentation; patch from Carlos
+    Pignataro.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  07 Jan 2010 13:38:18 +0100
+
+idnits (2.11.15)
+
+  * Fixed failure to correctly extract filename and revision from
+    references containing 2 or more digits after dash in the name.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  22 Oct 2009 23:00:22 +0200
+
+idnits (2.11.14)
+
+  * Fixed inoperative comment about the occurence of 'BM' at the start
+    of a draft file, which can make the submission tool think the draft
+    is a .bmp file.  Thanks to Pasi for finding this one.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  21 Sep 2009 14:31:11 +0200
+
+idnits (2.11.13)
+
+  * Added the new trust boilerplate to the recognised boilerplates.
+
+  * Added a warning about the old boilerplate not being accepted after
+    december 12, 2009
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  12 Sep 2009 13:29:46 +0200
+
+idnits (2.11.12)
+
+  * Fixed an erroneously included double space in the boilerplate for
+    the trust-12-feb-2009 Section 6.c.iii text, which caused erroneous
+    diff indications in verbose mode when there was a mismatch for
+    this text.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  11 Jul 2009 13:03:17 +0200
+
+idnits (2.11.11)
+
+  * The regexes for the no-modify-clause from the trust boilerplate and
+    the RFC 3978 Section 5.2b overlapped unnecessarily which could cause
+    incorrect error messages.  Fixed.
+
+  * The text of the trust no-modify-clause was incorrect due to omitted
+    space characters, causing omitted warnings.  Fixed.
+
+  * The presence of a no-modification clause was signalled with a note
+    rather than a comment.  Fixed.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  29 Apr 2009 0:40:16 +0200
+
+idnits (2.11.10)
+
+  * Added a better diagnostic message when all required boilerplate is
+    missing.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  28 Apr 2009 15:05:27 +0200
+
+idnits (2.11.09)
+
+  * Added support for the multicast example address range specified in
+    draft-ietf-mboned-rfc3171bis (233.252.0.0/24).
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  23 Apr 2009 15:34:05 +0200
+
+idnits (2.11.08)
+
+  * Turned the warning for old (10 Nov 2008) Trust licence notice into
+    an error, as announced earlier.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  03 Apr 2009 10:34:40 +0200
+
+idnits (2.11.07)
+
+  * Added a comment for drafts where the first two octets are 'BM', as
+    IE can mistakenly think this is a img/bmp file (despite the right
+    mime-type being indicated by the web-server).
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  11 Mar 2009 23:17:24 +0100
+
+idnits (2.11.06)
+
+  * Added a special case to the header/footer-stripping code to handle
+    a case of boilerplate being split across pages.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  11 Mar 2009 1:21:54 +0100
+
+idnits (2.11.05)
+
+  * Added the ability to recognize the pre-5378 workaround boilerplate
+    (para 6.c.iii) also when concatenated with 6.a and 6.b para 3
+
+  * Fixed a couple of places where boilerplate was tested against section
+    6.b para. 2 instead of 6.b para 3, leading to not correctly recognizing
+    the 6.b para boilerplate in some situations.
+
+  * Corrected the 6.c.i text to say /or to translate/ instead of 
+    /and to translate/.
+
+  * Fixed a bug where a partial match on 12 Feb 2009 Section 6.b
+    boilerplate could be mistaken for a full match.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  24 Feb 2009 1:41:31 +0100
+
+idnits (2.11.04)
+
+  * Fixed a bug where multiple new-and-old boilerplate errors might
+    be issued for the same text.
+
+  * Copyright notices within MIB modules could trigger a multiple-
+    copyright warning, which they should not.  Added code to recognize
+    beginning and end of MIB, and suppress recognition of copyright
+    lines within the MIB.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  19 Feb 2009 1:24:19 +0100
+
+idnits (2.11.03)
+
+  * Added 12 Feb 2009 versions of the trust boilerplate.	
+
+  * Added two warnings related to the fix for pre-5378 documents; one
+    for documents first submitted before 10 Nov 2008 that lack the
+    necessary disclaimer, and one for documents first submitted later,
+    which still has the disclaimer.
+
+  * Added a warning about Section 6.b boilerplate from the 10 Nov 2008
+    Trust document, which differs from the 6.b boilerplate from the
+    12 Feb 2009 document.
+
+  * Fixed the naming of a boilerplate entry so as to be able to convert 
+    the name properly to section-and-paragraph notation.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  06 Feb 2009 18:44:55 +0100
+
+idnits (2.11.02)
+
+  * Added a comment for drafts where the first two octets are 'PK', as
+    IE can mistakenly think this is a zip file (despite the right
+    mime-type being indicated by the web-server).
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  01 Feb 2009 9:06:09 +0100
+
+idnits (2.11.01)
+
+  * Changed the initial comment about 'boilerplate required by RFC 3978 and
+    3979, updated by RFC 4748' to instead refer to RFC 5378 and the Trust.
+
+  * Added diagnostic comments about which old (RFC 3978 et. al.) boilerplate
+    was found, and on what lines, when the trust boilerplate update suggestion
+    is emitted.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  14 Jan 2009 13:46:32 +0100
+
+idnits (2.11.00)
+
+  * Changed the warning for the new trust boilerplate to an error.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  17 Dec 2008 11:10:35 +0100
+
+idnits (2.10.03)
+
+  * Additional wrinkles associated with the new boilerplate has made the
+    cut-off date of December 16 uncertain.  Removing that info from the
+    boilerplate version warning.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  03 Dec 2008 11:40:56 +0100
+
+idnits (2.10.02)
+
+  * The copyright line was apparently also changed somewhere during the
+    mad change bonanza which started last Friday evening.  Fixed to
+    match the now posted Trust policy.
+
+  * Restricted warnings for missing Trust policy section 6.a boilerplate
+    to non-RFC documents
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  11 Nov 2008 10:57:12 +0100
+
+idnits (2.10.01)
+
+  * Added warnings about new boilerplate according to trust provisions
+    of 16 Oct 2008 being required from 01:00 16 Dec 2008 UTC.
+
+  * Modified paragraph concatenation to handle broken URLs better
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  11 Nov 2008 7:49:01 +0100
+
+idnits (2.10.00)
+
+  * Added boilerplate checks according to trust provisions letter of
+    16 Oct 2008, which will eventually replace the RFC 3978 and 3979
+    boilerplate.  No warnings for old boilerplate yet; that will be
+    introduced on January 16, 2009.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  04 Nov 2008 13:35:36 +0100
+
+idnits (2.09.01)
+
+  * Added checks for more doubtful RFC 2119 constructs: 'SHOULD not',
+    'SHALL not', 'not RECOMMENDED'.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  09 Oct 2008 0:04:48 +0200
+
+idnits (2.09.00)
+
+  * Lately, multiple drafts with bad filenames have appeared -- so the
+    filename checks were clearly insufficient.  In one case, the draft
+    contained one (OK) draft name internally, and another as file name.
+    This was not caught by the submission checks...  Accordingly, this
+    version adds two additional filename checks.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  17 Sep 2008 19:16:34 +0200
+
+idnits (2.08.11)
+
+  * The attach-idnits script failed to enclose the idnits results when
+    non-fatal errors (such as failed download of a possible draft status
+    file) occurred.  Changed to always enclose the results, even when
+    failures occur.
+
+  * The error count when no IPR, Copyright or other boilerplate was
+    found was correct but non-intuitive.  Changed to count this only
+    as 1 error.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  09 May 2008 17:14:19 +0200
+
+idnits (2.08.10)
+
+  * Fixed a bug where RFC 2119 words at the end of a line would not be
+    registered as 2119 words.  Thanks to Arnt Gulbrandsen for finding this.
+
+  * Added a new switch, to silence comments about missing document
+    state files: --quiet-download
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  09 May 2008 17:14:19 +0200
+
+idnits (2.08.09)
+
+  * Added separate warnings about not using documentation IP addresses
+    for IPv4 multicast addresses, IPv6 link-local addresses and IPv6
+    unique-local addresses.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  08 May 2008 2:42:19 +0200
+
+idnits (2.08.08)
+
+  * Corrected a flaw in the regexp for imap_rule_format
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  16 Apr 2008 10:40:00 +0200
+
+idnits (2.08.07)
+
+  * Disabling support for mawk -- it's been broken for some time, and
+    investigation shows that paragraph matching doesn't work as expected,
+    without pinpointing what triggers the bug and giving a workaround.
+
+  * Adding support for recognizing some IMAP server responses which
+    otherwise would have been taken for references.  Thanks to Arnt
+    Gulbrandsen for this.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  16 Apr 2008 00:04:27 +0200
+
+idnits (2.08.06)
+
+  * Removed -N argument from wget invocation.  Doesn't make sense
+    together with "-O -".
+
+  * Record the date of successful download of a state file in the .date file
+
+  * Added information about outdated state files to selected errors and
+    warnings.
+
+  * Fixed a minor bug where all download comments information didn't go to
+    the same output file handle.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  11 Apr 2008 9:21:33 +0200
+
+idnits (2.08.05)
+
+  * State files weren't closed when done reading them.  Fixed.
+
+  * Added warnings for reference to RFCs which haven't been issued.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  30 Mar 2008 1:51:40 +0100
+
+idnits (2.08.04)
+
+  * Fixed a case where a valid ToC had parenthesized after the ToC
+    intro line:
+
+       Table of Contents (will be updated after WG discussion)
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  20 Feb 2008 13:23:25 +0100
+
+idnits (2.08.03)
+
+  * Improved differentiation between ABNF and references
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  20 Feb 2008 12:32:03 +0100
+
+idnits (2.08.02)
+
+  New rev based on input from John Klensin:
+
+  * The note about information on normative references referred to
+    RFC 3967 -- added a reference to 4897, which updates it.
+
+  * Improved the extraction of referenced RFC number in references
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  20 Feb 2008 11:28:03 +0100
+
+idnits (2.08.01)
+
+  * Added text to the 3978 Section 5.2(b) and 5.3 comments for individual
+    drafts that submission to the IESG for publication with that text
+    would be an error.
+
+  * Removed the suggestion to run with --verbose option from the output
+    when running with --submitcheck.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  19 Feb 2008 0:57:07 +0100
+
+idnits (2.08.00)
+
+  * When running withh --submitcheck, be verbose about boilerplate
+    problems.
+
+  * When running withh --submitcheck, report missing ToC as a warning
+    rather than an error (for documents longer than 15 pages)
+
+  * If the document is an individual draft, rather than an ietf draft,
+    the Publication Limitation and Derivative works clauses are reported
+    as comments, rather than warnings.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  19 Feb 2008 0:06:09 +0100
+
+idnits (2.07.00)
+
+  * Someone just submitted a draft named draft--...--00.txt (leading and
+    trailing double-hyphens) which is both against custom, against ID-
+    guidelines intent (empty components) and breaks a bunch of tool
+    assumptions.  Adding checks for this.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  08 Feb 2008 19:10:37 +0100
+
+idnits (2.06.01)
+
+  * Under OS X (e.g., Darwin) there seems to be trouble with some sed
+    expressions, in particular  /match/N; s/\n//  does not seem to work.
+    Rewrote the operation in question using awk instead, which makes
+    draft reference state download work for draft names split across a
+    line break.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  23 Jan 2008 17:14:37 +0100
+
+idnits (2.06.00)
+
+    * Changed matching algorithm to catch leading matching components of
+      run-together boilerplate components, to give better error messages.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  22 Jan 2008 22:48:23 +0100
+
+idnits (2.05.04)
+
+    * Now accepting Intended Status: indication not only in the lefthand part
+      of the header.
+
+    * Fixed a bug in the header-stripping code which could strip out
+      non-header lines starting with "RFC" by making the regex much more
+      selective.
+
+    * Added acceptance of the title of RFC 2119 in the key words boilerplate.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  22 Jan 2008 21:41:41 +0100
+
+idnits (2.05.03)
+
+    * Added line-ending normalization for both DOS and MAC type line endings.
+      Documents with MAC line ending (^M) were not handled correctly earlier.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  29 Nov 2007 0:24:43 +0100
+
+idnits (2.05.02)
+
+    * Fixed a bug with RFC status file download when running as a web- service
+      (from the tools/idnits/ directory).
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  29 Nov 2007 0:24:43 +0100
+
+idnits (2.05.01)
+
+    * Added a tweak to make idnits work under Windows/cygwin.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  14 Nov 2007 21:40:37 +0100
+
+idnits (2.05.00)
+
+    * Fixed a problem where the return code when given a non-existent
+      file name would be zero, rather than non-zero.
+
+    * Added assembly of text paragraphs in general, using the paragraph
+      from get_para() if present, otherwise assembling new paragraphs
+      during normal line-by-line operation.  This permits reliable
+      checks of word combinations and words that may be broken across
+      lines.
+
+    * Added checks for bad word combinations 'MUST not' and 'MAY NOT'.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  01 Nov 2007 19:04:33 +0200
+
+idnits (2.04.16)
+
+    * Added detection of multiple references to the same draft or RFC.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  19 Sep 2007 20:09:38 +0200
+
+idnits (2.04.15)
+
+    * Fixed a bug in the extraction of draft names for state downloading.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  19 Sep 2007 18:04:58 +0200
+
+idnits (2.04.14)
+
+    * Look for the occurrence of "ABNF" before applying ABNF exception
+      to reference pattern recognition
+    * Added a warning for possible missing NROFF postprocessing
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  22 Aug 2007 16:43:10 +0200
+
+idnits (2.04.13)
+
+    * Change RFC reference for documentation IPv6 numbers from 3848 to
+      the correct RFC 3849
+    * Incorporate fixes from Dan Wing for cygwin related issues having
+      to do with handling of \r\n line endings in downloaded status files
+      and extracted reference information
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  17 Aug 2007 17:57:53 +0200
+
+idnits (2.04.12)
+
+    * Accept 2001:0db8: as well as 2001:db8: for RFC 3848 addresses
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  09 Jul 2007 18:13:08 +0200
+
+idnits (2.04.11)
+
+    * Changed the message for 'outdated reference' where it is a draft
+      with a *higher* version number
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  09 Jul 2007 16:38:18 +0200
+
+idnits (2.04.10)
+
+    * Added comments about use of 'MAY NOT' and other undefined
+      requirements expressions.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  06 Jul 2007 12:42:42 +0200
+
+idnits (2.04.09)
+
+  * Fixed off-by-one error when testing if expiration date was present
+    on the first page ( the first 58 lines ).
+  * Added another variation on expiration date text.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  07 Jun 2007 1:12:57 +0200
+
+idnits (2.04.08)
+
+  * Added a reference to RFC 3967 about using normative references to
+    lower-maturity documents, when applicable.
+  * Added '?' as a character permitted to occur after a reference
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  04 Jun 2007 17:33:26 +0200
+
+idnits (2.04.07)
+
+  * Added "^editors?:$" as acceptable authors address section name.
+  * Downgraded IPv4 example address check to warning
+  * Added code to recognize references of the form RFC-1234 (with
+    an embedded dash) as references to RFCs
+  * Tweaked the warning text for unused references
+  * Tweaked the texta about using the --verbose option
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  11 Apr 2007 20:07:44 +0200
+
+idnits (2.04.06)
+
+  * Added "^authors?:$" as acceptable authors address section name.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  11 Apr 2007 15:52:06 +0200
+
+idnits (2.04.05)
+
+  * For obsolete referenced RFCs, added an indication of the RFCs
+    which obsoleted them.
+  * Changed the state indication of RFCs with unknown state from
+    Unknown to Unknown state.
+  * Moved the legend for error, warning, info marks to the summary
+    instead of having it at the beginning of the report
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  04 Apr 2007 13:44:31 +0200
+
+idnits (2.04.04)
+
+  * Major changes in how the output looks:
+
+  * Changed Error and Warning indications to be more obvious about the
+    type of indication.  
+  * Added a third indication type, "Comment".
+  * Added a blank line between indications.
+  * Some wording tweaks
+  * Added handling for embedded newlines in fold() function.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  03 Apr 2007 17:16:39 +0200
+
+idnits (2.04.03)
+
+  * Added the RFC4193 Unique Local Address rang FC00::/7 to the RFC 3849
+    specified IPv6 addresses which are accepted in documents.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  20 Mar 2007 17:07:29 +0100
+
+idnits (2.04.02)
+
+  * Added a --submitcheck switch which only issues errors and
+    warnings related to boilerplate and 1id-guidelines requirements.
+  * Added some ABNF rule detection heuristics to reduce false
+    reference identification in ABNF rules
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  14 Mar 2007 1:12:42 +0100
+
+idnits (2.04.01)
+
+  * Changed the indication of no issues found after the individual
+    checking sections from \"Nothing found here\" to \"No issues found here\".
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  14 Mar 2007 0:23:54 +0100
+
+idnits (2.04.00)
+
+  * Tweaked the header and footer stripping.  Some drafts which
+    correctly had the indication "Internet-Draft" at the top of the
+    first page got this line stripped out, resulting in an inappropriate
+    warning.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  14 Mar 2007 0:21:00 +0100
+
+idnits (2.03.17)
+
+  * Some minor refactoring.
+  * Changed download() to not touch the date of old files; instead
+    use a different file to hold the last-download-attempt-date state.
+  * Tweaked the regex for reference sections.
+  * Removed the downref warnings on things that look like references
+    but probably are not.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  13 Mar 2007 16:36:21 +0100
+
+idnits (2.03.16)
+
+  * Minor refactoring of the regex for references
+  * Fixed bug in generating draft name from xml2rfc format draft
+    reference tag -- "[I-D.ietf-mip4-subject]".
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  06 Mar 2007 18:16:37 +0100
+
+idnits (2.03.15)
+
+  * Tweaked the regex for references to include IEEE reference tags
+    containing dots (period characters).
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  06 Mar 2007 15:41:22 +0100
+
+idnits (2.03.14)
+
+  * Only cosmetic changes to the reference related warnings.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  06 Mar 2007 11:54:39 +0100
+
+idnits (2.03.13)
+
+  * Added checks for outdated references -- drafts which have been
+    published as RFC, or for which later revisions exist
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  06 Mar 2007 11:31:47 +0100
+
+idnits (2.03.12)
+
+  * Fixed a bug where --verbose mode would not handle files with DOS
+    line endings properly.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  03 Mar 2007 19:25:58 +0100
+
+idnits (2.03.11)
+
+  * Added downref checking also for references occurring in the document
+    text, but not listed in the reference section.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  02 Mar 2007 17:43:27 +0100
+
+idnits (2.03.10)
+
+  * Added a note about empty iana sections.
+  * Refined the extraction of draft names from the document (for draft
+    statefile retrieval)
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  02 Mar 2007 0:09:57 +0100
+
+idnits (2.03.9)
+
+  * Tweaked the regex to extract RFC number from a reference text to
+    include more valid variations.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  27 Feb 2007 16:18:40 +0100
+
+idnits (2.03.8)
+
+  * Added checking of intended status for referenced drafts.  (This
+    requires downloading of state information for the draft, which
+    implies being online.)
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  27 Feb 2007 01:19:40 +0100
+
+idnits (2.03.7)
+
+  * References containing a period character were not seen as references.
+    This is necessary to avoid a certain class of false positives, but
+    collides with the xml2rfc format for references to drafts, which
+    have the form "I-D.name-subject".  Similar formats are generated by
+    xml2rfc for references to IEEE documents. Fixed by also accepting reference
+    names beginning with "I-D.", "ID.", and "IEEE.".
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  26 Feb 2007 13:33:50 +0100
+
+idnits (2.03.6)
+
+  * Fixed a message text nit.
+  * Added a check for RFC 2119 text but no 2119 keyword usage.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  22 Feb 2007 13:49:23 +0100
+
+idnits (2.03.5)
+
+  * Added support for ispell as an alternative to aspell
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  20 Feb 2007 14:14:27 +0100
+
+idnits (2.03.4)
+
+  * Fixed parsing of the "--spellcheck" switch which was broken; it ate the
+    following word on the command line.
+  * On FreeBSD / Darwin, the handling of \\t is different in either bash
+    or sed -- changed to using literal tabs instead of "\\t" in two places.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  20 Feb 2007 13:52:38 +0100
+
+idnits (2.03.3)
+
+  * When looking for the draft file-name on the first page, idnits
+    could pick up a draft name in an 'Updates:' or 'Obsoletes:'
+    clause, which would refer to another draft.  Fixed.
+  * Fixed a typo in the private IPv4 address warning.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  20 Feb 2007 9:28:54 +0100
+
+idnits (2.03.2)
+
+  * Failure to find expiration date in footer of first page fixed.
+  * Added 72.16.0.0/12 private address range to the private addresses
+    identified and reported.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  19 Feb 2007 18:21:02 +0100
+
+idnits (2.03.1)
+
+  * The code to look for one of a number of alternative executables
+    did not work under Cygwin.  Tweaked to work better, but is still 
+    not widely tested.
+  * Added spell checking if aspell is available and spelling switch given.
+  * Fixed a bug where sometimes an incorrect indication could be made
+    about the document having multiple sections matching a boilerplate
+    section start.
+  * Removed private address range 10.x.x.x from the RFC 3330 warnings;
+    missed them in 2.02.2.
+  * Added a separate warning for private range IPv4 addresses (10.x.x.x,
+    192.168.x.x)
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  18 Feb 2007 13:05:33 +0100
+
+idnits (2.03.0)
+
+  * RFC 3978 Section 5.2 derivative code limitations were not recognized
+    when run together with the RFC 3978 Section 5.1 paragraph.  Fixed.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  16 Feb 2007 14:45:16 +0100
+
+idnits (2.02.2)
+
+  * Tweaked the removal of possible extension from document name as given
+    in the text, and from the actual file name.
+  * Added a switch "--showtext" which appends the (stripped) draft text
+    to the nits report, with line numbers.
+  * Refined the regexp and test for IPv4 literals to require 4 dot
+    components exactly, and have none of the components larger than 255.
+  * Removed private address range 192.168.x.x from the RFC 3330 warnings;
+    they make sense when discussing NATs and private networks, and are
+    recognized as martians by firewalls, so are not harmful in the same
+    way as assignable addresses are.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  15 Feb 2007 16:45:52 +0100
+
+idnits (2.02.1)
+
+  * Several tweaks to make recognition of reference use vs. reference
+    definition better.  Reference usage is now recognized also in
+    appendices and non-appendix sections after the reference section,
+    and in the reference definitions themselves.    
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  14 Feb 2007 0:08:22 +0100
+
+idnits (2.02.0)
+
+  * Permitted up to 6 spaces between section number and section title.
+    This makes a class of documents which are OK, but didn't earlier
+    pass idnits checking now pass fine.  Some regex changes has
+    removed the false positives formerly caused by permitting this
+    amount of space between number and title.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  13 Feb 2007 16:05:15 +0100
+
+idnits (2.01.2)
+
+  * Added an alternative regex for expiration date.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  07 Feb 2007 6:59:00 +0100
+
+idnits (2.01.1)
+
+  * Various minor tweaks to the report format.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  07 Feb 2007 6:08:27 +0100
+
+idnits (2.01.0)
+
+  * Changed the error coding of several errors:
+    - Authors Address section: ID-Checklist
+    - too long lines: ID-Checklist
+    - No control characters: ID-Checklist
+    - Bad FQDNs: ID-Cheklist
+    - Bad IPv4 and IPv6 literal addresses: ID-Checklist
+    - Ragged-Right: ID-Checklist
+
+  * Improved handling of reference definitions which have been run
+    together without separating blanklines.
+
+  * Tweaked the error message for informative reference to obsoleted RFCs.
+
+  * Normative references to obsoleted RFCs now produce an error.
+
+  * The RFC status file is now generated with exception indications for
+    informational RFCs which may be normatively referenced by standards
+
+  * Changed the output format to have an extra initial section regarding
+    boilerplate which is required by both the ID-Checklist and the
+    ID-Guidelines.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  07 Feb 2007 5:39:20 +0100
+
+idnits (2.00.3)
+
+  * When running as a web service, $HOME may not be set.  Using /var/tmp
+    instead in that case.
+  * Cleaned up the 3978 vs. 4748 error messages to be consistent and
+    not give multiple messages for one problem.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  03 Feb 2007 20:09:36 +0100
+
+idnits (2.00.2)
+
+  * Moved the location of the rfc state file from $progdir/ to
+    $HOME/.idnits/, which is more likely to be writable when
+    idnits has been installed as a package.
+  * Made idnits always issue a nit and warning count if any
+    errors or warnings were found.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  03 Feb 2007 13:13:55 +0100
+
+idnits (2.00.1)
+
+  * The --year switch was not handled properly.  Fixed.
+  * In verbose mode, errors reported in detail line-by-line were not
+    also reported in the summary, purposely.  This seems to have been
+    unexpected by the users, so this behaviour has been changed.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  02 Feb 2007 8:09:43 +0100
+
+idnits (2.00.0)
+
+  Quite a bit of changes and some larger feature additions:
+
+  * Changed the error reporting and error return codes.
+  * Added download of RFC status file and downref checking based on that.
+  * Added --checklistwarn option, to turn ID-Checklist errors into
+    warnings (for use with the draft submission tool)
+  * Added --status option to set the intended status of a draft, in case
+    the draft does not indicate a status (or the correct status) 
+  * Added .+.(uri|urn|in-addr).arpa to allowed FQDNs
+  * Fixed a bug in reporting embedded copyright notices
+  * Tweaked the pemissible format for references to include additional
+    acceptable contexts (surroundings) for valid references
+  * Cleaned up the output format to be more consistent and less verbose
+  * Changed from warnings to errors for failure to use the RFC 4748
+    boilerplate
+  * Cleaned out some old dead code
+  * Added new ID-guidelines checks:
+
+    - The document should say "INTERNET-DRAFT" in the upper right-hand
+      corner of the first page
+    - The document should have an expiration date on the first (and last) 
+      pages.  (not checking last page)
+    - The document should have an intended status indication
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  01 Feb 2007 0:07:36 +0100
+
+idnits (1.124)
+
+  * Fixed the regexps used to detect non-RFC3848 IPv6 addresses
+  * Changed error exit numbers
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  19 Jan 2007 21:47:00 +0100
+
+idnits (1.123)
+
+  * Added checking for compyright notices embedded in the text, and
+    checking if they conform by year and copyright holder to the
+    other copyright notices.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  12 Dec 2006 20:49:38 +0100
+
+idnits (1.122)
+
+  * Added support for references of format [REF1, REF2] and similar.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  07 Dec 2006 22:32:21 +0100
+
+idnits (1.121)
+
+  * Added a note about almost matching (but indented) section titles
+    for required sections.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  07 Dec 2006 22:32:21 +0100
+
+idnits (1.120)
+
+  * Added warnings for possible use of non-RFC3330 IPv4 addresses
+    and non-RFC3848 IPv6 addresses in examples.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  01 Dec 2006 11:34:46 +0100
+
+idnits (1.119)
+
+  * Started to warn about having ISOC copyright instead of IETF Trust
+    Copyright
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  01 Dec 2006 11:34:46 +0100
+
+idnits (1.118)
+
+  * Adjusted the error message for 2119 boilerplate reference to non-2119
+    document
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  20 Nov 2006 20:54:19 +0100
+
+idnits (1.117)
+
+  * Increased the permitted number of spaces between section number and
+    section name from 2 to 3.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  27 Oct 2006 10:49:57 +0200
+
+idnits (1.116)
+
+  * Changed to only permitting top a level section to be identified
+    as a References section
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  26 Oct 2006 22:52:59 +0200
+
+idnits (1.115)
+
+  * Tweaked the warning output for some cases of reference look-alikes.
+    ASN.1 code for instance may contain [0], [1] etc. which isn't
+    references.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  24 Oct 2006 10:32:15 +0200
+
+idnits (1.114)
+
+  * Restricted the FQDN tests to potential FQDNs with all-upper or
+    all-lower case.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  14 Oct 2006 11:03:12 +0200
+
+idnits (1.113)
+
+  * An errata has been submitted against 2119 which should have listed
+    'NOT RECOMMENDED' as a keyword.  Changed idnits to accept a variation
+    of 2119 boilerplate with this present after 'RECOMMENDED'.
+    
+  * Changed requirements on upload name for the online service; less
+    restrictions on the characters in the name.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  13 Oct 2006 8:12:54 +0200
+
+idnits (1.112)
+
+  * Letter case should not matter when checking if a fqdn uses .example
+    domains.  Fixed.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  11 Oct 2006 11:49:18 +0200
+
+idnits (1.111)
+
+  * Fixed bug in page length calculations.  Thanks to Lars-Erik for
+    pointing out the problem.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  29 Sep 2006 14:56:41 +0200
+
+idnits (1.110)
+
+  * Fixed bug in reportin RFC 3978 Section 5.1 paragraph not on the
+    first page.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  27 Sep 2006 16:29:06 +0200
+
+idnits (1.109)
+
+  * Boilerplate update based on draft-ietf-ipr-ietf-trust-update.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  19 Sep 2006 10:20:57 +0200
+
+idnits (1.109)
+
+  * Boilerplate update based on draft-ietf-ipr-ietf-trust-update.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  19 Sep 2006 10:20:57 +0200
+
+idnits (1.108)
+
+  * Changed the paragraph break at page break determination.  Instead
+    of taking a line starting at column zero as a new paragraph
+    indication, only an outdent after the page break is taken as a
+    new paragraph indication.
+
+  * Now normalizing spacing of document text before cheking against
+    boilerplate start patterns.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  29 Aug 2006 11:53:57 +0200
+
+idnits (1.107)
+
+  * Changed the regexp for reference usage to permit a period (".") right
+    before the "[" starting the reference.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  21 Aug 2006 16:28:57 +0200
+
+idnits (1.106)
+
+  * Changed the regexps for introduction/overview/etc to not trigger on
+    e.g. Document Title.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  18 Aug 2006 17:13:21 +0200
+
+idnits (1.105)
+
+  * Added a listing of the 5 first lines which contain rfc2119 keywords
+    when the 2119 keyword nit error is triggered.  To get a comprehensive
+    listing of all lines with 2119 keywords, use --verbose --verbose.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  31 Jul 2006 23:38:53 +0200
+
+idnits (1.104)
+
+  * Changed the requirements for 2119 to permit a non-verbatim quote of
+    the 2119 language where 'RFC 2119' is replaced by a reference to
+    2119.
+  * Made the absence of both 2119 boilerplate and 2119 reference an error.
+  * Adjusted the format of some of the verbose output.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  31 Jul 2006 12:25:51 +0200
+
+idnits (1.103)
+
+  * Added a 1id-guidelines check for the 3978 IPR Disclosure statement
+    being on the first page of the document.
+
+  * Tweaked the reference [REF] matching regexp.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  23 Jun 2006 16:56:05 +0200
+
+idnits (1.102)
+
+  * Refined regexp for 2119 boilerplate to require terminating point -- (\".\").
+  * Added RFC2119 to used reference list when 2119 boilerplate is used.
+  * Fixed a bug where a reference indication in 2119 boilerplate was not
+    properly picked up and checked.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  06 Jun 2006 12:07:18 +0200
+
+idnits (1.101)
+
+  * Added another regexp for page headers
+  * Changed generation of Missing/Unused Reference warnings to be
+    stable across different awk implementations
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  01 Jun 2006 12:36:53 +0200
+
+idnits (1.100)
+
+  * Fixed a bug introduced in 1.98 - additional space in 2119 boilerplate.
+  * Tuned line-breaking routine, fixing too early line breaking in many
+    cases.
+  * Changed default output width from 80 to 78.
+  * Tweaked regexp used to identify references, so it may contain a space
+    (as in for instance \"[RFC 2119]\")
+  * Added code to emit missing/unused reference warnings in the order
+    references are defined, and for undefined ones, in the order they
+    occur in the document.  Earlier, this was random, determined by the
+    array index hashing.
+  * Reformulated some error messages which used bad english.
+  * Tweaked the regexp used to discover 2119 template usage.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  26 May 2006 21:31:46 +0200
+
+idnits (1.99)
+
+  * Added an additional header pattern to the code which strips headers
+    and footers from the document.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  26 May 2006 13:25:28 +0200
+
+idnits (1.98)
+
+  * Now also taking notice of reference usage in appendices.
+  * Some bugs when running with nawk fixed (gawk seems to have different
+    namespaces for variables and functions, but nawk doesn't, and
+    nawk doesn't accept empty alternatives in regexps - e.g., (\|blah)).
+    nawk also requires \"]\" to be escaped inside a character class.
+  * Refined the identification of References section, as opposed to
+    'References' being listed in the table of content.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  23 May 2006 11:33:42 +0200
+
+idnits (1.97)
+
+  * Added a check for the presence of paragrahps almost matching boilerplate
+    paragraphs, when the correct boilerplate is also present.  This is meant
+    to catch and warn about additional copyright text, usage restrictions or
+    other unusal additions to the regular boilerplate.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  18 May 2006 15:31:00 +0200
+
+idnits (1.96)
+
+  * Refined regexp for references, permitting a reference to occur in a
+    paranthesized part of a sentence).
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  11 May 2006 12:25:40 +0200
+
+idnits (1.95)
+
+  * Refined the regexp used to identify references, permitting tab before
+    and after a reference (but still warn about illegal character: tab).
+
+  * Added a check for lenght of document name (max 50 characters, excluding
+    the revision number).
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  04 May 2006 18:39:00 +0200
+
+idnits (1.94)
+
+  * Added warnings for no document name given on the first page; for document
+    name containing other characters than lowercase letters, digit, and dash;
+    for document name not indicating revision number, and for document name not
+    matching actual filename.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  03 May 2006 20:38:32 +0200
+
+idnits (1.93)
+
+  * Refined the regexp used to identify references, and added a verbose
+    mode message indicating unexpected reference formats.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  30 Apr 2006 15:10:34 +0200
+
+idnits (1.92)
+
+  * Fixed a couple of bugs related to RFC 2119 warnings.  
+
+  * Refined the code which removes regexps from boilerplate text, and
+    also refined boilerplate regexps.  
+
+  * Made it possible to use sectionerr() for warnings as well as error.
+
+  * Added a warning regarding mismatched copyright years.
+
+  * Removed the very verbose 2119 keyword listings
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  21 Apr 2006 21:47:43 +0200
+
+idnits (1.91)
+
+  * Fixed a typo which caused the longest page length to be reported
+    with a wrong value.
+
+  * Added warning for undefined and unused references and fixed a bug
+    in reference discovery which this brought to light.
+
+  * Removed the requirement on RFC 2119 text terminating in a full stop,
+    this wont be the case if \"RFC 2119\" is followed by a reference
+    indication, as in \"... RFC 2119 [1].\".
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  11 Apr 2006 14:08:32 +0200
+
+idnits (1.90)
+
+  * Separated copyright year parsing from copyright boilerplate parsing,
+    for better nits messages, and reduced copyright year mismatch with
+    current year to a warning.  Thanks to Kurtis for pointing out the 
+    problem.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  25 Mar 2006 22:21:41 +0100
+
+idnits (1.89)
+
+  * Fixed bugs in detection of 2119 language.  Thanks to Carlos Pignataro
+    who found this and also provided a clean patch :-)
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  22 Mar 2006 2:03:45 +0100
+
+idnits (1.88)
+
+  * Minor tweaks to handling of 2119 language warnings.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  16 Mar 2006 23:20:57 +0100
+
+idnits (1.87)
+
+  * Added a warning about FQDNs which do not follow RFC 2606 -- .example,
+    example.org, etc.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  13 Mar 2006 2:04:38 +0100
+
+idnits (1.86)
+
+  * Added a check for RFC 2119 language, with a warning if requirements
+    language is used but RFC 2119 boilerplate is missing
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  12 Mar 2006 18:50:43 +0100
+
+idnits (1.85)
+
+  * Added a switch (--year NNNN) to use a different year than the
+    current year in copyright boilerplate.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  04 Jan 2006 15:28:59 +0100
+
+idnits (1.84)
+
+  * New release of gawk (debian 1:3.1.5-1) has problems with /[\200-\376]/.
+    Re-wrote the expression.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  24 Oct 2005 10:29:49 +0100
+
+idnits (1.83)
+
+  * Error message formatting changes.  Stricter error messages
+    in some cases.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  24 Oct 2005 10:29:49 +0100
+
+idnits (1.82)
+
+  * Added verbose output for the warnings about both old and new boilerplate.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  24 Oct 2005 10:29:49 +0100
+
+idnits (1.81)
+
+  * Changed line count rules to permit 58 lines plus
+    a <FF><EOL> pair per page.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  13 Oct 2005 22:56:56 +0100
+
+idnits (1.80)
+
+  * Added a variation on Author's Address Section Name
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2005-09-26
+
+idnits (1.79)
+
+  * The code to find and adapt to the particular indentation of a draft
+    didn't work as intended.  Rewritten with somewhat better results.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2005-09-24
+
+idnits (1.78)
+
+  * Added checks for the occurence of both old and new boilerplate.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2005-09-09
+
+idnits (1.77)
+
+ * In verbose mode, added indication of where in a paragraph boilerplate
+   mismatch was found.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2005-08-21
+
+idnits (1.76)
+
+ * Bugfix: Formfeeds occuring on the same line as the page numbers were not
+   counted, which could result in erroneous warnings about missing page
+   breaks for some documents.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2005-08-21
+
+idnits (1.75)
+
+ * Added a "Draft ..." as an acceptable variation on page header.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2005-07-14
+
+idnits (1.74)
+
+ * Better tests for max and min values of COLUMNS.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2005-06-21
+
+idnits (1.73)
+
+ * Fixed various nits in the tool, after comments from Bruce Lilly:
+
+ * Adapting to terminal width is now only done up to a maximum width of 76,
+   and down to 16
+
+ * Some grammar corrections
+
+ * The column width setting, whether given by the --width switch, by
+   setting COLUMNS in the environment, or by running in a narrow terminal
+   window, now also applies to boilerplate text
+
+ * The line folding algorithm has been enhanced to not give up as easily
+
+ * All normal output is now folded to match the width setting - previously
+   some output lines didn't.  Debug output is not folded.
+
+ * Added additional accepted variations on the names of normative and
+   informative sections
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2005-06-16
+
+idnits (1.72)
+
+ * Added a check for correct year in copyright boilerplate.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2005-05-17
+
+idnits (1.71)
+
+ * Changed warnings for non-3978 boilerplate to errors
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2005-05-02
+
+idnits (1.70)
+
+ * Changes to discover 3667 boilerplate also when preceded by "This
+   document is an Internet-Draft and ..." (so that a warning about imminent
+   expiration can be issued).
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2005-04-23
+
+idnits (1.69)
+
+ * In function lookfor(): revert from "which" to "type -p"
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2005-04-09
+
+idnits (1.68)
+
+ * Wording tweaks.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2005-04-08
+
+idnits (1.67)
+
+ * Added hyphenation warnings again, if it has been possible to extract a
+   list of hyphenated words from the draft.  Any fragment of a hyphenated
+   word will be accepted on a line-ending, but not hyphenated line-breaks
+   which have a line-ending fragment which doesn't occur in a hyphenated
+   word somewhere else in the document.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2005-04-08
+
+idnits (1.66)
+
+ * "Weird spacing" warnings could result from a long title in the header
+   line, which is a mistake.  Fixed.  Also tweaked the code to find the awk
+   executable in order to provide a default value for the case when 'which'
+   is not available on the target system.  Started some work on extracting
+   a list of valid words from the document, for use in validation of
+   hypenated line-breaks.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2005-04-08
+
+idnits (1.65)
+
+ * Disabled hyphenation warnings also in verbose mode.  One slight tweak to
+   suit cygwin better.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2005-04-06
+
+idnits (1.64)
+
+ * Para. 2 of the 3978 Section 5.4 boilerplate wasn't recognised when occuring
+   in a separate paragraph.  Fixed, thanks to Bruce Lilly.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2005-04-05
+
+idnits (1.63)
+
+ * A warning has been added for drafts which use 3667 boilerplate instead of
+   3978 boilerplate (where those differ).  The 3978 boilerplate is now also
+   required to be verbatim, with none of the slight variations which was
+   accepted earlier (e.g., "he" in stead of "he or she", or "the author"
+   instead of "each author").
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2005-04-04
+
+idnits (1.62)
+
+ * RFC 3978 has the copyright notice and the reference to BCP 78 in separate
+   paragraphs.  Fixed this.  Also added "export LC_ALL=C" to guard against
+   bugs due to untested locale settings.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2005-03-09
+
+idnits (1.61)
+
+ * Changed references to 3667/3668 to 3978/3979
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2005-03-02
+
+idnits (1.60)
+
+ * Disabled the hyphenation warnings.  The new xml2rfc (v1.29rc3) does
+   line-breaking on hyphens, which is good, but makes it necessary to find a
+   more sophisticated algorithm in order not to produce too many spurious
+   warnings.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2005-02-21
+
+idnits (1.59)
+
+ * Added normalisation of draft indentation, to be less sensitive to oddly
+   indented drafts.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2004-12-18
+
+idnits (1.58)
+
+ * cygwin doesn't by default understand the 'which' command - replaced it with
+   'type -p'.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2004-12-18
+
+idnits (1.57)
+
+ * Fixed a line folding bug and corrected the
+   boilerplate output.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2004-12-11
+
+idnits (1.56)
+
+ * Tweaked the boilerplate-matching
+   regexps a bit, to cover more valid variants.
+   (largely from a patch from Bruce Lilly)
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2004-12-10
+
+idnits (1.55)
+
+ * Fixed a rather annoying bug introduced
+   in 1.54, which resulted in the web-service
+   printing the full environment and program code
+   before getting around to printing the proper
+   output...
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2004-12-10
+
+idnits (1.54)
+
+ * Quite a bit of refactoring, and some new features.
+
+ * If output is to a tty, line-wrapping of error
+   and warning messages is now done based on the
+   width (number of columns) of the controlling
+   tty, as reported by `stty size`.
+
+ * Indentation has been changed somewhat, and
+   nits are now prefaced with an asterisk (*)
+   while warnings are prefaced with a dash (-).
+
+ * Fixed an error where some tests would not be
+   run if multiple files were given as input, and
+   the first would have an rfc file name.
+
+ * Fixed several problems associated with using
+   nawk instead of gawk as awk interpreter.
+   Running under stock solaris, without gawk, should
+   now work.
+
+ * Added final full stop to a lot of sentences
+
+ * Fixed grammar of messages, so single and plural
+   instances of error and warnings get appropriate
+   verb and noun conjugations.
+
+ * Added a "--width <number>" switch, mostly in
+   order to control regression testing.  It
+   overrides the detected terminal width.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2004-12-09
+
+idnits (1.53)
+
+ * Permitted IANA Considerations to be placed
+   as an appendix.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2004-12-05
+
+idnits (1.52)
+
+ * Some minor message text changes.  Added
+   regression tests so that now the Makefile runs
+   tests on darwin, linux and solaris for each new
+   release.  Cygwin tests will come when I have a
+   windows box online.  As a result, some issues
+   were discovered for solaris:
+
+ * The default awk is the original awk, so we
+   need to search for gawk and nawk.  The
+   original awk unfortunately won't do.
+
+ * Even with nawk, there are some issues -
+   those have been fixed, so this version should
+   run on at least solaris 8 and higher without
+   any problems.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2004-12-02
+
+idnits (1.51)
+
+ * Some restructuring and changes of
+   output layout to better present checks against
+   multiple requirements documents.  Added
+   1id_guidelines.txt check for:
+
+ * Additional required boilerplate
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2004-11-26
+
+idnits (1.50)
+
+ * Started process of adding checks for
+   all checkable nits - not only those from
+   ID-Checklist.html, but also:
+   rfc 2223
+   draft-rfc-editor-rfc2223bis-08
+   http://www.ietf.org/ietf/1id-guidelines.txt
+
+   In this version, added the following:
+
+   1id-guidelines.txt:
+
+ * max 58 lines per page, followed by form feed
+
+   [ The section on formatting is not checked by
+   this version, but is planned for a later version.
+   as are these items:
+
+     - "INTERNET-DRAFT" should appear in the upper
+       left-hand corner of the first page
+     - Does not use any of the terms Standard,
+       Proposed, Draft, Experimental, Historic,
+       Required, Recommended, Elective, or
+       Restricted in the title ]
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2004-11-22
+
+idnits (1.49)
+
+ * Re-wrote the linebreaking regexp as a
+   function to avoid awk complaints under OS X.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2004-11-15
+
+idnits (1.48)
+
+ * Removed regexp metachars from the text
+   shown as expected boilerplate in verbose mode.
+   Improved the handling of whitespace when
+   comparing draft text with boilerplate.  Other
+   minor tweaks.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2004-11-14
+
+idnits (1.47)
+
+ * The checknits awk script has become too
+   long for the command line of cygwin.  Adding
+   workaround by placing it in a temporary file.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2004-11-02
+
+idnits (1.46)
+
+ * Added "Contact Information" as an
+   alternative section name of the Authors'
+   Addresses section
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2004-10-25
+
+idnits (1.45)
+
+ * Added check for IANA considerations section.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2004-10-20
+
+idnits (1.44)
+
+ * Minor tweak of Table of Contents regexp.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2004-10-01
+
+idnits (1.43)
+
+ * Changed base assumption for boilerplate
+   compliance to be that the draft is complying
+   with 3667, rather than 2026.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2004-09-24
+
+idnits (1.42)
+
+ * Fixed a bug introduced in v1.31, where
+   some verbose output was never emitted.
+   Removed reporting of 2026 deficiencies, unless
+   the --rfc2026 option is given.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2004-09-24
+
+idnits (1.41)
+
+ * Doing case-independent checks of section names.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2004-09-23
+
+idnits (1.40)
+
+ * Minor tweak of page header/footer stripping
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2004-09-20
+
+idnits (1.39)
+
+ * Improved the page header/footer
+   stripping to handle more cases of paragraphs
+   split over page breaks, and a greater variety
+   of whitespace in the page break.  Tweaked the
+   verbose output format slightly.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2004-09-18
+
+idnits (1.38)
+
+ * Added a tiny tweak to the rfc3667_claim
+   regexp, to make paragraph merging work for it.
+   idnits now correctly validates the output of
+   xml2rfc 1.25, which merges this claim with the
+   3667 section 5.1 IPR Disclosure Ack.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2004-09-18
+
+idnits (1.37)
+
+ * Added more diagnostic information for the
+   case where there is a boilerplate mismatch, but
+   the start of the boilerplate matches: Now
+   showing both the expected pattern and the found
+   text.  Tweaked the header/footer stripping
+   regexps to handle more variations.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2004-09-17
+
+idnits (1.36)
+
+ * Major overhaul of boilerplate matching
+   mechanism.  idnits is now attempting to match
+   run-together paragraphs containing multiple individual
+   boilerplate elements.  This should make it correctly
+   accept more documents.  Most basic examples of
+   run-together boilerplate should be handled with this
+   release.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2004-09-12
+
+idnits (1.35)
+
+ * Added some newlines for nicer verbose
+   mode output.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2004-09-08
+
+idnits (1.34)
+
+ * Not warning for capital 'O' in "Table
+   Of Contents". Started restructuring needed to
+   support detection of run-together boilerplate
+   paragraphs. Added output of expected
+   boilerplate pattern in --verbose mode when
+   boilerplate mismatch found.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2004-07-28
+
+idnits (1.33)
+
+ * Added new alternative boilerplate for
+   rfc 3667 Section 5, para 1, and fixed a bug in
+   detecting bad boilerplate for this paragraph.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2004-07-09
+
+idnits (1.32)
+
+ * Disabled rfc2026 acceptance.  Added
+   "or will be disclosed, " to the initial 3667 IPR
+   statement.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2004-07-02
+
+idnits (1.31)
+
+ * Added check for run-together boilerplate
+   paragraphs (first stage - not complete yet).  Changed
+   help text to reflect the new ID-checklist document
+   which replaces ID-nits.  Made the line numbers
+   reported in verbose mode come out correct.  Changed
+   output format for verbose mode to be editor-friendly.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2004-05-29
+
+idnits (1.30)
+
+ * Further changes to work correctly also
+   on \*BSD and Solaris.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2004-05-14
+
+idnits (1.29)
+
+ * Changed the reporting of the filename
+   and the invocation of Awk in order to work
+   under {Open|Free}BSD
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2004-05-13
+
+idnits (1.28)
+
+ * Added a check for number of lines to
+   the missing ToC test, for drafts which don't
+   have page breaks.  Tweaked the Author's address
+   detection.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2004-05-13
+
+idnits (1.27)
+
+ * Some changes in wording of warnings
+   regarding 2026 vs. 3667/3668 boilerplate
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2004-05-09
+
+idnits (1.26)
+
+ * Not complaining about too long lines when the
+   excess is only blank space.
+ * Added --verbose switch
+ * Reduced complaints about
+
+       - too long lines
+       - non-ascii characters
+       - hyphenation
+       - control characters
+       - spacing
+
+   to a single line when not --verbose used
+
+ * Added a warning for claiming conformance with
+   2026 but using 3667/8 boilerplate
+ * Lines with "........" before intro indicates
+   Table of Contents
+ * Now permitting "Security Consideration" (no 's')
+ * Minor code tweaks
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2004-04-21
+
+idnits (1.25)
+
+ * Minor tweaks
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2004-04-20
+
+idnits (1.24)
+
+ * The test for numbered reference to RFC 2026
+   having been added to the boilerplate was not quite
+   right.  Changed, and the diagnostic message
+   updated.  Fixed page counting which was broken
+   by the v1.23 changes.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2004-04-15
+
+idnits (1.23)
+
+ * Added stripping of header/footer lines, in
+   order to be able to correctly recognize boilerplate
+   which has been split across pages.
+ * Improved regexps for boilerplate paragraphs.
+ * Added notes when a boilerplate section doesn't
+   match, but the start of it matches - could be just a
+   boilerplate error then.
+ * Did a little code refactoring.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2004-04-15
+
+idnits (1.22)
+
+ * Another take on the 3667 vs. 2026 issue.  This
+   version observes whether there are 2026 compliant
+   sections in the document, and if so notes this and
+   verifies against 2026, otherwise it verifies against
+   3667. The --no3667 and --rfc3667 switches are no-op's
+   in this version.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2004-04-08
+
+idnits (1.21)
+
+ * Added tests for the notices required by RFC
+   2026.  The handling of 3667 vs. 2026 notices is not
+   necessarily perfect - feedback from users would be
+   good... :-)  
+
+   Currently, by default idnits looks for 3667
+   compliance.  If it doesn't find it, but finds
+   equivalent 2026 paragraphs, it notes this when
+   pointing out the 3667 non-compliance.  Checking for
+   2026 compliance instead of 3667 compliance can be
+   done by specifying --no3667.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2004-04-08
+
+idnits (1.20)
+
+ * Minor tweaks.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2004-04-08
+
+idnits (1.19)
+
+ * Added tests for the notices required by
+   RFC 3667 and 3668.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2004-04-07
+
+idnits (1.18)
+
+ * Case independent matching of section
+   names is now used when the --nowarn flag has
+   been specified. This functionality requres the
+   awk used to be 'gawk' - other implementations
+   of awk will most likely still do case-dependent
+   matching.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2004-04-07
+
+idnits (1.17)
+
+ * tweaked the regexp for weird spacing a bit,
+   to avoid trigging on lists with 'o' bullets.  Changed
+   the usage and help output somewhat.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2004-04-06
+
+idnits (1.16)
+
+ * idnits is now a SHELL script which starts awk,
+   rather than being an awk script directly.  This
+   change was done in order to permit giving option
+   switches directly, without having to add "--" before
+   the switches.
+ * added --nowarn option.  With this option,
+   only nits according to the ID-nits page ar reported.
+   Withouth it, some warnings about misspelling etc. are
+   given.
+ * Added test for unknown options
+ * Also fixed a bug resulting in incorrect line
+   numbers when processing multiple files .
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2004-04-06
+
+idnits (1.15)
+
+ * Added a slew of new variations on the name of
+   the Introduction section, and some other section name
+   variations.  All warnings now occurring when run on
+   RFC 3600-3742 now seems to be correct and make sense.
+   Also zeroed all counters on new filename - required
+   for correct operation on multiple files...
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2004-04-06
+
+idnits (1.14)
+
+ * Accepting another variant on 'Table of
+   Contents' spelling.  Added a warning for misspelling,
+   though.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2004-04-06
+
+idnits (1.13)
+
+ * Added diagnostic for another misspelling of
+   Authors' Address(es)
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2004-04-04
+
+idnits (1.12)
+
+ * Added another test for table of contents.
+   Tweaked some diagnostics' wording.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2004-04-03
+
+idnits (1.11)
+
+ * Added printing of program version as first
+   output line.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2004-04-02
+
+idnits (1.10)
+
+ * Now accepting more variations of the names of
+   requried sections.  Added missing newline after
+   hyphenation warning.  Refined test for split
+   references.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2004-04-02
+
+idnits (1.09)
+
+ * Some tests did not work with files
+   having DOS line ending - fixed. Added more
+   informative diagnostics for non-ascii characters
+   and control characters.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2004-04-01
+
+idnits (1.08)
+
+ * Refined the test for normative /
+   informative references somewhat.  Added the
+   ability to sensibly handle the case of multiple
+   files given on the command line. Added "No nits
+   found" output when no nits were found.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2004-03-30
+
+idnits (1.07)
+
+ * Handling some cases of misspelling.
+   Some versions of gawk can't handle \000 in
+   patterns, changed that to \001 on line 137.
+   Only requireing the first Abstract / Status of
+   Memo section to be un-numbered.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2004-03-18
+
+idnits (1.06)
+
+ * Added test for normative/iformative reference
+   section split (code contributed by Pekka Savola)
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2004-03-16
+
+idnits (1.05)
+
+ * Fixed incorrectly quoted single
+   aphostrophes which messed up the test for
+   Author's addresses
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2004-03-15
+
+idnits (1.04)
+
+ * Added --help output
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2004-02-26
+
+idnits (1.03)
+
+ * Added checks for line-break
+   hyphenation, numbered Abstract /Status of Memo
+   section, presence of required sections, some
+   3667 checks.
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2004-02-24
+
+idnits (1.02)
+
+ * Added check for unreasonable spacing
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2004-02-24
+
+idnits (1.01)
+
+ * Added check for non-ascii characters
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2004-02-23
+
+idnits (1.00)
+
+ * Inherited from whereabouts unknown
+
+ -- Henrik Levkowetz <henrik@levkowetz.com>  2003-10-08
