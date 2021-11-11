@@ -651,7 +651,7 @@ BEGIN {
 		      "Please review these documents carefully, as they describe your " \
 		      "rights and restrictions with respect to this document\\.  " \
 		      "Code Components extracted from this document must include " \
-		      "Simplified BSD License text as described in Section 4.e of the " \
+		      "(Simplified|Revised) BSD License text as described in Section 4.e of the " \
 		      "Trust Legal Provisions and are provided without warranty as described " \
 		      "in the BSD License\\.$"
 
@@ -674,9 +674,9 @@ BEGIN {
 		      "Please review these documents carefully, as they describe your " \
 		      "rights and restrictions with respect to this document\\.  " \
 		      "Code Components extracted from this document must include " \
-		      "Simplified BSD License text as described in Section 4.e of the " \
+		      "(Simplified|Revised) BSD License text as described in Section 4.e of the " \
 		      "Trust Legal Provisions and are provided without warranty as described " \
-		      "in the Simplified BSD License\\.$"
+		      "in the (Simplified|Revised) BSD License\\.$"
 
     # This applies to non-IETF streams
     bp["trust-28-dec-2009_6_b_ii_p3"] = \
