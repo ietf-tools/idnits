@@ -1,0 +1,43 @@
+{
+  "name": "idnits",
+  "version": "3.0.0",
+  "description": "Library / CLI to inspect Internet-Draft documents for a variety of conditions to conform with IETF policies.",
+  "main": "index.mjs",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ietf-tools/idnits.git"
+  },
+  "keywords": [
+    "nits",
+    "internet-drafts",
+    "ietf"
+  ],
+  "author": "IETF Tools",
+  "license": "BSD-3-Clause",
+  "bugs": {
+    "url": "https://github.com/ietf-tools/idnits/issues"
+  },
+  "homepage": "https://github.com/ietf-tools/idnits#readme",
+  "private": false,
+  "bin": "./cli.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "chalk": "5.2.0",
+    "lodash": "4.17.21",
+    "luxon": "3.2.1",
+    "yargs": "17.7.1"
+  },
+  "devDependencies": {
+    "eslint": "8.35.0",
+    "eslint-config-standard": "17.0.0",
+    "eslint-plugin-import": "2.27.5",
+    "eslint-plugin-n": "15.6.1",
+    "eslint-plugin-promise": "6.1.1"
+  }
+}

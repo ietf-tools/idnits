@@ -30,7 +30,23 @@ npm install -g idnits
 
 #### As a CLI
 
-*TODO*
+```sh
+idnits [args] <file>
+```
+
+| Arguments          | Description                                               |
+|--------------------|-----------------------------------------------------------|
+| `--version`        | Print the version and exit                                |
+| `--help`           | Print the help text and exit                              |
+| `--nowarn`         | Don't issue warnings, only ID-Checklist violations        |
+| `--verbose`        | Show more information about offending lines               |
+| `--nitcount`       | Show a count of nits                                      |
+| `--debug`          | Debug output, especially of boilerplate matching          |
+| `--year <year>`    | Expect the given year in the boilerplate                  |
+| `--checklistwarn`  | Only warn (no errors) for ID-Checklist violations         |
+| `--nonascii`       | Disable warnings for non-ascii characters                 |
+| `--submitcheck`    | Only output errors and warnings related to 1id-guidelines |
+| `--status <doctype>` | Assume the given intended document type                   |
 
 #### As a library
 
