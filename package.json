@@ -2,7 +2,7 @@
   "name": "idnits",
   "version": "3.0.0",
   "description": "Library / CLI to inspect Internet-Draft documents for a variety of conditions to conform with IETF policies.",
-  "main": "lib.mjs",
+  "main": "lib/index.mjs",
   "type": "module",
   "scripts": {
     "test": "NODE_OPTIONS=--experimental-vm-modules jest"
