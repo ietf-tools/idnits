@@ -2,10 +2,10 @@
   "name": "idnits",
   "version": "3.0.0",
   "description": "Library / CLI to inspect Internet-Draft documents for a variety of conditions to conform with IETF policies.",
-  "main": "index.mjs",
+  "main": "lib.mjs",
   "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest"
   },
   "repository": {
     "type": "git",
@@ -34,10 +34,12 @@
     "yargs": "17.7.1"
   },
   "devDependencies": {
+    "@jest/globals": "29.5.0",
     "eslint": "8.35.0",
     "eslint-config-standard": "17.0.0",
     "eslint-plugin-import": "2.27.5",
     "eslint-plugin-n": "15.6.1",
-    "eslint-plugin-promise": "6.1.1"
+    "eslint-plugin-promise": "6.1.1",
+    "jest": "29.5.0"
   }
 }
