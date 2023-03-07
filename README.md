@@ -13,6 +13,9 @@
 
 - [Installation](#installation)
 - [Usage](#usage)
+  - [As a CLI](#as-a-cli)
+  - [As a library](#as-a-library)
+- [Tests](#tests)
 - [Contributing](https://github.com/ietf-tools/.github/blob/main/CONTRIBUTING.md)
 
 ---
@@ -51,3 +54,18 @@ idnits [args] <file>
 #### As a library
 
 *TODO*
+
+### Tests
+
+Tests are made using the [Jest](https://jestjs.io/) library and are located under the `tests` directory.
+
+You can run the suite of tests using:
+```sh
+# Make sure you installed dependencies first:
+npm install
+
+# Run the tests
+npm test
+```
+
+Code coverage is expected to reach 100%. Ensure this is still the case when making edits / adding new functionality.
