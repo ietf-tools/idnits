@@ -1,0 +1,521 @@
+<?xml version="1.0" encoding="US-ASCII"?>
+<!-- edited with XMLSPY v5 rel. 4 U (http://www.xmlspy.com) by Fred Baker (private) -->
+<!DOCTYPE rfc SYSTEM "rfc2629.dtd" [
+<!-- One method to get references from the online citation libraries.
+     There has to be one entity for each item to be referenced.
+     An alternate method (rfc include) is described in the references. -->
+<!ENTITY RFC2119 SYSTEM "http://xml2rfc.tools.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml">
+<!ENTITY RFC2784 SYSTEM "http://xml2rfc.tools.ietf.org/public/rfc/bibxml/reference.RFC.2784.xml">
+<!ENTITY RFC8174 SYSTEM "http://xml2rfc.tools.ietf.org/public/rfc/bibxml/reference.RFC.8174.xml">
+<!ENTITY RFC8200 SYSTEM "http://xml2rfc.tools.ietf.org/public/rfc/bibxml/reference.RFC.8200.xml">
+<!ENTITY RFC8250 SYSTEM "http://xml2rfc.tools.ietf.org/public/rfc/bibxml/reference.RFC.8250.xml">
+<!ENTITY RFC5036 SYSTEM "http://xml2rfc.tools.ietf.org/public/rfc/bibxml/reference.RFC.5036.xml">
+<!ENTITY RFC4193 SYSTEM "http://xml2rfc.tools.ietf.org/public/rfc/bibxml/reference.RFC.4193.xml">
+<!ENTITY RFC1772 SYSTEM "http://xml2rfc.tools.ietf.org/public/rfc/bibxml/reference.RFC.1772.xml">
+<!ENTITY RFC9197 SYSTEM "http://xml2rfc.tools.ietf.org/public/rfc/bibxml/reference.RFC.9197.xml">
+<!ENTITY RFC8799 SYSTEM "http://xml2rfc.tools.ietf.org/public/rfc/bibxml/reference.RFC.8799.xml">
+<!ENTITY RFC4302 SYSTEM "http://xml2rfc.tools.ietf.org/public/rfc/bibxml/reference.RFC.4302.xml">
+
+<!ENTITY I-D.ietf-ippm-ioam-direct-export SYSTEM "http://xml2rfc.tools.ietf.org/public/rfc/bibxml-ids/reference.I-D.ietf-ippm-ioam-direct-export.xml">
+]>
+<?rfc toc="yes"?>
+<?rfc tocompact="no"?>
+<?rfc tocdepth="3"?>
+<?rfc symrefs="yes"?>
+<?rfc sortrefs="yes"?>
+<rfc category="std" docName="draft-ietf-ippm-ioam-ipv6-options-10"
+     ipr="trust200902">
+  <front>
+    <title abbrev="In-situ OAM IPv6 encapsulation">In-situ OAM IPv6
+    Options</title>
+
+    <author fullname="Shwetha Bhandari" initials="S." surname="Bhandari" role="editor">
+      <organization abbrev="Thoughtspot">Thoughtspot</organization>
+            <address>
+	            <postal>
+	              <street>3rd Floor, Indiqube Orion, 24th Main Rd, Garden Layout, HSR Layout</street>
+		      <city>Bangalore, KARNATAKA 560 102</city>
+		      <country>India</country>
+	            </postal>
+	            <email>shwetha.bhandari@thoughtspot.com</email>
+	    </address>
+    </author>
+
+    <author fullname="Frank Brockners" initials="F." surname="Brockners" role="editor">
+      <organization abbrev="Cisco">Cisco Systems, Inc.</organization>
+
+      <address>
+        <postal>
+          <street>Hansaallee 249, 3rd Floor</street>
+
+          <!-- Reorder these if your country does things differently -->
+
+          <city>DUESSELDORF</city>
+
+          <region>NORDRHEIN-WESTFALEN</region>
+
+          <code>40549</code>
+
+          <country>Germany</country>
+        </postal>
+
+        <email>fbrockne@cisco.com</email>
+
+        <!-- uri and facsimile elements may also be added -->
+      </address>
+    </author>
+
+
+
+    <date day="28" month="February" year="2023"/>
+
+    <area>Transport Area</area>
+
+    <workgroup>ippm</workgroup>
+
+    <abstract>
+      <t>In-situ Operations, Administration, and Maintenance (IOAM) records
+      operational and telemetry information in the packet while the packet
+      traverses a path between two points in the network. This document
+      outlines how IOAM data fields are encapsulated in IPv6.</t>
+    </abstract>
+  </front>
+
+  <middle>
+    <section title="Introduction">
+      <t>In-situ Operations, Administration, and Maintenance (IOAM) records
+      operational and telemetry information in the packet while the packet
+      traverses a path between two points in the network. IOAM concepts 
+      and associated nomenclature, as well as IOAM data fields are
+      defined in <xref target="RFC9197"/>. IOAM is a functionality that
+      applies to limited domains <xref target="RFC8799"/>. 
+      This document outlines how IOAM data fields are encapsulated in IPv6 <xref
+      target="RFC8200"/> and discusses deployment requirements for networks that
+      use IPv6-encapsulated IOAM data fields.</t>
+    </section>
+
+
+    <section title="Conventions">
+      <section title="Requirements Language">
+        <t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+        "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and
+        "OPTIONAL" in this document are to be interpreted as described in BCP
+        14 <xref target="RFC2119"/> <xref target="RFC8174"/> when, and only
+        when, they appear in all capitals, as shown here.</t>
+      </section>
+
+      <section title="Abbreviations">
+        <t>Abbreviations used in this document:</t>
+
+        <t><list hangIndent="11" style="hanging">
+            <t hangText="E2E:">Edge-to-Edge</t>
+
+            <t hangText="IOAM:">In-situ Operations, Administration, and
+            Maintenance as defined in <xref target="RFC9197"/></t>
+
+            <t hangText="OAM:">Operations, Administration, and Maintenance</t>
+
+            <t hangText="POT:">Proof of Transit</t>
+          </list></t>
+      </section>
+    </section>
+
+    <section title="In-situ OAM Metadata Transport in IPv6">
+      <t>IOAM in IPv6 is used to enhance diagnostics of IPv6 networks.
+      It complements other mechanisms designed to enhance diagnostics of IPv6
+      networks, such as the IPv6 Performance and Diagnostic Metrics
+      Destination Option described in <xref target="RFC8250"/>.</t>
+      
+      <t> At the time this document was written, several implementations of IOAM 
+      for IPv6 exist, e.g., IOAM for IPv6 in the Linux Kernel (supported from Kernel 
+      version 5.15 onwards 
+      <eref target="https://github.com/torvalds/linux/commit/7c804e91df523a37c29e183ea2b10ac73c3a4f3d">
+      IPv6 IOAM in Linux Kernel</eref>),
+      <eref target="https://docs.fd.io/vpp/17.04/ioam_ipv6_doc.html">
+      IOAM for IPv6 in VPP </eref>. 
+      </t>
+      <t>IOAM data fields can be encapsulated with two types of extension headers
+      in IPv6 packets - either the hop-by-hop options header or
+      the destination options header.  Multiple options
+      with the same option type MAY appear in the same hop-by-hop options or
+      destination options header, with distinct content.</t>
+
+      <t>An IPv6 packet carrying IOAM data in an extension header can have
+      other extension headers, compliant with <xref target="RFC8200"/>.</t>
+
+      <t>IPv6 hop-by-hop and destination option format for carrying 
+      IOAM data fields:<figure>
+          <artwork><![CDATA[
+
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|  Option Type  |  Opt Data Len |   Reserved    |   IOAM Type   |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
+|                                                               |  |
+.                                                               .  I
+.                                                               .  O
+.                                                               .  A
+.                                                               .  M
+.                                                               .  .
+.                          Option Data                          .  O
+.                                                               .  P
+.                                                               .  T
+.                                                               .  I
+.                                                               .  O
+.                                                               .  N
+|                                                               |  |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
+
+]]></artwork>
+        </figure></t>
+
+      <t><list style="hanging">
+          <t hangText="Option Type:">8-bit option type identifier as defined
+          in <xref target="IANA"/>.</t>
+
+          <t hangText="Opt Data Len:">8-bit unsigned integer. Length of this
+          option, in octets, not including the first 2 octets.</t>
+
+          <t hangText="Reserved:">8-bit field MUST be set to zero
+          by the source.</t>
+
+          <t hangText="IOAM Type:">8-bit field as defined in section 7.1 in
+          <xref target="RFC9197"/>.</t>
+
+          <t hangText="Option Data:">Variable-length field.
+          Option-Type-specific data.</t>
+        </list></t>
+
+      <t>IOAM Option data is inserted as follows:<list style="numbers">
+          <t>Pre-allocated Trace Option: The IOAM Preallocated Trace
+          Option-Type defined in Section 4.4 of <xref target="RFC9197"/> is
+          represented as an IPv6 option in the hop-by-hop extension header: <list
+              style="hanging">
+              <t hangText="Option Type:">TBD_1_1 8-bit identifier of the
+              IPv6 Option Type for IOAM.</t>
+
+              <t hangText="IOAM Type:">IOAM Pre-allocated Trace Option-Type.</t>
+            </list></t>
+
+          <t>Proof of Transit Option: The IOAM POT Option-Type defined in
+          Section 4.5 of <xref target="RFC9197"/> is represented as an IPv6
+          option in the hop-by-hop extension header: <list style="hanging">
+              <t hangText="Option Type:">TBD_1_1 8-bit identifier of the
+              IPv6 Option Type for IOAM.</t>
+
+              <t hangText="IOAM Type:">IOAM POT Option-Type.</t>
+            </list></t>
+
+          <t>Edge to Edge Option: The IOAM E2E option defined in Section 4.6
+          <xref target="RFC9197"/> is represented as an IPv6 option
+          in destination extension header: <list style="hanging">
+              <t hangText="Option Type:">TBD_1_0 8-bit identifier of the
+              IPv6 Option Type for IOAM.</t>
+
+              <t hangText="IOAM Type:">IOAM E2E Option-Type.</t>
+            </list></t>
+
+          <t>Direct Export (DEX) Option: The IOAM Direct Export Option-Type defined in
+          Section 3.2 of <xref target="I-D.ietf-ippm-ioam-direct-export"/> is represented
+          as an IPv6 option in the hop-by-hop extension header:
+          <list style="hanging">
+              <t hangText="Option Type:">TBD_1_0 8-bit identifier of the
+              IPv6 Option Type for IOAM.</t>
+
+              <t hangText="IOAM Type:">IOAM Direct Export (DEX) Option-Type.</t>
+            </list></t>
+
+        </list>All the IOAM IPv6 options defined here have alignment
+      requirements. Specifically, they all require 4n alignment. This ensures
+      that fields specified in <xref target="RFC9197"/> are
+      aligned at a multiple-of-4 offset from the start of the hop-by-hop and
+      destination options header.</t>
+
+      <t>IPv6 options can have a maximum length of 255 octets. Consequently,
+	      the total length of IOAM Option-Types including all data fields
+	      is also limited to 255 octets when encapsulated into IPv6.</t>
+    </section>
+
+    <section title="IOAM Deployment In IPv6 Networks">
+      <t/>
+
+      <section anchor="v6_requirement"
+               title="Considerations for IOAM deployment and implementation
+               in IPv6 networks">
+
+        <t>IOAM deployments in IPv6 networks MUST take the following
+        considerations and requirements into account:<list style="hanging">
+            <t hangText="C1">IOAM MUST be deployed as a limited domain feature
+            as defined in <xref target="RFC8799"/>. </t>
+            <t hangText="C2">Implementations of IOAM MUST ensure that the
+            addition of IOAM data fields does not alter the way routers
+            forward packets or the forwarding decisions they make.
+            Packets with added IOAM information must follow the same path
+            within the domain as an identical packet without IOAM information
+            would, even in the presence of Equal-Cost Multi-Path (ECMP).
+            This behavior is important for deployments where
+            IOAM data fields are only added "on-demand".
+            Implementations of IOAM MUST ensure that ECMP behavior for
+            packets with and without IOAM data fields is the same.
+            In order for IOAM to work in IPv6 networks, 
+	    IOAM MUST be explicitly enabled per interface on every node 
+            within the IOAM domain.  Unless a particular interface is 
+            explicitly enabled (i.e., explicitly configured) for IOAM, 
+            a router MUST ignore IOAM Options. </t> 
+
+            <t hangText="C3">
+            In order to maintain the integrity of packets in an IOAM domain,
+            the Maximum Transmission Unit (MTU) of transit routers and switches
+            must be configured to a value that does not lead to an ICMP
+            Packet Too Big error message being sent to the originator and
+            the packet being dropped.
+            The PMTU tolerance range must be identified and IOAM encapsulation
+            operations or data field insertion must not exceed this range.
+            Control of the MTU is critical to the proper operation of IOAM and
+            is one of the reasons it is considered a limited domain feature
+            (see also <xref target="RFC8799"/>).
+            The PMTU tolerance must be identified through configuration and
+            IOAM operations must not exceed the packet size beyond PMTU.</t>
+
+
+            <t hangText="C4"> <xref target="RFC8200"/>
+            precludes insertion of IOAM data directly into the original IPv6
+            header of in-flight packets.
+            IOAM deployments which do not encapsulate/decapsulate IOAM on the 
+            host but desire to encapsulate/decapsulate IOAM on transit nodes 
+            MUST add an additional IPv6 header to the original packet. 
+            IOAM data is added to this additional IPv6 header.
+            </t>
+
+          </list></t>
+      </section>
+
+      <section title="IOAM domains bounded by hosts">
+        <t>For deployments where the IOAM domain is bounded by hosts, hosts
+        will perform the operation of IOAM data field encapsulation and
+        decapsulation. IOAM data is carried in IPv6 packets as hop-by-hop or
+        destination options as specified in this document.</t>
+      </section>
+
+      <section title="IOAM domains bounded by network devices">
+        <t>For deployments where the IOAM domain is bounded by network
+        devices, network devices such as routers form the edge of an IOAM
+        domain. Network devices will perform the operation of IOAM data field
+        encapsulation and decapsulation.</t>
+      </section>
+    </section>
+
+    <section title="Security Considerations">
+      <t>This document describes the encapsulation of IOAM data fields in
+      IPv6. Security considerations of the specific IOAM data fields for each
+      case (i.e., Trace, Proof of Transit, and E2E) are described and defined
+      in <xref target="RFC9197"/>.</t>
+
+      <t>As this document describes new options for IPv6, these are similar to
+      the security considerations of <xref target="RFC8200"/> and the
+      weakness documented in <xref target="RFC8250"/>.</t>
+
+     <section title="Applicability of AH">
+      <t> IOAM is a limited domain feature (refer to <xref target="RFC8799"/>).
+      The network devices in an IOAM domain are trusted to add, update and remove
+      IOAM options according to the constraints specified in <xref target="RFC8200"/>.
+      IOAM domain does not rely on the Authentication Header (AH) as defined in
+      <xref target="RFC4302"/> to secure IOAM options.
+      The use of IOAM options with AH and its processing is not defined
+      in this document. Future documents may define use of IOAM with AH and
+      its processing.</t>
+     </section>
+
+    </section>
+
+    <section anchor="IANA" title="IANA Considerations">
+      <t>This draft requests the following IPv6 Option Type assignments from
+      the destination options and hop-by-hop options sub-registry of Internet
+      Protocol Version 6 (IPv6) Parameters.</t>
+
+      <t>http://www.iana.org/assignments/ipv6-parameters/ipv6-
+      parameters.xhtml#ipv6-parameters-2</t>
+
+      <t><figure>
+          <artwork><![CDATA[
+   Hex Value    Binary Value      Description            Reference
+                act chg rest
+   ------------------------------------------------------------------
+   TBD_1_0      00   0  TBD_1     IOAM                   [This draft]
+                                  destination option
+                                  and
+                                  IOAM hop-by-hop option
+   TBD_1_1      00   1  TBD_1     IOAM                   [This draft]
+                                  destination option
+                                  and
+                                  IOAM hop-by-hop option
+]]></artwork>
+        </figure></t>
+    </section>
+
+    <section title="Acknowledgements">
+      <t>The authors would like to thank Tom Herbert, Eric Vyncke, Nalini
+      Elkins, Srihari Raghavan, Ranganathan T S, Karthik Babu Harichandra
+      Babu, Akshaya Nadahalli, Stefano Previdi, Hemant Singh, Erik Nordmark,
+      LJ Wobker, Mark Smith, Andrew Yourtchenko and Justin Iurman for the
+      comments and advice. For the IPv6 encapsulation, this document leverages
+      concepts described in <xref target="I-D.kitamura-ipv6-record-route"/>.
+      The authors would like to acknowledge the work done by the author
+      Hiroshi Kitamura and people involved in writing it.</t>
+    </section>
+
+    <!---->
+
+    <!-- -->
+  </middle>
+
+  <back>
+    <references title="Normative References">
+      &RFC2119;
+
+      &RFC8174;
+
+      &RFC9197;
+
+      &I-D.ietf-ippm-ioam-direct-export;
+
+    </references>
+
+    <references title="Informative References">
+      &RFC8200;
+
+      &RFC8250;
+
+      &RFC4302;
+
+      &RFC8799;
+
+      <reference anchor="I-D.kitamura-ipv6-record-route">
+        <front>
+          <title>Record Route for IPv6 (PR6) Hop-by-Hop Option
+          Extension</title>
+
+          <author fullname="Hiroshi Kitamura" initials="H" surname="Kitamura"/>
+
+          <date month="November" year="2000"/>
+        </front>
+
+        <seriesInfo name="Internet-Draft"
+                    value="draft-kitamura-ipv6-record-route-00"/>
+
+        <format target="https://tools.ietf.org/id/draft-kitamura-ipv6-record-route-00.txt"
+                type="TXT"/>
+      </reference>
+
+
+    </references>
+     <section numbered="no" title="Contributors">
+          <t>This document was the collective effort of several authors. The text
+          and content were contributed by the editors and the co-authors listed
+          below. The contact information of the co-authors appears at the end of
+          this document.</t>
+
+        <t><list style="symbols">
+            <t>Carlos Pignataro</t>
+            <t>Hannes Gredler</t>
+            <t>John Leddy</t>
+            <t>Stephen Youell</t>
+            <t>Tal Mizrahi</t>
+            <t>Aviv Kfir</t>
+            <t>Barak Gafni</t>
+            <t>Petr Lapukhov</t>
+            <t>Mickey Spiegel</t>
+            <t>Suresh Krishnan</t>
+            <t>Rajiv Asati</t>
+            <t>Mark Smith</t>
+          </list></t>
+    </section>
+
+    <section numbered="no" title="Contributors' Addresses">
+          <t><figure>
+              <artwork><![CDATA[
+
+   Carlos Pignataro
+   Cisco Systems, Inc.
+   7200-11 Kit Creek Road
+   Research Triangle Park, NC  27709
+   United States
+   Email: cpignata@cisco.com
+
+
+   Hannes Gredler
+   RtBrick Inc.
+   Email: hannes@rtbrick.com
+
+
+   John Leddy
+   Email: john@leddy.net
+
+
+   Stephen Youell
+   JP Morgan Chase
+   25 Bank Street
+   London  E14 5JP
+   United Kingdom
+   Email: stephen.youell@jpmorgan.com
+
+
+   Tal Mizrahi
+   Huawei Network.IO Innovation Lab
+   Israel
+   Email: tal.mizrahi.phd@gmail.com
+
+
+   Aviv Kfir
+   Mellanox Technologies, Inc.
+   350 Oakmead Parkway, Suite 100
+   Sunnyvale, CA  94085
+   U.S.A.
+   Email: avivk@mellanox.com
+
+
+   Barak Gafni
+   Mellanox Technologies, Inc.
+   350 Oakmead Parkway, Suite 100
+   Sunnyvale, CA  94085
+   U.S.A.
+   Email: gbarak@mellanox.com
+
+
+   Petr Lapukhov
+   Facebook
+   1 Hacker Way
+   Menlo Park, CA  94025
+   US
+   Email: petr@fb.com
+
+
+   Mickey Spiegel
+   Barefoot Networks, an Intel company
+   4750 Patrick Henry Drive
+   Santa Clara, CA  95054
+   US
+   Email: mickey.spiegel@intel.com
+
+
+   Suresh Krishnan
+   Kaloom
+   Email: suresh@kaloom.com
+
+   Rajiv Asati
+   Cisco Systems, Inc.
+   7200 Kit Creek Road
+   Research Triangle Park, NC  27709
+   US
+   Email: rajiva@cisco.com
+
+
+   Mark Smith
+   PO BOX 521
+   HEIDELBERG, VIC  3084
+   AU
+   Email: markzzzsmith+id@gmail.com
+              ]]></artwork>
+          </figure></t>
+    </section>
+  </back>
+</rfc>
