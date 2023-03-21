@@ -16,6 +16,7 @@
   - [As a CLI](#as-a-cli)
   - [As a library](#as-a-library)
 - [Tests](#tests)
+- [Development](#development)
 - [Contributing](https://github.com/ietf-tools/.github/blob/main/CONTRIBUTING.md)
 
 ---
@@ -69,3 +70,9 @@ npm test
 ```
 
 Code coverage is expected to reach 100%. Ensure this is still the case when making edits / adding new functionality.
+
+### Development
+
+1. Clone the project
+2. Run `npm install`
+3. Run the CLI using `node cli.js <args>` (replacing `<args>` with the flags + file path)
