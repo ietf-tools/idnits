@@ -12,7 +12,7 @@ import { checkNits } from './lib/index.mjs'
 const argv = yargs(process.argv.slice(2))
   .scriptName('idnits')
   .usage('$0 [args] <file>')
-  .example(`$0 --year ${DateTime.now().year} rfc1234.txt`)
+  .example(`$0 --year ${DateTime.now().year} rfc1234.txt`, '')
   .option('nitcount', {
     describe: 'Show a count of nits',
     type: 'boolean'
@@ -41,7 +41,7 @@ const argv = yargs(process.argv.slice(2))
 
 // Get package version
 const pkgInfo = JSON.parse(await readFile('./package.json', 'utf8'))
-console.log(chalk.yellowBright.bold(`${'='.repeat('64')}\nidnits | ${pkgInfo.version}\n${'='.repeat('64')}\n`))
+console.log(chalk.yellowBright.bold(`${'='.repeat(64)}\nidnits | ${pkgInfo.version}\n${'='.repeat(64)}\n`))
 
 // Read document
 const docPath = path.resolve(process.cwd(), argv.file)

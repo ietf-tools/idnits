@@ -5,7 +5,7 @@
   "main": "lib/index.mjs",
   "type": "module",
   "scripts": {
-    "test": "NODE_OPTIONS=--experimental-vm-modules jest"
+    "test": "NODE_OPTIONS='--experimental-vm-modules --no-warnings' jest"
   },
   "repository": {
     "type": "git",
