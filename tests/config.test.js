@@ -12,21 +12,21 @@ describe('externals', () => {
 
 describe('modes', () => {
   test('getModeByName() should return mode number 0 for normal', async () => {
-    expect(getModeByName('normal')).toBe(0)
-    expect(getModeByName('Normal')).toBe(0)
-    expect(getModeByName('norm')).toBe(0)
-    expect(getModeByName('n')).toBe(0)
+    expect(getModeByName('normal')).toEqual({ mode: 0, name: 'normal' })
+    expect(getModeByName('Normal')).toEqual({ mode: 0, name: 'normal' })
+    expect(getModeByName('norm')).toEqual({ mode: 0, name: 'normal' })
+    expect(getModeByName('n')).toEqual({ mode: 0, name: 'normal' })
   })
   test('getModeByName() should return mode number 1 for forgive-checklist', async () => {
-    expect(getModeByName('forgive-checklist')).toBe(1)
-    expect(getModeByName('f-c')).toBe(1)
-    expect(getModeByName('fc')).toBe(1)
-    expect(getModeByName('f')).toBe(1)
+    expect(getModeByName('forgive-checklist')).toEqual({ mode: 1, name: 'forgive-checklist' })
+    expect(getModeByName('f-c')).toEqual({ mode: 1, name: 'forgive-checklist' })
+    expect(getModeByName('fc')).toEqual({ mode: 1, name: 'forgive-checklist' })
+    expect(getModeByName('f')).toEqual({ mode: 1, name: 'forgive-checklist' })
   })
   test('getModeByName() should return mode number 2 for submission', async () => {
-    expect(getModeByName('submission')).toBe(2)
-    expect(getModeByName('sub')).toBe(2)
-    expect(getModeByName('s')).toBe(2)
+    expect(getModeByName('submission')).toEqual({ mode: 2, name: 'submission' })
+    expect(getModeByName('sub')).toEqual({ mode: 2, name: 'submission' })
+    expect(getModeByName('s')).toEqual({ mode: 2, name: 'submission' })
   })
   test('getModeByName() should fail for an invalid mode name', async () => {
     expect(() => { getModeByName('invalid') }).toThrow()
