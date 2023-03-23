@@ -42,7 +42,7 @@ idnits [args] <file>
 |---|---|---|---|
 | `--version` |  | Print the version and exit |  |
 | `--help` | `-h` | Print the help text and exit |  |
-| `--mode` | `-m` | Validation mode, must be either `normal`, `forgive-checklist` or `submission` | `normal` |
+| `--mode` | `-m` | Validation mode, must be either `normal`, `forgive-checklist` or `submission`<br>Accepted shorthands: `norm`, `n`, `f-c`, `fc`, `f`, `sub`, `s` | `normal` |
 | `--output` | `-o` | Output format, must be either `pretty`, `json` or `count` | `pretty` |
 | `--year` | `-y` | Expect the given year in the boilerplate |  |
 
