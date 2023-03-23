@@ -38,19 +38,13 @@ npm install -g idnits
 idnits [args] <file>
 ```
 
-| Arguments          | Description                                               |
-|--------------------|-----------------------------------------------------------|
-| `--version`        | Print the version and exit                                |
-| `--help`           | Print the help text and exit                              |
-| `--nowarn`         | Don't issue warnings, only ID-Checklist violations        |
-| `--verbose`        | Show more information about offending lines               |
-| `--nitcount`       | Show a count of nits                                      |
-| `--debug`          | Debug output, especially of boilerplate matching          |
-| `--year <year>`    | Expect the given year in the boilerplate                  |
-| `--checklistwarn`  | Only warn (no errors) for ID-Checklist violations         |
-| `--nonascii`       | Disable warnings for non-ascii characters                 |
-| `--submitcheck`    | Only output errors and warnings related to 1id-guidelines |
-| `--status <doctype>` | Assume the given intended document type                   |
+| Arguments | Alias | Description | Default |
+|---|---|---|---|
+| `--version` |  | Print the version and exit |  |
+| `--help` | `-h` | Print the help text and exit |  |
+| `--mode` | `-m` | Validation mode, must be either `normal`, `forgive-checklist` or `submission` | `normal` |
+| `--output` | `-o` | Output format, must be either `pretty`, `json` or `count` | `pretty` |
+| `--year` | `-y` | Expect the given year in the boilerplate |  |
 
 #### As a library
 
