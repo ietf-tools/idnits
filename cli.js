@@ -6,11 +6,17 @@ import path from 'node:path'
 import { pad } from 'lodash-es'
 import { readFile } from 'node:fs/promises'
 import { DateTime } from 'luxon'
+import { gte } from 'semver'
 import { checkNits } from './lib/index.mjs'
 import { getModeByName } from './lib/config/modes.mjs'
 
-// Define CLI arguments config
+// Check Node.js version
+if (!gte(process.version, '18.0.0')) {
+  console.error('idnits3 requires Node.js v18 or later.')
+  process.exit(1)
+}
 
+// Define CLI arguments config
 const argv = yargs(process.argv.slice(2))
   .scriptName('idnits')
   .usage('$0 [args] <file>')
