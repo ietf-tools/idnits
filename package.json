@@ -1,6 +1,6 @@
 {
-  "name": "idnits",
-  "version": "3.0.0",
+  "name": "@ietf-tools/idnits",
+  "version": "3.0.0-alpha",
   "description": "Library / CLI to inspect Internet-Draft documents for a variety of conditions to conform with IETF policies.",
   "main": "lib/index.mjs",
   "type": "module",
