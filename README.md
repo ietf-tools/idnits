@@ -27,7 +27,7 @@
 2. Install idnits:
 
 ```sh
-npm install -g idnits
+npm install -g @ietf-tools/idnits
 ```
 
 ### Usage
