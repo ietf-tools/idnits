@@ -24,7 +24,7 @@
 ### Installation
 
 1. Install [Node.js 18.x or later](https://nodejs.org/)
-2. Install idnits:
+2. Install **idnits**:
 
 ```sh
 npm install -g @ietf-tools/idnits
