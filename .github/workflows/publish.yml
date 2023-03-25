@@ -1,0 +1,43 @@
+name: Publish to NPM
+
+on:
+  push:
+    branches:
+      - v3
+
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: v3
+          fetch-depth: 0
+
+      - name: Set Build Variables
+        run: |
+          echo "NEXT_VERSION=3.0.0-alpha.${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
+      - name: Setup Node.js environment
+        uses: actions/setup-node@v3.6.0
+        with:
+          node-version: 18.x
+          registry-url: https://registry.npmjs.org/
+
+      - name: Set package.json version
+        uses: HarmvZ/set-package-json-version-action@v0.1.2
+        with:
+          version: ${{ env.NEXT_VERSION }}
+
+      - name: Install NPM Dependencies
+        run: npm ci
+
+      - name: Run Tests
+        run: npm test
+
+      - name: Publish to NPM
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
