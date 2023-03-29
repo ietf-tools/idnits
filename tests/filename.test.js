@@ -1,6 +1,8 @@
 import { describe, expect, test } from '@jest/globals'
 import { toContainError } from '../lib/helpers/error.mjs'
-import { validateFilename } from '../lib/modules/filename.mjs'
+import { validateFilename, validateDocName } from '../lib/modules/filename.mjs'
+import { baseXMLDoc } from './fixtures/base-doc.mjs'
+import { set } from 'lodash-es'
 
 expect.extend({
   toContainError
@@ -37,11 +39,25 @@ describe('filename extension matches a valid format type', () => {
 })
 
 describe('filename base name matches the name declared in the document', () => {
-  test('matching name', async () => {
-    // TODO: Missing test
+  describe('XML Document Type', () => {
+    test('matching name', async () => {
+      const doc = { ...baseXMLDoc, filename: 'draft-ietf-abcd-01.xml' }
+      set(doc, 'data.rfc._attr.docName', 'draft-ietf-abcd-01')
+      expect(validateDocName(doc)).toHaveLength(0)
+    })
+    test('non-matching name', async () => {
+      const doc = { ...baseXMLDoc, filename: 'draft-ietf-abcd-01.xml' }
+      set(doc, 'data.rfc._attr.docName', 'draft-ietf-abcd-02')
+      expect(validateDocName(doc)).toContainError('FILENAME_DOCNAME_MISMATCH')
+    })
   })
-  test('non-matching name', async () => {
-    // TODO: Missing test
+  describe('Text Document Type', () => {
+    test('matching name', async () => {
+      // TODO: matching name
+    })
+    test('non-matching name', async () => {
+      // TODO: non-matching name
+    })
   })
 })
 
