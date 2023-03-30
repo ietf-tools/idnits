@@ -54,6 +54,8 @@
 
 <t>This document specifies a way to derive an Extended Community from
 a Route Target and describes some example use cases.</t>
+<t>This document specifies a way to derive an <xref target="RFC4360"/> Extended Community from
+a Route Target and describes some example use cases.</t>
 
 
 

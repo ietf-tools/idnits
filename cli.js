@@ -154,6 +154,9 @@ try {
           if (entry.refUrl) {
             console.log(chalk.grey(' └- ') + chalk.white('Ref ') + chalk.grey(' - ') + chalk.cyan(entry.refUrl))
           }
+          if (entry.path) {
+            console.log(chalk.grey(' └- ') + chalk.white('Path') + chalk.grey(' - ') + chalk.white(entry.path))
+          }
           if (entry.lines) {
             const lines = []
             for (const line of entry.lines) {
