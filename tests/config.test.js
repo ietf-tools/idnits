@@ -1,12 +1,12 @@
 import { describe, expect, test } from '@jest/globals'
-import { allowedDomainsDefault } from '../lib/config/externals.mjs'
+import { ALLOWED_DOMAINS_DEFAULT } from '../lib/config/externals.mjs'
 import { getModeByName } from '../lib/config/modes.mjs'
 
 describe('externals', () => {
   test('allowedDomainsDefault is an array of domains', async () => {
-    expect(Array.isArray(allowedDomainsDefault)).toBe(true)
-    expect(allowedDomainsDefault.length > 0).toBe(true)
-    expect(allowedDomainsDefault.every(d => typeof d === 'string')).toBe(true)
+    expect(Array.isArray(ALLOWED_DOMAINS_DEFAULT)).toBe(true)
+    expect(ALLOWED_DOMAINS_DEFAULT.length > 0).toBe(true)
+    expect(ALLOWED_DOMAINS_DEFAULT.every(d => typeof d === 'string')).toBe(true)
   })
 })
 

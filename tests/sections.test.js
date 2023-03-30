@@ -1,7 +1,7 @@
 import { describe, expect, test } from '@jest/globals'
 import { MODES } from '../lib/config/modes.mjs'
 import { toContainError, ValidationComment, ValidationError, ValidationWarning } from '../lib/helpers/error.mjs'
-import { validateAbstractSection, validateIntroductionSection } from '../lib/modules/sections.mjs'
+import { validateAbstractSection, validateIntroductionSection, validateSecurityConsiderationsSection } from '../lib/modules/sections.mjs'
 import { baseXMLDoc } from './fixtures/base-doc.mjs'
 import { cloneDeep, set } from 'lodash-es'
 
@@ -76,6 +76,37 @@ describe('document should have a valid introduction section', () => {
       set(doc, 'data.rfc.middle.section[0].t', 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.')
       set(doc, 'data.rfc.middle.section[0].abc', 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.')
       expect(validateIntroductionSection(doc)).toContainError('INVALID_INTRODUCTION_SECTION_CHILD', ValidationError)
+    })
+  })
+})
+
+describe('document should have a valid security considerations section', () => {
+  describe('XML Document Type', () => {
+    test('valid security considerations section', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      set(doc, 'data.rfc.middle.section[0].name', 'Security Considerations')
+      set(doc, 'data.rfc.middle.section[0].t', 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.')
+      expect(validateSecurityConsiderationsSection(doc)).toHaveLength(0)
+    })
+    test('missing security considerations section', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      set(doc, 'data.rfc.middle.section', [])
+      expect(validateSecurityConsiderationsSection(doc)).toContainError('MISSING_SECURITY_CONSIDERATIONS_SECTION', ValidationError)
+      expect(validateSecurityConsiderationsSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).toContainError('MISSING_SECURITY_CONSIDERATIONS_SECTION', ValidationWarning)
+      expect(validateSecurityConsiderationsSection(doc, { mode: MODES.SUBMISSION })).toHaveLength(0)
+    })
+    test('invalid security considerations section', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      set(doc, 'data.rfc.middle.section[0].name', 'Security Considerations')
+      expect(validateSecurityConsiderationsSection(doc)).toContainError('INVALID_SECURITY_CONSIDERATIONS_SECTION', ValidationError)
+    })
+    test('invalid security considerations section children', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      // -> Invalid child element
+      set(doc, 'data.rfc.middle.section[0].name', 'Security Considerations')
+      set(doc, 'data.rfc.middle.section[0].t', 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.')
+      set(doc, 'data.rfc.middle.section[0].abc', 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.')
+      expect(validateSecurityConsiderationsSection(doc)).toContainError('INVALID_SECURITY_CONSIDERATIONS_SECTION_CHILD', ValidationError)
     })
   })
 })
