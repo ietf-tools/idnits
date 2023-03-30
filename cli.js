@@ -24,6 +24,14 @@ const argv = yargs(process.argv.slice(2))
     ['$0 draft-ietf-abcd-01.xml', ''],
     [`$0 -m normal -y ${DateTime.now().year} draft-ietf-abcd-01.xml`, '']
   ])
+  .option('filter', {
+    alias: 'f',
+    describe: 'Filter output to only certain severity types. Can be declared multiple times to filter multiple severity types.',
+    choices: ['errors', 'warnings', 'comments'],
+    default: [],
+    nargs: 1,
+    type: 'array'
+  })
   .option('mode', {
     alias: 'm',
     describe: 'Validation mode to use',
@@ -95,7 +103,27 @@ if (argv.output === 'pretty') {
 
 // Validate document
 try {
-  const result = await checkNits(docRaw, docPathObj.base, { mode })
+  let result = await checkNits(docRaw, docPathObj.base, { mode })
+
+  // Filter severity types
+  if (argv.filter && argv.filter.length > 0) {
+    result = result.filter(entry => {
+      switch (entry.constructor.name) {
+        case 'ValidationError': {
+          return argv.filter.includes('errors')
+        }
+        case 'ValidationWarning': {
+          return argv.filter.includes('warnings')
+        }
+        case 'ValidationComment': {
+          return argv.filter.includes('comments')
+        }
+        default: {
+          return true
+        }
+      }
+    })
+  }
 
   // Output results
   switch (argv.output) {

@@ -35,20 +35,21 @@ npm install -g @ietf-tools/idnits
 #### As a CLI
 
 ```sh
-idnits [args] <file>
+idnits [args] <file path>
 ```
 
 | Arguments | Alias | Description | Default |
 |---|---|---|---|
-| `--version` |  | Print the version and exit |  |
-| `--help` | `-h` | Print the help text and exit |  |
+| `--filter` | `-f` | Filter output to only certain severity types. Can be declared multiple times to filter multiple severity types.<br>Accepted values: `errors`, `warnings`, `comments` |  |
 | `--mode` | `-m` | Validation mode, must be either `normal`, `forgive-checklist` or `submission`<br>Accepted shorthands: `norm`, `n`, `f-c`, `fc`, `f`, `sub`, `s` | `normal` |
 | `--output` | `-o` | Output format, must be either `pretty`, `json` or `count` | `pretty` |
 | `--year` | `-y` | Expect the given year in the boilerplate |  |
+| `--help` | `-h` | Print the help text and exit |  |
+| `--version` |  | Print the version and exit |  |
 
 #### As a library
 
-*TODO*
+> *coming soon*
 
 ### Tests
 
@@ -69,4 +70,7 @@ Code coverage is expected to reach 100%. Ensure this is still the case when maki
 
 1. Clone the project
 2. Run `npm install`
-3. Run the CLI using `node cli.js <args>` (replacing `<args>` with the flags + file path)
+3. Run the CLI: *(replacing `<args>` and `<file path>` with the desired flags + file path)*
+    ```
+    node cli.js <args> <file path>
+    ```
