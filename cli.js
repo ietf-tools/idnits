@@ -7,6 +7,7 @@ import { pad } from 'lodash-es'
 import { readFile } from 'node:fs/promises'
 import { DateTime } from 'luxon'
 import { gte } from 'semver'
+import ora from 'ora'
 import { checkNits } from './lib/index.mjs'
 import { getModeByName } from './lib/config/modes.mjs'
 
@@ -19,10 +20,10 @@ if (!gte(process.version, '18.0.0')) {
 // Define CLI arguments config
 const argv = yargs(process.argv.slice(2))
   .scriptName('idnits')
-  .usage('$0 [args] <file>')
+  .usage('$0 [args] <file-path>')
   .example([
     ['$0 draft-ietf-abcd-01.xml', ''],
-    [`$0 -m normal -y ${DateTime.now().year} draft-ietf-abcd-01.xml`, '']
+    [`$0 -m submission -y ${DateTime.now().year} draft-ietf-abcd-01.xml`, '']
   ])
   .option('filter', {
     alias: 'f',
@@ -46,6 +47,15 @@ const argv = yargs(process.argv.slice(2))
     choices: ['normal', 'forgive-checklist', 'submission'],
     default: 'normal',
     type: 'string'
+  })
+  .option('progress', {
+    default: true,
+    type: 'boolean',
+    hidden: true
+  })
+  .option('no-progress', {
+    describe: 'Disable progress messages / animations in pretty output',
+    type: 'boolean'
   })
   .option('output', {
     alias: 'o',
@@ -75,8 +85,9 @@ const argv = yargs(process.argv.slice(2))
 // Get package version
 const pkgInfo = JSON.parse(await readFile('./package.json', 'utf8'))
 if (argv.output === 'pretty') {
-  console.log(chalk.bgGray.black(' '.repeat(64)))
-  console.log(chalk.bgWhite.black(`${pad('idnits | ' + pkgInfo.version, 64)}`))
+  console.log(chalk.bgGray.white('▄'.repeat(64)))
+  console.log(chalk.bgWhite.black(`${pad('idnits ▶ ' + pkgInfo.version, 64)}`))
+  console.log(chalk.bgGray.white('▀'.repeat(64)))
   console.log()
 }
 
@@ -101,9 +112,20 @@ if (argv.output === 'pretty') {
   console.log()
 }
 
+// Initialize progress reporter
+const spinner = ora({
+  text: 'Loading...',
+  isSilent: argv.output !== 'pretty' || !argv.progress
+}).start()
+
 // Validate document
 try {
-  let result = await checkNits(docRaw, docPathObj.base, { mode })
+  let result = await checkNits(docRaw, docPathObj.base, {
+    mode,
+    progressClb: (msg) => { spinner.text = msg }
+  })
+
+  spinner.stop()
 
   // Filter severity types
   if (argv.filter && argv.filter.length > 0) {
@@ -203,6 +225,8 @@ try {
     }
   }
 } catch (err) {
+  spinner.stop()
+  console.debug(err)
   console.error(chalk.redBright(`Validation failed:\n- ${err.message}`))
   process.exit(1)
 }
