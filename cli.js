@@ -64,6 +64,11 @@ const argv = yargs(process.argv.slice(2))
     default: 'pretty',
     type: 'string'
   })
+  .option('solarized', {
+    default: false,
+    describe: 'Use alternate colors for a solarized light themed terminal',
+    type: 'boolean'
+  })
   .option('year', {
     alias: 'y',
     describe: 'Expect the given year in the boilerplate',
@@ -117,6 +122,15 @@ const spinner = ora({
   text: 'Loading...',
   isSilent: argv.output !== 'pretty' || !argv.progress
 }).start()
+
+function chalkAdapted (color) {
+  switch (color) {
+    case 'whiteBright':
+      return argv.solarized ? chalk.blackBright : chalk.whiteBright
+    case 'white':
+      return argv.solarized ? chalk.black : chalk.white
+  }
+}
 
 // Validate document
 try {
@@ -183,36 +197,36 @@ try {
           switch (entry.constructor.name) {
             case 'ValidationError': {
               console.log(chalk.bgRed.whiteBright(` ${entryIdx} `) + chalk.redBright(' Error'))
-              console.log(chalk.grey(' └- ') + chalk.white('Code') + chalk.grey(' - ') + chalk.redBright(entry.name))
+              console.log(chalk.grey(' └- ') + chalkAdapted('white')('Code') + chalk.grey(' - ') + chalk.redBright(entry.name))
               break
             }
             case 'ValidationWarning': {
               console.log(chalk.bgYellow.whiteBright(` ${entryIdx} `) + chalk.yellowBright(' Warning'))
-              console.log(chalk.grey(' └- ') + chalk.white('Code') + chalk.grey(' - ') + chalk.yellowBright(entry.name))
+              console.log(chalk.grey(' └- ') + chalkAdapted('white')('Code') + chalk.grey(' - ') + chalk.yellowBright(entry.name))
               break
             }
             case 'ValidationComment': {
               console.log(chalk.bgCyan.whiteBright(` ${entryIdx} `) + ' Comment')
-              console.log(chalk.grey(' └- ') + chalk.white('Code') + chalk.grey(' - ') + chalk.cyanBright(entry.name))
+              console.log(chalk.grey(' └- ') + chalkAdapted('white')('Code') + chalk.grey(' - ') + chalk.cyanBright(entry.name))
               break
             }
             default: {
               console.log(chalk.bgRed.whiteBright(` ${entryIdx} `) + ' Unexpected Error')
             }
           }
-          console.log(chalk.grey(' └- ') + chalk.white('Desc') + chalk.grey(' - ') + chalk.whiteBright(entry.message))
+          console.log(chalk.grey(' └- ') + chalkAdapted('white')('Desc') + chalk.grey(' - ') + chalkAdapted('whiteBright')(entry.message))
           if (entry.refUrl) {
-            console.log(chalk.grey(' └- ') + chalk.white('Ref ') + chalk.grey(' - ') + chalk.cyan(entry.refUrl))
+            console.log(chalk.grey(' └- ') + chalkAdapted('white')('Ref ') + chalk.grey(' - ') + chalk.cyan(entry.refUrl))
           }
           if (entry.path) {
-            console.log(chalk.grey(' └- ') + chalk.white('Path') + chalk.grey(' - ') + chalk.white(entry.path))
+            console.log(chalk.grey(' └- ') + chalkAdapted('white')('Path') + chalk.grey(' - ') + chalkAdapted('white')(entry.path))
           }
           if (entry.lines) {
             const lines = []
             for (const line of entry.lines) {
               lines.push(`Ln ${line.line} Col ${line.pos}`)
             }
-            console.log(chalk.grey(' └- ') + chalk.white('Line') + chalk.grey(' - ') + chalk.white(lines.join(', ')))
+            console.log(chalk.grey(' └- ') + chalkAdapted('white')('Line') + chalk.grey(' - ') + chalkAdapted('white')(lines.join(', ')))
           }
           console.log() // Empty line between entries
           entryIdx++
