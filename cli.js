@@ -3,6 +3,7 @@
 import chalk from 'chalk'
 import yargs from 'yargs/yargs'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { pad } from 'lodash-es'
 import { readFile } from 'node:fs/promises'
 import { DateTime } from 'luxon'
@@ -88,7 +89,8 @@ const argv = yargs(process.argv.slice(2))
   .argv
 
 // Get package version
-const pkgInfo = JSON.parse(await readFile(path.resolve(__dirname, './package.json'), 'utf8'))
+const cliDir = path.dirname(fileURLToPath(import.meta.url))
+const pkgInfo = JSON.parse(await readFile(path.join(cliDir, 'package.json'), 'utf8'))
 if (argv.output === 'pretty') {
   console.log(chalk.bgGray.white('▄'.repeat(64)))
   console.log(chalk.bgWhite.black(`${pad('idnits ▶ ' + pkgInfo.version, 64)}`))
