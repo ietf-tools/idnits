@@ -30,6 +30,8 @@
 npm install -g @ietf-tools/idnits
 ```
 
+> You can also run idnits directly without installing it globally using `npx @ietf-tools/idnits <args>`
+
 ### Usage
 
 #### As a CLI
