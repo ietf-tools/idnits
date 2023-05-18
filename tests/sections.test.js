@@ -1,9 +1,9 @@
 import { describe, expect, test } from '@jest/globals'
 import { MODES } from '../lib/config/modes.mjs'
-import { toContainError, ValidationError, ValidationWarning } from '../lib/helpers/error.mjs'
-import { validateAbstractSection, validateIntroductionSection, validateSecurityConsiderationsSection } from '../lib/modules/sections.mjs'
+import { toContainError, ValidationComment, ValidationError, ValidationWarning } from '../lib/helpers/error.mjs'
+import { validateAbstractSection, validateIntroductionSection, validateSecurityConsiderationsSection, validateAuthorSection } from '../lib/modules/sections.mjs'
 import { baseXMLDoc } from './fixtures/base-doc.mjs'
-import { cloneDeep, set } from 'lodash-es'
+import { cloneDeep, set, times } from 'lodash-es'
 
 expect.extend({
   toContainError
@@ -107,6 +107,107 @@ describe('document should have a valid security considerations section', () => {
       set(doc, 'data.rfc.middle.section[0].t', 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.')
       set(doc, 'data.rfc.middle.section[0].abc', 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.')
       await expect(validateSecurityConsiderationsSection(doc)).resolves.toContainError('INVALID_SECURITY_CONSIDERATIONS_SECTION_CHILD', ValidationError)
+    })
+  })
+})
+
+describe('document should have valid security author sections', () => {
+  describe('XML Document Type', () => {
+    function generateAuthorSection () {
+      return {
+        _attr: {
+          initials: 'J.',
+          surname: 'Doe',
+          fullname: 'John Doe'
+        },
+        organization: 'ACME',
+        address: { email: 'john.doe@example.com' }
+      }
+    }
+
+    test('valid author section (array)', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      set(doc, 'data.rfc.front.author', times(2, generateAuthorSection))
+      await expect(validateAuthorSection(doc)).resolves.toHaveLength(0)
+    })
+    test('valid author section (object)', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      set(doc, 'data.rfc.front.author', generateAuthorSection())
+      await expect(validateAuthorSection(doc)).resolves.toHaveLength(0)
+    })
+    test('missing author section', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      set(doc, 'data.rfc.front.author', [])
+      await expect(validateAuthorSection(doc)).resolves.toContainError('MISSING_AUTHOR_SECTION', ValidationError)
+      await expect(validateAuthorSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('MISSING_AUTHOR_SECTION', ValidationWarning)
+      await expect(validateAuthorSection(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+    })
+    test('too many author sections', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      set(doc, 'data.rfc.front.author', times(6, generateAuthorSection))
+      await expect(validateAuthorSection(doc)).resolves.toContainError('TOO_MANY_AUTHORS', ValidationComment)
+      await expect(validateAuthorSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('TOO_MANY_AUTHORS', ValidationComment)
+      await expect(validateAuthorSection(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+    })
+    test('author section with empty organization', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      set(doc, 'data.rfc.front.author', {
+        ...generateAuthorSection(),
+        organization: ''
+      })
+      await expect(validateAuthorSection(doc)).resolves.toContainError('EMPTY_AUTHOR_ORGANIZATION', ValidationWarning)
+      await expect(validateAuthorSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('EMPTY_AUTHOR_ORGANIZATION', ValidationWarning)
+      await expect(validateAuthorSection(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+    })
+    test('author section with no org + empty fullname', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      const author = generateAuthorSection()
+      author._attr.fullname = ''
+      delete author.organization
+      set(doc, 'data.rfc.front.author', author)
+      await expect(validateAuthorSection(doc)).resolves.toContainError('MISSING_AUTHOR_FULLNAME', ValidationWarning)
+      await expect(validateAuthorSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('MISSING_AUTHOR_FULLNAME', ValidationWarning)
+      await expect(validateAuthorSection(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+    })
+    test('author section with ascii properties + empty fullname', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      const author = generateAuthorSection()
+      author._attr.fullname = ''
+      author._attr.asciiFullname = 'John Doe'
+      set(doc, 'data.rfc.front.author', author)
+      await expect(validateAuthorSection(doc)).resolves.toContainError('MISSING_AUTHOR_FULLNAME_WITH_ASCII', ValidationWarning)
+      await expect(validateAuthorSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('MISSING_AUTHOR_FULLNAME_WITH_ASCII', ValidationWarning)
+      await expect(validateAuthorSection(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+      delete author._attr.asciiFullname
+      author._attr.asciiSurname = 'Doe'
+      set(doc, 'data.rfc.front.author', author)
+      await expect(validateAuthorSection(doc)).resolves.toContainError('MISSING_AUTHOR_FULLNAME_WITH_ASCII', ValidationWarning)
+      await expect(validateAuthorSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('MISSING_AUTHOR_FULLNAME_WITH_ASCII', ValidationWarning)
+      await expect(validateAuthorSection(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+      delete author._attr.asciiSurname
+      author._attr.asciiInitials = 'J.'
+      set(doc, 'data.rfc.front.author', author)
+      await expect(validateAuthorSection(doc)).resolves.toContainError('MISSING_AUTHOR_FULLNAME_WITH_ASCII', ValidationWarning)
+      await expect(validateAuthorSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('MISSING_AUTHOR_FULLNAME_WITH_ASCII', ValidationWarning)
+      await expect(validateAuthorSection(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+    })
+    test('author section with editor role', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      set(doc, 'data.rfc.front.author', {
+        ...generateAuthorSection(),
+        role: 'editor'
+      })
+      await expect(validateAuthorSection(doc)).resolves.toHaveLength(0)
+    })
+    test('author section with incorrect role', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      set(doc, 'data.rfc.front.author', {
+        ...generateAuthorSection(),
+        role: 'emperor'
+      })
+      await expect(validateAuthorSection(doc)).resolves.toContainError('INVALID_AUTHOR_ROLE', ValidationWarning)
+      await expect(validateAuthorSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('INVALID_AUTHOR_ROLE', ValidationWarning)
+      await expect(validateAuthorSection(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
   })
 })
