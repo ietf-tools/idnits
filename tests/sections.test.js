@@ -6,7 +6,8 @@ import {
   validateIntroductionSection,
   validateSecurityConsiderationsSection,
   validateAuthorSection,
-  validateReferencesSection
+  validateReferencesSection,
+  validateIANAConsiderationsSection
 } from '../lib/modules/sections.mjs'
 import { baseXMLDoc } from './fixtures/base-doc.mjs'
 import { cloneDeep, set, times } from 'lodash-es'
@@ -244,6 +245,42 @@ describe('document should have valid references sections', () => {
       await expect(validateReferencesSection(doc)).resolves.toContainError('INVALID_REFERENCES_TITLE', ValidationError)
       await expect(validateReferencesSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('INVALID_REFERENCES_TITLE', ValidationWarning)
       await expect(validateReferencesSection(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+    })
+  })
+})
+
+describe('document should have a valid IANA considerations section', () => {
+  describe('XML Document Type', () => {
+    test('valid IANA considerations section', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      set(doc, 'data.rfc.middle.section[0].name', 'IANA Considerations')
+      set(doc, 'data.rfc.middle.section[0].t', 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.')
+      await expect(validateIANAConsiderationsSection(doc)).resolves.toHaveLength(0)
+    })
+    test('missing IANA considerations section', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      set(doc, 'data.rfc.middle.section', [])
+      doc.docKind = 'draft'
+      await expect(validateIANAConsiderationsSection(doc)).resolves.toContainError('MISSING_IANA_CONSIDERATIONS_SECTION', ValidationError)
+      await expect(validateIANAConsiderationsSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('MISSING_IANA_CONSIDERATIONS_SECTION', ValidationWarning)
+      await expect(validateIANAConsiderationsSection(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+      doc.docKind = 'rfc'
+      await expect(validateIANAConsiderationsSection(doc)).resolves.toContainError('MISSING_IANA_CONSIDERATIONS_SECTION', ValidationComment)
+      await expect(validateIANAConsiderationsSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('MISSING_IANA_CONSIDERATIONS_SECTION', ValidationComment)
+      await expect(validateIANAConsiderationsSection(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+    })
+    test('invalid IANA considerations section', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      set(doc, 'data.rfc.middle.section[0].name', 'IANA Considerations')
+      await expect(validateIANAConsiderationsSection(doc)).resolves.toContainError('INVALID_IANA_CONSIDERATIONS_SECTION', ValidationError)
+    })
+    test('invalid IANA considerations section children', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      // -> Invalid child element
+      set(doc, 'data.rfc.middle.section[0].name', 'IANA Considerations')
+      set(doc, 'data.rfc.middle.section[0].t', 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.')
+      set(doc, 'data.rfc.middle.section[0].abc', 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.')
+      await expect(validateIANAConsiderationsSection(doc)).resolves.toContainError('INVALID_IANA_CONSIDERATIONS_SECTION_CHILD', ValidationError)
     })
   })
 })

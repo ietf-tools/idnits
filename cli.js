@@ -138,7 +138,7 @@ function chalkAdapted (color) {
 try {
   let result = await checkNits(docRaw, docPathObj.base, {
     mode,
-    progressClb: (msg) => { spinner.text = msg }
+    progressReport: (msg) => { spinner.text = msg }
   })
 
   spinner.stop()
