@@ -44,8 +44,10 @@ idnits [args] <file path>
 |---|---|---|---|
 | `--filter` | `-f` | Filter output to only certain severity types. Can be declared multiple times to filter multiple severity types.<br>Accepted values: `errors`, `warnings`, `comments` |  |
 | `--mode` | `-m` | Validation mode, must be either `normal`, `forgive-checklist` or `submission`<br>Accepted shorthands: `norm`, `n`, `f-c`, `fc`, `f`, `sub`, `s` | `normal` |
+| `--no-progress` |  | Disable progress messages / animations in `pretty` output.<br>No effect in other output formats. |  |
+| `--offline` |  | Disable validations that require an internet connection. |  |
 | `--output` | `-o` | Output format, must be either `pretty`, `json` or `count` | `pretty` |
-| `--solarized` |  | Use alternate colors for a solarized light theme terminal.<br>Only used with the `pretty` output format. |
+| `--solarized` |  | Use alternate colors for a solarized light theme terminal.<br>Only used with the `pretty` output format. |  |
 | `--year` | `-y` | Expect the given year in the boilerplate |  |
 | `--help` | `-h` | Print the help text and exit |  |
 | `--version` |  | Print the version and exit |  |

@@ -58,6 +58,11 @@ const argv = yargs(process.argv.slice(2))
     describe: 'Disable progress messages / animations in pretty output',
     type: 'boolean'
   })
+  .option('offline', {
+    default: false,
+    describe: 'Disable validations that require an internet connection',
+    type: 'boolean'
+  })
   .option('output', {
     alias: 'o',
     describe: 'Output format',
@@ -138,7 +143,8 @@ function chalkAdapted (color) {
 try {
   let result = await checkNits(docRaw, docPathObj.base, {
     mode,
-    progressReport: (msg) => { spinner.text = msg }
+    progressReport: (msg) => { spinner.text = msg },
+    offline: argv.offline
   })
 
   spinner.stop()
@@ -217,6 +223,9 @@ try {
             }
           }
           console.log(chalk.grey(' └- ') + chalkAdapted('white')('Desc') + chalk.grey(' - ') + chalkAdapted('whiteBright')(entry.message))
+          if (entry.text) {
+            console.log(chalk.grey(' └- ') + chalkAdapted('white')('Text') + chalk.grey(' - ') + chalkAdapted('white')(entry.text))
+          }
           if (entry.refUrl) {
             console.log(chalk.grey(' └- ') + chalkAdapted('white')('Ref ') + chalk.grey(' - ') + chalk.cyan(entry.refUrl))
           }

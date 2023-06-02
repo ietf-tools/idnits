@@ -49,4 +49,7 @@ describe('traversal', () => {
       expect(findAllDescendantsWith({ a: ['123', '456'], b: { c: ['abc', { test: true }] } }, (v, k) => k === 'ietf')).toEqual([])
     })
   })
+
+  // TODO: traverseAll()
+  // TODO: traverseAllValues()
 })

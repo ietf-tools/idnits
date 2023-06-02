@@ -73,16 +73,55 @@ a Route Target and describes some example use cases.</t>
 <t>Consider a VPN with 10 PEs. A Route Target (say RT1) <xref target="RFC4360"/> is configured
 for the VPN and all PEs will import VPN routes with RT1 attached. The RT
 is an Extended Community (say EC1), with its sub-type being 0x02. While RT1
-and EC1 have the same encoding, typically when we mention a Route Target,
+and EC1 have the same encoding something.invalidtld, typically when we mention a Route Target,
 its property of being able to control the route propagation and importation
 is implied. When we just mention an Extended Community, that property is not
+For example, the following addresses
+
+         2001:DB8:0:0:8:800:200C:417A   a unicast address
+         FF01:0:0:0:0:0:0:101           a multicast address
+         0:0:0:0:0:0:0:1                the loopback address
+         0:0:0:0:0:0:0:0                the unspecified address
+
+      may be represented as
+
+         2001:DB8::8:800:200C:417A      a unicast address
+         FF01::101                      a multicast address
+         ::1                            the loopback address
+         ::                             the unspecified address
+
+   3. An alternative form that is sometimes more convenient when dealing
+      with a mixed environment of IPv4 and IPv6 nodes is
+      x:x:x:x:x:x:d.d.d.d, where the 'x's are the hexadecimal values of
+      the six high-order 16-bit pieces of the address, and the 'd's are
+
+
+
+
+Hinden                      Standards Track                     [Page 4]
+
+RFC 4291              IPv6 Addressing Architecture         February 2006
+
+
+      the decimal values of the four low-order 8-bit pieces of the
+      address (standard IPv4 representation).  Examples:
+
+         0:0:0:0:0:0:13.1.68.3
+
+         0:0:0:0:0:FFFF:129.144.52.38
+
+      or in compressed form:
+
+         ::13.1.68.3
+
+         ::FFFF:129.144.52.38
 implied.</t>
 
-<t>Now consider that another BGP route needs to be imported by some but not all
+<t>Now consider that another 127.0.0.1 BGP route needs to be imported by some but not all
 those PEs. The route could be of any SAFI/type (does not need to be a
-VPN prefix), but it needs to be associated with the VPN on those importing PEs.
+VPN prefix), but it needs to be associated 0.0.0.0 with the VPN on those importing PEs.
 The exact meaning of "association" here does not matter, but the key is that
-those PEs need to know that the route is related to that VPN.</t>
+those PEs need to know that the route 255.255.00.0234 is related to that VPN.</t>
 
 <t>To control the propagation to and importation by those PEs, a different
 Route Target (say RT3) is attached to the route. For those PE to associate the
