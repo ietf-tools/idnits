@@ -1,7 +1,7 @@
 import { describe, expect, test } from '@jest/globals'
 import { toContainError } from '../lib/helpers/error.mjs'
 import { validateFilename, validateDocName } from '../lib/modules/filename.mjs'
-import { baseXMLDoc } from './fixtures/base-doc.mjs'
+import { baseTXTDoc, baseXMLDoc } from './fixtures/base-doc.mjs'
 import { cloneDeep, set } from 'lodash-es'
 
 expect.extend({
@@ -39,6 +39,18 @@ describe('filename extension matches a valid format type', () => {
 })
 
 describe('filename base name matches the name declared in the document', () => {
+  describe('Text Document Type', () => {
+    test('matching name', async () => {
+      const doc = { ...cloneDeep(baseTXTDoc), filename: 'draft-ietf-abcd-01.txt' }
+      set(doc, 'data.slug', 'draft-ietf-abcd-01')
+      await expect(validateDocName(doc)).resolves.toHaveLength(0)
+    })
+    test('non-matching name', async () => {
+      const doc = { ...cloneDeep(baseTXTDoc), filename: 'draft-ietf-abcd-01.txt' }
+      set(doc, 'data.slug', 'draft-ietf-abcd-02')
+      await expect(validateDocName(doc)).resolves.toContainError('FILENAME_DOCNAME_MISMATCH')
+    })
+  })
   describe('XML Document Type', () => {
     test('matching name', async () => {
       const doc = { ...cloneDeep(baseXMLDoc), filename: 'draft-ietf-abcd-01.xml' }
@@ -49,14 +61,6 @@ describe('filename base name matches the name declared in the document', () => {
       const doc = { ...cloneDeep(baseXMLDoc), filename: 'draft-ietf-abcd-01.xml' }
       set(doc, 'data.rfc._attr.docName', 'draft-ietf-abcd-02')
       await expect(validateDocName(doc)).resolves.toContainError('FILENAME_DOCNAME_MISMATCH')
-    })
-  })
-  describe('Text Document Type', () => {
-    test('matching name', async () => {
-      // TODO: matching name
-    })
-    test('non-matching name', async () => {
-      // TODO: non-matching name
     })
   })
 })

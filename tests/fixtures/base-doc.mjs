@@ -3,7 +3,15 @@ export const baseTXTDoc = {
   filename: '',
   body: '',
   data: {
-    rfc: { }
+    pageCount: 1,
+    header: {
+      authors: [],
+      date: null,
+      source: null,
+      expires: null
+    },
+    title: null,
+    slug: null
   }
 }
 
