@@ -1,7 +1,7 @@
 import { describe, expect, test } from '@jest/globals'
 import { MODES } from '../lib/config/modes.mjs'
 import { toContainError, ValidationError, ValidationWarning } from '../lib/helpers/error.mjs'
-import { detectDeprecatedElements, validateCodeBlocks, validateIprAttribute } from '../lib/modules/xml.mjs'
+import { detectDeprecatedElements, validateCodeBlocks, validateTextLikeRefs, validateIprAttribute } from '../lib/modules/xml.mjs'
 import { baseXMLDoc } from './fixtures/base-doc.mjs'
 import { cloneDeep, set } from 'lodash-es'
 
@@ -90,5 +90,27 @@ describe('XML document should not contain <CODE BEGINS> tags', () => {
     await expect(validateCodeBlocks(doc)).resolves.toContainError('MISSING_SOURCECODE_TAG', ValidationWarning)
     await expect(validateCodeBlocks(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('MISSING_SOURCECODE_TAG', ValidationWarning)
     await expect(validateCodeBlocks(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+  })
+})
+
+describe('XML document should not contain text document refs', () => {
+  test('valid <eref> ref', async () => {
+    const doc = cloneDeep(baseXMLDoc)
+    set(doc, 'data.rfc.t', 'test <eref> test')
+    await expect(validateTextLikeRefs(doc)).resolves.toHaveLength(0)
+  })
+  test('invalid ref in [1] format', async () => {
+    const doc = cloneDeep(baseXMLDoc)
+    set(doc, 'data.rfc.t', 'test [1] test')
+    await expect(validateTextLikeRefs(doc)).resolves.toContainError('TEXT_DOC_REF', ValidationWarning)
+    await expect(validateTextLikeRefs(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('TEXT_DOC_REF', ValidationWarning)
+    await expect(validateTextLikeRefs(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+  })
+  test('invalid ref in [RFC1234] format', async () => {
+    const doc = cloneDeep(baseXMLDoc)
+    set(doc, 'data.rfc.t', 'test [RFC1234] test')
+    await expect(validateTextLikeRefs(doc)).resolves.toContainError('TEXT_DOC_REF', ValidationWarning)
+    await expect(validateTextLikeRefs(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('TEXT_DOC_REF', ValidationWarning)
+    await expect(validateTextLikeRefs(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
   })
 })
