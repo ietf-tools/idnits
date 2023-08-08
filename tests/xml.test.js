@@ -1,7 +1,7 @@
 import { describe, expect, test } from '@jest/globals'
 import { MODES } from '../lib/config/modes.mjs'
 import { toContainError, ValidationError, ValidationWarning } from '../lib/helpers/error.mjs'
-import { detectDeprecatedElements, validateCodeBlocks, validateTextLikeRefs, validateIprAttribute } from '../lib/modules/xml.mjs'
+import { detectDeprecatedElements, validateCodeBlocks, validateTextLikeRefs, validateIprAttribute, validateSubmissionType } from '../lib/modules/xml.mjs'
 import { baseXMLDoc } from './fixtures/base-doc.mjs'
 import { cloneDeep, set } from 'lodash-es'
 
@@ -113,4 +113,30 @@ describe('XML document should not contain text document refs', () => {
     await expect(validateTextLikeRefs(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('TEXT_DOC_REF', ValidationWarning)
     await expect(validateTextLikeRefs(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
   })
+})
+
+describe('XML document should have a valid submission type', () => {
+  test('valid submissionType', async () => {
+    const doc = cloneDeep(baseXMLDoc)
+    set(doc, 'data.rfc._attr.submissionType', 'ietf')
+    set(doc, 'filename', 'draft-ietf-beep-boop.xml')
+    await expect(validateSubmissionType(doc, { offline: true })).resolves.toHaveLength(0)
+  })
+  test('invalid stream', async () => {
+    const doc = cloneDeep(baseXMLDoc)
+    set(doc, 'data.rfc._attr.submissionType', 'xyz')
+    set(doc, 'filename', 'draft-xyz-beep-boop.xml')
+    await expect(validateSubmissionType(doc, { offline: true })).resolves.toContainError('SUBMISSION_TYPE_INVALID', ValidationError)
+    await expect(validateSubmissionType(doc, { offline: true, mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('SUBMISSION_TYPE_INVALID', ValidationError)
+    await expect(validateSubmissionType(doc, { offline: true, mode: MODES.SUBMISSION })).resolves.toContainError('SUBMISSION_TYPE_INVALID', ValidationError)
+  })
+  test('filename stream mismatch', async () => {
+    const doc = cloneDeep(baseXMLDoc)
+    set(doc, 'data.rfc._attr.submissionType', 'ietf')
+    set(doc, 'filename', 'draft-iab-beep-boop.xml')
+    await expect(validateSubmissionType(doc, { offline: true })).resolves.toContainError('SUBMISSION_TYPE_MISMATCH', ValidationError)
+    await expect(validateSubmissionType(doc, { offline: true, mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('SUBMISSION_TYPE_MISMATCH', ValidationError)
+    await expect(validateSubmissionType(doc, { offline: true, mode: MODES.SUBMISSION })).resolves.toContainError('SUBMISSION_TYPE_MISMATCH', ValidationError)
+  })
+  // TODO: online mock tests
 })
