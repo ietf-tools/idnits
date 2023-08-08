@@ -1,9 +1,12 @@
-import { describe, expect, test } from '@jest/globals'
+import { beforeEach, describe, expect, test } from '@jest/globals'
 import { MODES } from '../lib/config/modes.mjs'
 import { toContainError, ValidationError, ValidationWarning } from '../lib/helpers/error.mjs'
 import { detectDeprecatedElements, validateCodeBlocks, validateTextLikeRefs, validateIprAttribute, validateSubmissionType } from '../lib/modules/xml.mjs'
 import { baseXMLDoc } from './fixtures/base-doc.mjs'
 import { cloneDeep, set } from 'lodash-es'
+import fetchMock from 'jest-fetch-mock'
+
+fetchMock.enableMocks()
 
 expect.extend({
   toContainError
@@ -116,6 +119,10 @@ describe('XML document should not contain text document refs', () => {
 })
 
 describe('XML document should have a valid submission type', () => {
+  beforeEach(() => {
+    fetch.resetMocks()
+  })
+
   test('valid submissionType', async () => {
     const doc = cloneDeep(baseXMLDoc)
     set(doc, 'data.rfc._attr.submissionType', 'ietf')
@@ -138,5 +145,40 @@ describe('XML document should have a valid submission type', () => {
     await expect(validateSubmissionType(doc, { offline: true, mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('SUBMISSION_TYPE_MISMATCH', ValidationError)
     await expect(validateSubmissionType(doc, { offline: true, mode: MODES.SUBMISSION })).resolves.toContainError('SUBMISSION_TYPE_MISMATCH', ValidationError)
   })
-  // TODO: online mock tests
+  test('valid submissionType with matching online stream', async () => {
+    const doc = cloneDeep(baseXMLDoc)
+    set(doc, 'data.rfc._attr.submissionType', 'ietf')
+    set(doc, 'data.rfc._attr.docName', 'draft-ietf-beep-boop')
+    set(doc, 'filename', 'draft-ietf-beep-boop.xml')
+    fetch.mockResponse(JSON.stringify({ stream: '/api/v1/name/streamname/ietf/' }))
+    await expect(validateSubmissionType(doc)).resolves.toHaveLength(0)
+  })
+  test('valid submissionType with non-existent online doc', async () => {
+    const doc = cloneDeep(baseXMLDoc)
+    set(doc, 'data.rfc._attr.submissionType', 'ietf')
+    set(doc, 'data.rfc._attr.docName', 'draft-ietf-beep-boop')
+    set(doc, 'filename', 'draft-ietf-beep-boop.xml')
+    fetch.mockResponse('Not Found', { status: 404 })
+    await expect(validateSubmissionType(doc)).resolves.toHaveLength(0)
+  })
+  test('stream mismatch with existing online doc', async () => {
+    const doc = cloneDeep(baseXMLDoc)
+    set(doc, 'data.rfc._attr.submissionType', 'ietf')
+    set(doc, 'data.rfc._attr.docName', 'draft-ietf-beep-boop')
+    set(doc, 'filename', 'draft-ietf-beep-boop.xml')
+    fetch.mockResponse(JSON.stringify({ stream: '/api/v1/name/streamname/iab/' }))
+    await expect(validateSubmissionType(doc)).resolves.toContainError('SUBMISSION_TYPE_UNEXPECTED', ValidationError)
+    await expect(validateSubmissionType(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('SUBMISSION_TYPE_UNEXPECTED', ValidationError)
+    await expect(validateSubmissionType(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('SUBMISSION_TYPE_UNEXPECTED', ValidationError)
+  })
+  test('stream set while existing online doc is not set', async () => {
+    const doc = cloneDeep(baseXMLDoc)
+    set(doc, 'data.rfc._attr.submissionType', 'ietf')
+    set(doc, 'data.rfc._attr.docName', 'draft-ietf-beep-boop')
+    set(doc, 'filename', 'draft-ietf-beep-boop.xml')
+    fetch.mockResponse(JSON.stringify({ stream: null }))
+    await expect(validateSubmissionType(doc)).resolves.toContainError('SUBMISSION_TYPE_UNEXPECTED', ValidationError)
+    await expect(validateSubmissionType(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('SUBMISSION_TYPE_UNEXPECTED', ValidationError)
+    await expect(validateSubmissionType(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('SUBMISSION_TYPE_UNEXPECTED', ValidationError)
+  })
 })
