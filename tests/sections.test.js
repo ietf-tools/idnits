@@ -9,7 +9,7 @@ import {
   validateReferencesSection,
   validateIANAConsiderationsSection
 } from '../lib/modules/sections.mjs'
-import { baseXMLDoc } from './fixtures/base-doc.mjs'
+import { baseTXTDoc, baseXMLDoc } from './fixtures/base-doc.mjs'
 import { cloneDeep, set, times } from 'lodash-es'
 
 expect.extend({
@@ -17,6 +17,18 @@ expect.extend({
 })
 
 describe('document should have a valid abstract section', () => {
+  // describe('TXT Document Type', () => {
+  //   test('valid abstract section', async () => {
+  //     const doc = cloneDeep(baseTXTDoc)
+  //     set(doc, 'data.rfc.front.abstract.t', 'test')
+  //     await expect(validateAbstractSection(doc)).resolves.toHaveLength(0)
+  //   })
+  //   test('missing abstract section', async () => {
+  //     const doc = cloneDeep(baseTXTDoc)
+  //     set(doc, 'data.rfc.front', {})
+  //     await expect(validateAbstractSection(doc)).resolves.toContainError('MISSING_ABSTRACT_SECTION', ValidationError)
+  //   })
+  // })
   describe('XML Document Type', () => {
     test('valid abstract section', async () => {
       const doc = cloneDeep(baseXMLDoc)
