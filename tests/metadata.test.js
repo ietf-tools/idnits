@@ -8,6 +8,9 @@ import {
 import { baseXMLDoc } from './fixtures/base-doc.mjs'
 import { cloneDeep, set } from 'lodash-es'
 import { DateTime } from 'luxon'
+import fetchMock from 'jest-fetch-mock'
+
+fetchMock.enableMocks()
 
 expect.extend({
   toContainError
@@ -67,7 +70,7 @@ describe('document should have valid obsoletes / updates references', () => {
         obsoletes: '1234, 2345'
       })
       set(doc, 'data.rfc.front.abstract.t', 'This document obsoletes RFC 1234 and 2345.')
-      await expect(validateObsoleteUpdateRef(doc)).resolves.toHaveLength(0)
+      await expect(validateObsoleteUpdateRef(doc, { offline: true })).resolves.toHaveLength(0)
     })
     test('valid updates reference', async () => {
       const doc = cloneDeep(baseXMLDoc)
@@ -75,7 +78,7 @@ describe('document should have valid obsoletes / updates references', () => {
         updates: '1234,2345'
       })
       set(doc, 'data.rfc.front.abstract.t', 'This document updates RFC 1234, 2345.')
-      await expect(validateObsoleteUpdateRef(doc)).resolves.toHaveLength(0)
+      await expect(validateObsoleteUpdateRef(doc, { offline: true })).resolves.toHaveLength(0)
     })
     test('obsoletes in rfc but missing in abstract', async () => {
       const doc = cloneDeep(baseXMLDoc)
@@ -83,16 +86,16 @@ describe('document should have valid obsoletes / updates references', () => {
         obsoletes: '1234'
       })
       set(doc, 'data.rfc.front.abstract.t', 'Beep boop.')
-      await expect(validateObsoleteUpdateRef(doc)).resolves.toContainError('OBSOLETES_NOT_IN_ABSTRACT', ValidationWarning)
-      await expect(validateObsoleteUpdateRef(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('OBSOLETES_NOT_IN_ABSTRACT', ValidationWarning)
-      await expect(validateObsoleteUpdateRef(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+      await expect(validateObsoleteUpdateRef(doc, { offline: true })).resolves.toContainError('OBSOLETES_NOT_IN_ABSTRACT', ValidationWarning)
+      await expect(validateObsoleteUpdateRef(doc, { offline: true, mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('OBSOLETES_NOT_IN_ABSTRACT', ValidationWarning)
+      await expect(validateObsoleteUpdateRef(doc, { offline: true, mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
     test('obsoletes in abstract but missing in rfc', async () => {
       const doc = cloneDeep(baseXMLDoc)
       set(doc, 'data.rfc.front.abstract.t', 'This document obsoletes RFC 1234.')
-      await expect(validateObsoleteUpdateRef(doc)).resolves.toContainError('OBSOLETES_NOT_IN_RFC', ValidationWarning)
-      await expect(validateObsoleteUpdateRef(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('OBSOLETES_NOT_IN_RFC', ValidationWarning)
-      await expect(validateObsoleteUpdateRef(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+      await expect(validateObsoleteUpdateRef(doc, { offline: true })).resolves.toContainError('OBSOLETES_NOT_IN_RFC', ValidationWarning)
+      await expect(validateObsoleteUpdateRef(doc, { offline: true, mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('OBSOLETES_NOT_IN_RFC', ValidationWarning)
+      await expect(validateObsoleteUpdateRef(doc, { offline: true, mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
     test('updates in rfc but missing in abstract', async () => {
       const doc = cloneDeep(baseXMLDoc)
@@ -100,15 +103,70 @@ describe('document should have valid obsoletes / updates references', () => {
         updates: '1234'
       })
       set(doc, 'data.rfc.front.abstract.t', 'Beep boop.')
-      await expect(validateObsoleteUpdateRef(doc)).resolves.toContainError('UPDATES_NOT_IN_ABSTRACT', ValidationWarning)
-      await expect(validateObsoleteUpdateRef(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('UPDATES_NOT_IN_ABSTRACT', ValidationWarning)
-      await expect(validateObsoleteUpdateRef(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+      await expect(validateObsoleteUpdateRef(doc, { offline: true })).resolves.toContainError('UPDATES_NOT_IN_ABSTRACT', ValidationWarning)
+      await expect(validateObsoleteUpdateRef(doc, { offline: true, mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('UPDATES_NOT_IN_ABSTRACT', ValidationWarning)
+      await expect(validateObsoleteUpdateRef(doc, { offline: true, mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
     test('updates in abstract but missing in rfc', async () => {
       const doc = cloneDeep(baseXMLDoc)
       set(doc, 'data.rfc.front.abstract.t', 'This document updates RFC 1234.')
-      await expect(validateObsoleteUpdateRef(doc)).resolves.toContainError('UPDATES_NOT_IN_RFC', ValidationWarning)
-      await expect(validateObsoleteUpdateRef(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('UPDATES_NOT_IN_RFC', ValidationWarning)
+      await expect(validateObsoleteUpdateRef(doc, { offline: true })).resolves.toContainError('UPDATES_NOT_IN_RFC', ValidationWarning)
+      await expect(validateObsoleteUpdateRef(doc, { offline: true, mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('UPDATES_NOT_IN_RFC', ValidationWarning)
+      await expect(validateObsoleteUpdateRef(doc, { offline: true, mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+    })
+    test('obsoletes a non-existant RFC', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      set(doc, 'data.rfc._attr', {
+        obsoletes: '1234, 2345'
+      })
+      set(doc, 'data.rfc.front.abstract.t', 'This document obsoletes RFC 1234 and 2345.')
+      fetch.mockResponse('Not Found', { status: 404 })
+      await expect(validateObsoleteUpdateRef(doc)).resolves.toContainError('OBSOLETES_RFC_NOT_FOUND', ValidationWarning)
+      await expect(validateObsoleteUpdateRef(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('OBSOLETES_RFC_NOT_FOUND', ValidationWarning)
+      await expect(validateObsoleteUpdateRef(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+    })
+    test('obsoletes an already obsoleted RFC', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      set(doc, 'data.rfc._attr', {
+        obsoletes: '1234, 2345'
+      })
+      set(doc, 'data.rfc.front.abstract.t', 'This document obsoletes RFC 1234 and 2345.')
+      fetch.mockResponse(JSON.stringify({ obsoleted_by: ['3456'] }))
+      await expect(validateObsoleteUpdateRef(doc)).resolves.toContainError('OBSOLETES_OSOLETED_RFC', ValidationWarning)
+      await expect(validateObsoleteUpdateRef(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('OBSOLETES_OSOLETED_RFC', ValidationWarning)
+      await expect(validateObsoleteUpdateRef(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+    })
+    test('updates a non-existant RFC', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      set(doc, 'data.rfc._attr', {
+        updates: '1234, 2345'
+      })
+      set(doc, 'data.rfc.front.abstract.t', 'This document updates RFC 1234 and 2345.')
+      fetch.mockResponse('Not Found', { status: 404 })
+      await expect(validateObsoleteUpdateRef(doc)).resolves.toContainError('UPDATES_RFC_NOT_FOUND', ValidationWarning)
+      await expect(validateObsoleteUpdateRef(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('UPDATES_RFC_NOT_FOUND', ValidationWarning)
+      await expect(validateObsoleteUpdateRef(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+    })
+    test('updates an already obsoleted RFC', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      set(doc, 'data.rfc._attr', {
+        updates: '1234, 2345'
+      })
+      set(doc, 'data.rfc.front.abstract.t', 'This document updates RFC 1234 and 2345.')
+      fetch.mockResponse(JSON.stringify({ obsoleted_by: ['3456'] }))
+      await expect(validateObsoleteUpdateRef(doc)).resolves.toContainError('UPDATES_OSOLETED_RFC', ValidationWarning)
+      await expect(validateObsoleteUpdateRef(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('UPDATES_OSOLETED_RFC', ValidationWarning)
+      await expect(validateObsoleteUpdateRef(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+    })
+    test('updates an already updated RFC', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      set(doc, 'data.rfc._attr', {
+        updates: '1234, 2345'
+      })
+      set(doc, 'data.rfc.front.abstract.t', 'This document updates RFC 1234 and 2345.')
+      fetch.mockResponse(JSON.stringify({ updated_by: ['3456'] }))
+      await expect(validateObsoleteUpdateRef(doc)).resolves.toContainError('UPDATES_UPDATED_RFC', ValidationWarning)
+      await expect(validateObsoleteUpdateRef(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('UPDATES_UPDATED_RFC', ValidationWarning)
       await expect(validateObsoleteUpdateRef(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
   })
