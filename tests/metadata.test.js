@@ -3,6 +3,7 @@ import { MODES } from '../lib/config/modes.mjs'
 import { toContainError, ValidationWarning } from '../lib/helpers/error.mjs'
 import {
   validateDate,
+  validateCategory,
   validateObsoleteUpdateRef
 } from '../lib/modules/metadata.mjs'
 import { baseXMLDoc } from './fixtures/base-doc.mjs'
@@ -58,6 +59,45 @@ describe('document should have valid date', () => {
       await expect(validateDate(doc)).resolves.toContainError('DOC_DATE_IN_FUTURE', ValidationWarning)
       await expect(validateDate(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('DOC_DATE_IN_FUTURE', ValidationWarning)
       await expect(validateDate(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('DOC_DATE_IN_FUTURE', ValidationWarning)
+    })
+  })
+})
+
+describe('document should have valid category', () => {
+  describe('XML Document Type', () => {
+    test('valid category', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      set(doc, 'data.rfc._attr', {
+        category: 'std',
+        docName: 'draft-ietf-beep-boop'
+      })
+      await expect(validateCategory(doc)).resolves.toHaveLength(0)
+    })
+    test('missing category for a draft', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      set(doc, 'data.rfc._attr', {
+        docName: 'draft-ietf-beep-boop'
+      })
+      await expect(validateCategory(doc)).resolves.toHaveLength(0)
+    })
+    test('missing category for a rfc doc', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      set(doc, 'data.rfc._attr', {
+        docName: 'beep-boop'
+      })
+      await expect(validateCategory(doc)).resolves.toContainError('MISSING_DOC_CATEGORY', ValidationWarning)
+      await expect(validateCategory(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('MISSING_DOC_CATEGORY', ValidationWarning)
+      await expect(validateCategory(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('MISSING_DOC_CATEGORY', ValidationWarning)
+    })
+    test('invalid category', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      set(doc, 'data.rfc._attr', {
+        category: 'xyz123',
+        docName: 'draft-beep-boop'
+      })
+      await expect(validateCategory(doc)).resolves.toContainError('INVALID_DOC_CATEGORY', ValidationWarning)
+      await expect(validateCategory(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('INVALID_DOC_CATEGORY', ValidationWarning)
+      await expect(validateCategory(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('INVALID_DOC_CATEGORY', ValidationWarning)
     })
   })
 })
