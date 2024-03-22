@@ -11,6 +11,8 @@
     
 </div>
 
+> ⚠️ *This branch is for the new JS-based idnits3. For the older shell-based idnits2, [view the v2 branch](https://github.com/ietf-tools/idnits/tree/v2) isntead.*
+
 - [Installation](#installation)
 - [Usage](#usage)
   - [As a CLI](#as-a-cli)
