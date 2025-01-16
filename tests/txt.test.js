@@ -4,6 +4,7 @@ import { toContainError, ValidationError, ValidationWarning } from '../lib/helpe
 import { validateLineLength, validateCodeComments, validateLineExtraSpacing } from '../lib/modules/txt.mjs'
 import { baseTXTDoc } from './fixtures/base-doc.mjs'
 import { cloneDeep } from 'lodash-es'
+import { linesWithSpacesMock } from './mocks/txt-line-spaces.mock'
 
 expect.extend({
   toContainError
@@ -39,61 +40,7 @@ describe('The document should not contain more than 50 lines with intra-line ext
   test('more than 50 indents', async () => {
     const doc = cloneDeep(baseTXTDoc)
 
-    doc.body = `The      translation      of      the     Test
-                The      translation      of      the     Test
-                The      translation      of      the     Test
-                The      translation      of      the     Test
-                The      translation      of      the     Test
-                The      translation      of      the     Test
-                The      translation      of      the     Test
-                The      translation      of      the     Test
-                The      translation      of      the     Test
-                The      translation      of      the     Test
-                The      translation      of      the     Test
-                The      translation      of      the     Test
-                The      translation      of      the     Test
-                The      translation      of      the     Test
-                The      translation      of      the     Test
-                The      translation      of      the     Test
-                The      translation      of      the     Test
-                The      translation      of      the     Test
-                The      translation      of      the     Test
-                The      translation      of      the     Test
-                The      translation      of      the     Test
-                The      translation      of      the     Test
-                The      translation      of      the     Test
-                The      translation      of      the     Test
-                The      translation      of      the     Test
-                The      translation      of      the     Test
-                The      translation      of      the     Test
-                The      translation      of      the     Test
-                The      translation      of      the     Test
-                The      translation      of      the     Test
-                The      translation      of      the     Test
-                The      translation      of      the     Test
-                The      translation      of      the     Test
-                The      translation      of      the     Test
-                The      translation      of      the     Test
-                The      translation      of      the     Test
-                The      translation      of      the     Test
-                The      translation      of      the     Test
-                The      translation      of      the     Test
-                The      translation      of      the     Test
-                The      translation      of      the     Test
-                The      translation      of      the     Test
-                The      translation      of      the     Test
-                The      translation      of      the     Test
-                The      translation      of      the     Test
-                The      translation      of      the     Test
-                The      translation      of      the     Test
-                The      translation      of      the     Test
-                The      translation      of      the     Test
-                The      translation      of      the     Test
-                The      translation      of      the     Test
-                The      translation      of      the     Test
-                The      translation      of      the     Test
-                The      translation      of      the     Test
-    `
+    doc.body = linesWithSpacesMock
     await expect(validateLineExtraSpacing(doc, { mode: MODES.NORMAL })).resolves.toContainError('RAGGED_RIGHT', ValidationError)
     await expect(validateLineExtraSpacing(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('RAGGED_RIGHT', ValidationWarning)
     await expect(validateLineExtraSpacing(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
