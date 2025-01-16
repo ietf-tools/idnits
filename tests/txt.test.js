@@ -4,7 +4,6 @@ import { toContainError, ValidationError, ValidationWarning } from '../lib/helpe
 import { validateLineLength, validateCodeComments, validateLineExtraSpacing } from '../lib/modules/txt.mjs'
 import { baseTXTDoc } from './fixtures/base-doc.mjs'
 import { cloneDeep } from 'lodash-es'
-import { linesWithSpacesMock } from './mocks/txt-line-spaces.mock'
 
 expect.extend({
   toContainError
@@ -33,14 +32,18 @@ describe('The document should not contain more than 50 lines with intra-line ext
   test('less than 50 indents', async () => {
     const doc = cloneDeep(baseTXTDoc)
 
-    doc.body = `The translation of the IRTs is necessary in order to refrain from`
+    doc.data.possibleIssues.linesWithSpaces = [{ line: 10, pos: 5 }]
 
     await expect(validateLineExtraSpacing(doc)).resolves.toHaveLength(0)
   })
   test('more than 50 indents', async () => {
     const doc = cloneDeep(baseTXTDoc)
 
-    doc.body = linesWithSpacesMock
+    doc.data.possibleIssues.linesWithSpaces = [...Array(51)].map((item, index) => ({
+      line: index + 1,
+      pos: (index % 10) + 1
+    }))
+
     await expect(validateLineExtraSpacing(doc, { mode: MODES.NORMAL })).resolves.toContainError('RAGGED_RIGHT', ValidationError)
     await expect(validateLineExtraSpacing(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('RAGGED_RIGHT', ValidationWarning)
     await expect(validateLineExtraSpacing(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
