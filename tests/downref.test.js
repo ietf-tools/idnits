@@ -3,7 +3,7 @@ import { MODES } from '../lib/config/modes.mjs'
 import { toContainError, ValidationWarning, ValidationError, ValidationComment } from '../lib/helpers/error.mjs'
 import { baseXMLDoc, baseTXTDoc } from './fixtures/base-doc.mjs'
 import { cloneDeep, set } from 'lodash-es'
-import { validateDownrefs, validateNormativeReferences, validateUnclassifiedReferences } from '../lib/modules/downref.mjs'
+import { validateDownrefs, validateNormativeReferences, validateUnclassifiedReferences, vlidateDraftReferences } from '../lib/modules/downref.mjs'
 import fetchMock from 'jest-fetch-mock'
 
 expect.extend({
@@ -390,5 +390,125 @@ describe('validateUnclassifiedReferences', () => {
         )
       ])
     })
+  })
+})
+
+describe('vlidateDraftReferences', () => {
+  describe('TXT Document Type', () => {
+    test('should return no warnings for valid drafts with defined states', async () => {
+      const doc = cloneDeep(baseTXTDoc)
+      set(doc, 'data.extractedElements.referenceSectionDraftReferences', [
+        { value: 'draft-ietf-example-01' },
+        { value: 'draft-ietf-example-02' }
+      ])
+
+      fetchMock.mockResponses(
+        JSON.stringify({ state: 'Active' }),
+        JSON.stringify({ state: 'Active' })
+      )
+
+      const result = await vlidateDraftReferences(doc, { mode: MODES.NORMAL })
+      expect(result).toHaveLength(0)
+    })
+
+    test('should return warning for drafts with undefined states', async () => {
+      const doc = cloneDeep(baseTXTDoc)
+      set(doc, 'data.extractedElements.referenceSectionDraftReferences', [
+        { value: 'draft-ietf-undefined-state' }
+      ])
+
+      fetchMock.mockResponseOnce(JSON.stringify({}))
+
+      const result = await vlidateDraftReferences(doc, { mode: MODES.NORMAL })
+      expect(result).toEqual([
+        new ValidationWarning(
+          'UNDEFINED_STATE',
+          'The draft reference draft-ietf-undefined-state does not have a defined state or could not be fetched.',
+          { ref: 'https://datatracker.ietf.org/doc/draft-ietf-undefined-state' }
+        )
+      ])
+    })
+
+    test('should return warning for drafts published as RFCs', async () => {
+      const doc = cloneDeep(baseTXTDoc)
+      set(doc, 'data.extractedElements.referenceSectionDraftReferences', [
+        { value: 'draft-ietf-published-as-rfc' }
+      ])
+
+      fetchMock.mockResponseOnce(JSON.stringify({ state: 'RFC' }))
+
+      const result = await vlidateDraftReferences(doc, { mode: MODES.NORMAL })
+      expect(result).toEqual([
+        new ValidationWarning(
+          'INVALID_STATE_FOR_DRAFT',
+          'The draft reference draft-ietf-published-as-rfc is already published as an RFC and should not be referenced as a draft.',
+          { ref: 'https://datatracker.ietf.org/doc/draft-ietf-published-as-rfc' }
+        )
+      ])
+    })
+  })
+
+  describe('XML Document Type', () => {
+    test('should return no warnings for valid XML draft references', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      set(doc, 'data.rfc.back.references.references', [
+        { reference: [{ _attr: { anchor: 'draft-ietf-example-01' } }] },
+        { reference: [{ _attr: { anchor: 'draft-ietf-example-02' } }] }
+      ])
+
+      fetchMock.mockResponses(
+        JSON.stringify({ state: 'Active' }),
+        JSON.stringify({ state: 'Active' })
+      )
+
+      const result = await vlidateDraftReferences(doc, { mode: MODES.NORMAL })
+      expect(result).toHaveLength(0)
+    })
+
+    test('should return warning for XML drafts with undefined states', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      set(doc, 'data.rfc.back.references.references', [
+        { reference: [{ _attr: { anchor: 'draft-ietf-undefined-state' } }] }
+      ])
+
+      fetchMock.mockResponseOnce(JSON.stringify({}))
+
+      const result = await vlidateDraftReferences(doc, { mode: MODES.NORMAL })
+      expect(result).toEqual([
+        new ValidationWarning(
+          'UNDEFINED_STATE',
+          'The draft reference draft-ietf-undefined-state does not have a defined state or could not be fetched.',
+          { ref: 'https://datatracker.ietf.org/doc/draft-ietf-undefined-state' }
+        )
+      ])
+    })
+
+    test('should return warning for XML drafts published as RFCs', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      set(doc, 'data.rfc.back.references.references', [
+        { reference: [{ _attr: { anchor: 'draft-ietf-published-as-rfc' } }] }
+      ])
+
+      fetchMock.mockResponseOnce(JSON.stringify({ state: 'RFC' }))
+
+      const result = await vlidateDraftReferences(doc, { mode: MODES.NORMAL })
+      expect(result).toEqual([
+        new ValidationWarning(
+          'INVALID_STATE_FOR_DRAFT',
+          'The draft reference draft-ietf-published-as-rfc is already published as an RFC and should not be referenced as a draft.',
+          { ref: 'https://datatracker.ietf.org/doc/draft-ietf-published-as-rfc' }
+        )
+      ])
+    })
+  })
+
+  test('should return no warnings in SUBMISSION mode', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+    set(doc, 'data.extractedElements.referenceSectionDraftReferences', [
+      { value: 'draft-ietf-example-01' }
+    ])
+
+    const result = await vlidateDraftReferences(doc, { mode: MODES.SUBMISSION })
+    expect(result).toHaveLength(0)
   })
 })
