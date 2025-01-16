@@ -1,8 +1,9 @@
 import { describe, expect, test } from '@jest/globals'
 import { MODES } from '../lib/config/modes.mjs'
 import { toContainError, ValidationError, ValidationWarning } from '../lib/helpers/error.mjs'
-import { validateLineLength, validateCodeComments } from '../lib/modules/txt.mjs'
+import { validateLineLength, validateCodeComments, validateLineExtraSpacing } from '../lib/modules/txt.mjs'
 import { baseTXTDoc } from './fixtures/base-doc.mjs'
+import { cloneDeep } from 'lodash-es'
 
 expect.extend({
   toContainError
@@ -24,6 +25,78 @@ describe('Text document should not contain over-long lines', () => {
     await expect(validateLineLength(doc)).resolves.toContainError('LINE_TOO_LONG', ValidationError)
     await expect(validateLineLength(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('LINE_TOO_LONG', ValidationWarning)
     await expect(validateLineLength(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('LINE_TOO_LONG', ValidationWarning)
+  })
+})
+
+describe('The document should not contain more than 50 lines with intra-line extra spacing.', () => {
+  test('less than 50 indents', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.body = `The translation of the IRTs is necessary in order to refrain from`
+
+    await expect(validateLineExtraSpacing(doc)).resolves.toHaveLength(0)
+  })
+  test('more than 50 indents', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.body = `The      translation      of      the     Test
+                The      translation      of      the     Test
+                The      translation      of      the     Test
+                The      translation      of      the     Test
+                The      translation      of      the     Test
+                The      translation      of      the     Test
+                The      translation      of      the     Test
+                The      translation      of      the     Test
+                The      translation      of      the     Test
+                The      translation      of      the     Test
+                The      translation      of      the     Test
+                The      translation      of      the     Test
+                The      translation      of      the     Test
+                The      translation      of      the     Test
+                The      translation      of      the     Test
+                The      translation      of      the     Test
+                The      translation      of      the     Test
+                The      translation      of      the     Test
+                The      translation      of      the     Test
+                The      translation      of      the     Test
+                The      translation      of      the     Test
+                The      translation      of      the     Test
+                The      translation      of      the     Test
+                The      translation      of      the     Test
+                The      translation      of      the     Test
+                The      translation      of      the     Test
+                The      translation      of      the     Test
+                The      translation      of      the     Test
+                The      translation      of      the     Test
+                The      translation      of      the     Test
+                The      translation      of      the     Test
+                The      translation      of      the     Test
+                The      translation      of      the     Test
+                The      translation      of      the     Test
+                The      translation      of      the     Test
+                The      translation      of      the     Test
+                The      translation      of      the     Test
+                The      translation      of      the     Test
+                The      translation      of      the     Test
+                The      translation      of      the     Test
+                The      translation      of      the     Test
+                The      translation      of      the     Test
+                The      translation      of      the     Test
+                The      translation      of      the     Test
+                The      translation      of      the     Test
+                The      translation      of      the     Test
+                The      translation      of      the     Test
+                The      translation      of      the     Test
+                The      translation      of      the     Test
+                The      translation      of      the     Test
+                The      translation      of      the     Test
+                The      translation      of      the     Test
+                The      translation      of      the     Test
+                The      translation      of      the     Test
+    `
+    await expect(validateLineExtraSpacing(doc, { mode: MODES.NORMAL })).resolves.toContainError('RAGGED_RIGHT', ValidationError)
+    await expect(validateLineExtraSpacing(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('RAGGED_RIGHT', ValidationWarning)
+    await expect(validateLineExtraSpacing(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
   })
 })
 
