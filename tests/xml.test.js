@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, test } from '@jest/globals'
 import { MODES } from '../lib/config/modes.mjs'
 import { toContainError, ValidationError, ValidationWarning } from '../lib/helpers/error.mjs'
-import { detectDeprecatedElements, validateCodeBlocks, validateTextLikeRefs, validateIprAttribute, validateSubmissionType } from '../lib/modules/xml.mjs'
+import { detectDeprecatedElements, validateCodeBlocks, validateTextLikeRefs, validateIprAttribute, validateSubmissionType, validateIETFTLPBoilerplateXML } from '../lib/modules/xml.mjs'
 import { baseXMLDoc } from './fixtures/base-doc.mjs'
 import { cloneDeep, set } from 'lodash-es'
 import fetchMock from 'jest-fetch-mock'
@@ -180,5 +180,50 @@ describe('XML document should have a valid submission type', () => {
     await expect(validateSubmissionType(doc)).resolves.toContainError('SUBMISSION_TYPE_UNEXPECTED', ValidationError)
     await expect(validateSubmissionType(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('SUBMISSION_TYPE_UNEXPECTED', ValidationError)
     await expect(validateSubmissionType(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('SUBMISSION_TYPE_UNEXPECTED', ValidationError)
+  })
+})
+
+describe('Validate IETF-TLP boilerplate for XML documents', () => {
+  test('Valid IETF-TLP boilerplate and ipr attribute', async () => {
+    const doc = cloneDeep(baseXMLDoc)
+    set(doc, 'data.rfc._attr.ipr', 'trust200902')
+    await expect(validateIETFTLPBoilerplateXML(doc)).resolves.toHaveLength(0)
+  })
+
+  test('Missing ipr attribute', async () => {
+    const doc = cloneDeep(baseXMLDoc)
+    set(doc, 'data.rfc._attr', {})
+    await expect(validateIETFTLPBoilerplateXML(doc)).resolves.toContainError('MISSING_IPR_ATTRIBUTE', ValidationError)
+  })
+
+  test('Invalid ipr attribute value', async () => {
+    const doc = cloneDeep(baseXMLDoc)
+    set(doc, 'data.rfc._attr.ipr', 'invalidValue')
+    await expect(validateIETFTLPBoilerplateXML(doc)).resolves.toContainError('INVALID_IPR_VALUE', ValidationWarning)
+  })
+
+  test('Unnecessary boilerplate text detected', async () => {
+    const doc = cloneDeep(baseXMLDoc)
+    set(doc, 'data.rfc.front.t', 'This Internet-Draft is submitted in full conformance with the provisions of BCP 78 and BCP 79.')
+    await expect(validateIETFTLPBoilerplateXML(doc)).resolves.toContainError('UNNECESSARY_BOILERPLATE_TEXT', ValidationWarning)
+    await expect(validateIETFTLPBoilerplateXML(doc)).resolves.toContainError('MISSING_IPR_ATTRIBUTE', ValidationError)
+  })
+
+  test('Multiple boilerplate texts detected', async () => {
+    const doc = cloneDeep(baseXMLDoc)
+    set(doc, 'data.rfc.front.t', 'This Internet-Draft is submitted in full conformance with the provisions of BCP 78 and BCP 79. Copyright (c) 2025 IETF Trust and the persons identified as the document authors. All rights reserved.')
+    await expect(validateIETFTLPBoilerplateXML(doc)).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: 'UNNECESSARY_BOILERPLATE_TEXT' }),
+        expect.objectContaining({ name: 'UNNECESSARY_BOILERPLATE_TEXT' })
+      ])
+    )
+  })
+
+  test('No boilerplate or ipr issues in a clean document', async () => {
+    const doc = cloneDeep(baseXMLDoc)
+    set(doc, 'data.rfc._attr.ipr', 'trust200902')
+    set(doc, 'data.rfc.front.t', 'This is a clean document without boilerplate.')
+    await expect(validateIETFTLPBoilerplateXML(doc)).resolves.toHaveLength(0)
   })
 })
