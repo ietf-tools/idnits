@@ -13,7 +13,8 @@ import {
   validateLinksInText,
   validateAbstractSectionIsNumbered,
   validateStatusOfThisMemoSectionIsNumbered,
-  validateCopyrightNoticeSectionIsNumbered
+  validateCopyrightNoticeSectionIsNumbered,
+  validateExpiresLine
 } from '../lib/modules/txt.mjs'
 import { baseTXTDoc } from './fixtures/base-doc.mjs'
 import { cloneDeep } from 'lodash-es'
@@ -388,6 +389,50 @@ describe('validateCodeBlockLicenses', () => {
         'A code-block is detected, but the document does not contain a license declaration.',
         {
           ref: 'https://trustee.ietf.org/license-info'
+        }
+      )
+    ])
+  })
+})
+
+describe('Validate Expires Line in the document', () => {
+  test('should return an error if the Expires line is missing', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+    await expect(validateExpiresLine(doc, { mode: MODES.NORMAL })).resolves.toEqual([
+      new ValidationError(
+        'EXPIRES_LINE_MISSING',
+        'Document does not contain an Expires line or it is invalid.',
+        {
+          ref: 'https://authors.ietf.org/en/drafting-in-plaintext#checklist'
+        }
+      )
+    ])
+  })
+
+  test('should return no errors if the Expires line is present', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+    doc.data.header.expires = new Date('2023-09-08')
+
+    await expect(validateExpiresLine(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
+  })
+
+  test('should return no errors if the Expires line is present in submission mode', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+    doc.data.header.expires = new Date('2023-09-08')
+
+    await expect(validateExpiresLine(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+  })
+
+  test('should return an error if the Expires line is invalid date', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+    doc.data.header.expires = null
+
+    await expect(validateExpiresLine(doc, { mode: MODES.SUBMISSION })).resolves.toEqual([
+      new ValidationError(
+        'EXPIRES_LINE_MISSING',
+        'Document does not contain an Expires line or it is invalid.',
+        {
+          ref: 'https://authors.ietf.org/en/drafting-in-plaintext#checklist'
         }
       )
     ])
