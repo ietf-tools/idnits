@@ -1,7 +1,7 @@
 import { describe, expect, test } from '@jest/globals'
 import { MODES } from '../lib/config/modes.mjs'
 import { toContainError, ValidationError, ValidationWarning, ValidationComment } from '../lib/helpers/error.mjs'
-import { validateLineLength, validateCodeComments, validatePKorBM, validateCodeBlockLicenses, validateLineExtraSpacing, validateUpdatesAndObsoletesLines, validateHyphenatedLineBreaks } from '../lib/modules/txt.mjs'
+import { validateLineLength, validateCodeComments, validatePKorBM, validateCodeBlockLicenses, validateLineExtraSpacing, validateUpdatesAndObsoletesLines, validateHyphenatedLineBreaks, validateTableOfContentsAndDocumentPages } from '../lib/modules/txt.mjs'
 import { baseTXTDoc } from './fixtures/base-doc.mjs'
 import { cloneDeep } from 'lodash-es'
 
@@ -265,5 +265,37 @@ describe('validateCodeBlockLicenses', () => {
         }
       )
     ])
+  })
+})
+
+describe('The document has more than 15 pages and not Table of Contents.', () => {
+  test('Table of Contents exists and pages less 15', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.possibleIssues.isTableOfContentsExists = true
+    doc.data.pageCount = 14
+
+    await expect(validateTableOfContentsAndDocumentPages(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
+    await expect(validateTableOfContentsAndDocumentPages(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
+    await expect(validateTableOfContentsAndDocumentPages(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+  })
+  test('Table of Contents missing and pages less 15', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+    doc.data.possibleIssues.isTableOfContentsExists = false
+    doc.data.pageCount = 14
+
+    await expect(validateTableOfContentsAndDocumentPages(doc, { mode: MODES.NORMAL })).resolves.toContainError('DOCUMENT_HAVE_MORE_15_PAGES_OR_MISS_TABLE_OF_CONTENTS', ValidationError)
+    await expect(validateTableOfContentsAndDocumentPages(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('DOCUMENT_HAVE_MORE_15_PAGES_OR_MISS_TABLE_OF_CONTENTS', ValidationError)
+    await expect(validateTableOfContentsAndDocumentPages(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('DOCUMENT_HAVE_MORE_15_PAGES_OR_MISS_TABLE_OF_CONTENTS', ValidationWarning)
+  })
+  test('Table of Contents missing and pages more 15', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.possibleIssues.isTableOfContentsExists = false
+    doc.data.pageCount = 17
+
+    await expect(validateTableOfContentsAndDocumentPages(doc, { mode: MODES.NORMAL })).resolves.toContainError('DOCUMENT_HAVE_MORE_15_PAGES_OR_MISS_TABLE_OF_CONTENTS', ValidationError)
+    await expect(validateTableOfContentsAndDocumentPages(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('DOCUMENT_HAVE_MORE_15_PAGES_OR_MISS_TABLE_OF_CONTENTS', ValidationError)
+    await expect(validateTableOfContentsAndDocumentPages(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('DOCUMENT_HAVE_MORE_15_PAGES_OR_MISS_TABLE_OF_CONTENTS', ValidationWarning)
   })
 })

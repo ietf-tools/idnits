@@ -38,6 +38,7 @@ export const baseTXTDoc = {
       referenceSectionDraftReferences: []
     },
     possibleIssues: {
+      isTableOfContentsExists: null,
       linesWithSpaces: [],
       inlineCode: [],
       misspeled2119Keywords: [],
