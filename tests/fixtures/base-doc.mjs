@@ -45,6 +45,9 @@ export const baseTXTDoc = {
       hyphenatedLines: [],
       updatesRfcWithLetter: [],
       obsoletesWithLetter: []
+    },
+    contains: {
+      submissionCompliance: false
     }
   }
 }
