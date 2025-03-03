@@ -658,3 +658,44 @@ describe('Parsing references with categorization', () => {
     expect(result.data.extractedElements.referenceSectionDraftReferences).toHaveLength(0)
   })
 })
+
+describe('The document does not appear to be ragged-right', () => {
+  test('The document appear to be ragged-right', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractTXTBlock}
+      ${securityConsiderationsTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.possibleIssues.linesWithSpaces).toHaveLength(0)
+  })
+
+  test('The document does not appear to be ragged-right', async () => {
+    const line = 'The      translation      of      the     Test'
+    const linesCount = 3
+
+    const textBlock = Array(linesCount)
+      .fill(line)
+      .map((l, i) => ' '.repeat(i % 4 === 0 ? 0 : 16) + l)
+      .join('\n')
+
+    const txt = `
+      ${metaTXTBlock}
+      ${introductionTXTBlock}
+      ${textBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.possibleIssues.linesWithSpaces).toHaveLength(3)
+    expect(result.data.possibleIssues.linesWithSpaces).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ line: 24, pos: 52 }),
+        expect.objectContaining({ line: 25, pos: 62 })
+      ])
+    )
+  })
+})
