@@ -24,7 +24,7 @@ describe('document should have a valid abstract section', () => {
         type: 'txt',
         data: {
           markers: { abstract: { start: 10 } },
-          content: { abstract: ['This document provides an overview of the system.'] }
+          content: { abstract: ['Abstract', 'This document provides an overview of the system.'] }
         }
       }
       await expect(validateAbstractSection(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
@@ -63,7 +63,7 @@ describe('document should have a valid abstract section', () => {
         type: 'txt',
         data: {
           markers: { abstract: { start: 10 } },
-          content: { abstract: ['This document references [RFC1234].'] }
+          content: { abstract: ['Abstract', 'This document references [RFC1234].'] }
         }
       }
       await expect(validateAbstractSection(doc, { mode: MODES.NORMAL })).resolves.toContainError(
@@ -77,7 +77,7 @@ describe('document should have a valid abstract section', () => {
         type: 'txt',
         data: {
           markers: { abstract: { start: 10 } },
-          content: { abstract: ['More information can be found at https://example.com.'] }
+          content: { abstract: ['Abstract', 'More information can be found at https://example.com.'] }
         }
       }
       await expect(validateAbstractSection(doc, { mode: MODES.NORMAL })).resolves.toContainError(
@@ -91,7 +91,7 @@ describe('document should have a valid abstract section', () => {
         type: 'txt',
         data: {
           markers: { abstract: { start: 10 } },
-          content: { abstract: ['See Section 5 for more details.'] }
+          content: { abstract: ['Abstract', 'See Section 5 for more details.'] }
         }
       }
       await expect(validateAbstractSection(doc, { mode: MODES.NORMAL })).resolves.toContainError(
@@ -105,7 +105,7 @@ describe('document should have a valid abstract section', () => {
         type: 'txt',
         data: {
           markers: { abstract: { start: 10 } },
-          content: { abstract: ['This document references [RFC1234].'] }
+          content: { abstract: ['Abstract', 'This document references [RFC1234].'] }
         }
       }
       await expect(validateAbstractSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError(
@@ -121,6 +121,7 @@ describe('document should have a valid abstract section', () => {
           markers: { abstract: { start: 10 } },
           content: {
             abstract: [
+              'Abstract',
               'See Section 5 for details. More info at https://example.com. [RFC1234] is also referenced.'
             ]
           }
@@ -153,7 +154,7 @@ describe('document should have a valid abstract section', () => {
         type: 'txt',
         data: {
           markers: { abstract: { start: 10 } },
-          content: { abstract: ['This document references [I-D.ietf-example-01].'] }
+          content: { abstract: ['Abstract', 'This document references [I-D.ietf-example-01].'] }
         }
       }
       await expect(validateAbstractSection(doc, { mode: MODES.NORMAL })).resolves.toContainError(
@@ -167,7 +168,7 @@ describe('document should have a valid abstract section', () => {
         type: 'txt',
         data: {
           markers: { abstract: { start: 10 } },
-          content: { abstract: ['This document references [REST].'] }
+          content: { abstract: ['Abstract', 'This document references [REST].'] }
         }
       }
       await expect(validateAbstractSection(doc, { mode: MODES.NORMAL })).resolves.toContainError(
@@ -183,6 +184,7 @@ describe('document should have a valid abstract section', () => {
           markers: { abstract: { start: 10 } },
           content: {
             abstract: [
+              'Abstract',
               'This document references [I-D.ietf-example-01] and [REST].'
             ]
           }
@@ -211,7 +213,7 @@ describe('document should have a valid abstract section', () => {
         type: 'txt',
         data: {
           markers: { abstract: { start: 10 } },
-          content: { abstract: ['This document references [I-D.ietf-example-01].'] }
+          content: { abstract: ['Abstract', 'This document references [I-D.ietf-example-01].'] }
         }
       }
       await expect(validateAbstractSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError(
@@ -267,7 +269,7 @@ describe('document should have a valid introduction section', () => {
         type: 'txt',
         data: {
           markers: { header: { start: true }, title: true, introduction: { start: 43 } },
-          content: { introduction: ['This is the introduction section.'] }
+          content: { introduction: ['1. Introduction', 'This is the introduction section.'] }
         },
         body: `
         1. Introduction
@@ -299,7 +301,7 @@ describe('document should have a valid introduction section', () => {
         type: 'txt',
         data: {
           markers: { header: { start: true }, title: true, introduction: { start: 34 } },
-          content: { introduction: ['This is the actual introduction section.'] }
+          content: { introduction: ['1. Introduction', 'This is the actual introduction section.'] }
         },
         body: `
         Table of Contents
@@ -351,7 +353,7 @@ describe('document should have a valid introduction section', () => {
         type: 'txt',
         data: {
           markers: { header: { start: true }, title: true, introduction: { start: 12 } },
-          content: { introduction: ['This is the introduction section under an alternative name.'] }
+          content: { introduction: ['1. Introduction', 'This is the introduction section under an alternative name.'] }
         },
         body: `
         1. Overview
@@ -413,7 +415,7 @@ describe('document should have a valid security considerations section', () => {
         type: 'txt',
         data: {
           markers: { header: { start: true }, title: true, securityConsiderations: { start: 56 } },
-          content: { securityConsiderations: ['This is the security considerations section.'] }
+          content: { securityConsiderations: ['5. Security Considerations', 'This is the security considerations section.'] }
         },
         body: `
         4. Security Considerations
@@ -445,7 +447,7 @@ describe('document should have a valid security considerations section', () => {
         type: 'txt',
         data: {
           markers: { header: { start: true }, title: true, securityConsiderations: { start: 78 } },
-          content: { securityConsiderations: ['This is the actual security considerations section.'] }
+          content: { securityConsiderations: ['5. Security Considerations', 'This is the actual security considerations section.'] }
         },
         body: `
         Table of Contents
