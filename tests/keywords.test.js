@@ -607,6 +607,48 @@ describe('document should have valid term spelling', () => {
       await expect(validateTermsStyle(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('INCORRECT_TERM_SPELLING', ValidationComment)
       await expect(validateTermsStyle(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
+
+    test('Valid spelling, but it might look suspicious to validator function', async () => {
+      const doc = cloneDeep(baseTXTDoc)
+      doc.body = 'Reason lines), but all of them MUST have different protocol values'
+      await expect(validateTermsStyle(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
+    })
+
+    test('should not match "serve mail"', async () => {
+      const doc = cloneDeep(baseTXTDoc)
+      doc.body = 'The server will serve mail to clients.'
+      await expect(validateTermsStyle(doc)).resolves.toHaveLength(0)
+    })
+
+    test('should not match "ragtime-stampede"', async () => {
+      const doc = cloneDeep(baseTXTDoc)
+      doc.body = 'The ragtime-stampede event was a great success.'
+      await expect(validateTermsStyle(doc)).resolves.toHaveLength(0)
+    })
+
+    test('should not match "public-key infrastructure"', async () => {
+      const doc = cloneDeep(baseTXTDoc)
+      doc.body = 'The system uses a public-key infrastructure for security.'
+      await expect(validateTermsStyle(doc)).resolves.toHaveLength(0)
+    })
+
+    test('should not match "time-stamp verification"', async () => {
+      const doc = cloneDeep(baseTXTDoc)
+      doc.body = 'The time-stamp verification process is crucial.'
+      await expect(validateTermsStyle(doc)).resolves.toHaveLength(0)
+    })
+
+    test('should not match "email client"', async () => {
+      const doc = cloneDeep(baseTXTDoc)
+      doc.body = 'The email client supports multiple protocols.'
+      await expect(validateTermsStyle(doc)).resolves.toHaveLength(0)
+    })
+
+    test('should not match "online banking"', async () => {
+      const doc = cloneDeep(baseTXTDoc)
+      doc.body = 'Online banking services have improved security.'
+      await expect(validateTermsStyle(doc)).resolves.toHaveLength(0)
+    })
   })
   describe('XML Document Type', () => {
     test('valid terms', async () => {
@@ -627,6 +669,41 @@ describe('document should have valid term spelling', () => {
       await expect(validateTermsStyle(doc)).resolves.toContainError('INCORRECT_TERM_SPELLING', ValidationComment)
       await expect(validateTermsStyle(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('INCORRECT_TERM_SPELLING', ValidationComment)
       await expect(validateTermsStyle(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+    })
+    test('should not match "serve mail" in XML', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      set(doc, 'data.rfc.middle.t', 'The server will serve mail to clients.')
+      await expect(validateTermsStyle(doc)).resolves.toHaveLength(0)
+    })
+
+    test('should not match "ragtime-stampede" in XML', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      set(doc, 'data.rfc.middle.t', 'The ragtime-stampede event was a great success.')
+      await expect(validateTermsStyle(doc)).resolves.toHaveLength(0)
+    })
+
+    test('should not match "public-key infrastructure" in XML', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      set(doc, 'data.rfc.middle.t', 'The system uses a public-key infrastructure for security.')
+      await expect(validateTermsStyle(doc)).resolves.toHaveLength(0)
+    })
+
+    test('should not match "time-stamp verification" in XML', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      set(doc, 'data.rfc.middle.t', 'The time-stamp verification process is crucial.')
+      await expect(validateTermsStyle(doc)).resolves.toHaveLength(0)
+    })
+
+    test('should not match "email client" in XML', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      set(doc, 'data.rfc.middle.t', 'The email client supports multiple protocols.')
+      await expect(validateTermsStyle(doc)).resolves.toHaveLength(0)
+    })
+
+    test('should not match "online banking" in XML', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      set(doc, 'data.rfc.middle.t', 'Online banking services have improved security.')
+      await expect(validateTermsStyle(doc)).resolves.toHaveLength(0)
     })
   })
 })

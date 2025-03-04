@@ -1,6 +1,6 @@
 import { describe, expect, test } from '@jest/globals'
 import { MODES } from '../lib/config/modes.mjs'
-import { toContainError, ValidationWarning } from '../lib/helpers/error.mjs'
+import { toContainError, ValidationWarning, ValidationComment } from '../lib/helpers/error.mjs'
 import {
   validateDate,
   validateCategory,
@@ -19,6 +19,238 @@ expect.extend({
 })
 
 describe('document should have valid date', () => {
+  describe('document should have valid obsolete/update references in text', () => {
+    test('RFC in obsoletes metadata but missing in abstract', async () => {
+      const doc = {
+        type: 'txt',
+        data: {
+          content: {
+            abstract: ['This document updates RFC 1234.']
+          },
+          extractedElements: {
+            obsoletesRfc: ['5678'],
+            updatesRfc: ['1234']
+          }
+        }
+      }
+
+      const result = await validateObsoleteUpdateRef(doc)
+
+      expect(result).toEqual([
+        new ValidationComment(
+          'OBSOLETES_NOT_IN_ABSTRACT',
+          'RFC 5678 is listed as "obsoleted" in metadata but is not mentioned in the abstract.',
+          {
+            ref: 'https://authors.ietf.org/en/required-content#abstract',
+            path: 'data.content.abstract'
+          }
+        )
+      ])
+    })
+
+    test('RFC in updates metadata but missing in abstract', async () => {
+      const doc = {
+        type: 'txt',
+        data: {
+          content: {
+            abstract: ['This document obsoletes RFC 5678.']
+          },
+          extractedElements: {
+            obsoletesRfc: ['5678'],
+            updatesRfc: ['1234']
+          }
+        }
+      }
+
+      const result = await validateObsoleteUpdateRef(doc)
+
+      expect(result).toEqual([
+        new ValidationComment(
+          'UPDATES_NOT_IN_ABSTRACT',
+          'RFC 1234 is listed as "updated" in metadata but is not mentioned in the abstract.',
+          {
+            ref: 'https://authors.ietf.org/en/required-content#abstract',
+            path: 'data.content.abstract'
+          }
+        )
+      ])
+    })
+
+    test('RFC mentioned in abstract but not in obsoletes metadata', async () => {
+      const doc = {
+        type: 'txt',
+        data: {
+          content: {
+            abstract: ['This document obsoletes RFC 5678.']
+          },
+          extractedElements: {
+            obsoletesRfc: [],
+            updatesRfc: []
+          }
+        }
+      }
+
+      const result = await validateObsoleteUpdateRef(doc)
+
+      expect(result).toEqual([
+        new ValidationComment(
+          'MENTIONED_NOT_IN_OBSOLETES',
+          'RFC 5678 is mentioned as "obsoleted" or "replaced" in the abstract but not listed in metadata.',
+          {
+            ref: 'https://authors.ietf.org/en/required-content#abstract',
+            path: 'data.content.abstract'
+          }
+        )
+      ])
+    })
+
+    test('RFC mentioned in abstract but not in updates metadata', async () => {
+      const doc = {
+        type: 'txt',
+        data: {
+          content: {
+            abstract: ['This document updates RFC 1234.']
+          },
+          extractedElements: {
+            obsoletesRfc: [],
+            updatesRfc: []
+          }
+        }
+      }
+
+      const result = await validateObsoleteUpdateRef(doc)
+
+      expect(result).toEqual([
+        new ValidationComment(
+          'MENTIONED_NOT_IN_UPDATES',
+          'RFC 1234 is mentioned as "updated" in the abstract but not listed in metadata.',
+          {
+            ref: 'https://authors.ietf.org/en/required-content#abstract',
+            path: 'data.content.abstract'
+          }
+        )
+      ])
+    })
+
+    test('Abstract is empty, but metadata contains obsoletes/updates', async () => {
+      const doc = {
+        type: 'txt',
+        data: {
+          content: {
+            abstract: []
+          },
+          extractedElements: {
+            obsoletesRfc: ['5678'],
+            updatesRfc: ['1234']
+          }
+        }
+      }
+
+      const result = await validateObsoleteUpdateRef(doc)
+
+      expect(result).toEqual([
+        new ValidationComment(
+          'OBSOLETES_NOT_IN_ABSTRACT',
+          'RFC 5678 is listed as "obsoleted" in metadata but is not mentioned in the abstract.',
+          {
+            ref: 'https://authors.ietf.org/en/required-content#abstract',
+            path: 'data.content.abstract'
+          }
+        ),
+        new ValidationComment(
+          'UPDATES_NOT_IN_ABSTRACT',
+          'RFC 1234 is listed as "updated" in metadata but is not mentioned in the abstract.',
+          {
+            ref: 'https://authors.ietf.org/en/required-content#abstract',
+            path: 'data.content.abstract'
+          }
+        )
+      ])
+    })
+
+    test('All obsoletes/updates are properly mentioned in abstract', async () => {
+      const doc = {
+        type: 'txt',
+        data: {
+          content: {
+            abstract: [
+              'This document obsoletes RFC 5678 and updates RFC 1234. Both changes aim to improve compatibility.'
+            ]
+          },
+          extractedElements: {
+            obsoletesRfc: ['5678'],
+            updatesRfc: ['1234']
+          }
+        }
+      }
+
+      const result = await validateObsoleteUpdateRef(doc)
+
+      expect(result).toEqual([])
+    })
+
+    test('No obsoletes/updates metadata and no mentions in abstract', async () => {
+      const doc = {
+        type: 'txt',
+        data: {
+          content: {
+            abstract: ['This document provides new guidelines for implementation.']
+          },
+          extractedElements: {
+            obsoletesRfc: [],
+            updatesRfc: []
+          }
+        }
+      }
+
+      const result = await validateObsoleteUpdateRef(doc)
+
+      expect(result).toEqual([])
+    })
+
+    test('Abstract mentions RFCs only as references but no metadata mismatch', async () => {
+      const doc = {
+        type: 'txt',
+        data: {
+          content: {
+            abstract: [
+              'This document provides additional insights for RFC 2119 and its applicability.'
+            ]
+          },
+          extractedElements: {
+            obsoletesRfc: [],
+            updatesRfc: []
+          }
+        }
+      }
+
+      const result = await validateObsoleteUpdateRef(doc)
+
+      expect(result).toEqual([])
+    })
+
+    test('Multiple obsoletes and updates mentioned and matched correctly', async () => {
+      const doc = {
+        type: 'txt',
+        data: {
+          content: {
+            abstract: [
+              'This document obsoletes RFC 5678, RFC 6789, and updates RFC 1234, RFC 2345.'
+            ]
+          },
+          extractedElements: {
+            obsoletesRfc: ['5678', '6789'],
+            updatesRfc: ['1234', '2345']
+          }
+        }
+      }
+
+      const result = await validateObsoleteUpdateRef(doc)
+
+      expect(result).toEqual([])
+    })
+  })
+
   describe('XML Document Type', () => {
     test('valid date', async () => {
       const doc = cloneDeep(baseXMLDoc)
