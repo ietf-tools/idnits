@@ -504,6 +504,59 @@ describe('document should have valid version', () => {
       await expect(validateVersion(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('UNEXPECTED_DOC_VERSION', ValidationWarning)
     })
   })
+
+  describe('TXT Document Type', () => {
+    test('valid version on existing doc', async () => {
+      const doc = baseTXTDoc
+
+      doc.data.slug = 'draft-ietf-beep-boop-01'
+      fetch.mockResponse(JSON.stringify({ rev: '00' }))
+      await expect(validateVersion(doc)).resolves.toHaveLength(0)
+    })
+    test('valid version on non-existant doc', async () => {
+      const doc = baseTXTDoc
+      baseTXTDoc.data.slug = 'draft-ietf-beep-boop-00'
+
+      fetch.mockResponse('Not Found', { status: 404 })
+      await expect(validateVersion(doc)).resolves.toHaveLength(0)
+    })
+    test('duplicate version', async () => {
+      const doc = baseTXTDoc
+
+      doc.data.slug = 'draft-ietf-beep-boop-01'
+      fetch.mockResponse(JSON.stringify({ rev: '01' }))
+      await expect(validateVersion(doc)).resolves.toContainError('DUPLICATE_DOC_VERSION', ValidationWarning)
+      await expect(validateVersion(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('DUPLICATE_DOC_VERSION', ValidationWarning)
+      await expect(validateVersion(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('DUPLICATE_DOC_VERSION', ValidationWarning)
+    })
+    test('unexpected version (lower than latest)', async () => {
+      const doc = baseTXTDoc
+
+      doc.data.slug = 'draft-ietf-beep-boop-01'
+      fetch.mockResponse(JSON.stringify({ rev: '08' }))
+      await expect(validateVersion(doc)).resolves.toContainError('UNEXPECTED_DOC_VERSION', ValidationWarning)
+      await expect(validateVersion(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('UNEXPECTED_DOC_VERSION', ValidationWarning)
+      await expect(validateVersion(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('UNEXPECTED_DOC_VERSION', ValidationWarning)
+    })
+    test('unexpected version (leaves a gap)', async () => {
+      const doc = baseTXTDoc
+
+      doc.data.slug = 'draft-ietf-beep-boop-04'
+      fetch.mockResponse(JSON.stringify({ rev: '02' }))
+      await expect(validateVersion(doc)).resolves.toContainError('UNEXPECTED_DOC_VERSION', ValidationWarning)
+      await expect(validateVersion(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('UNEXPECTED_DOC_VERSION', ValidationWarning)
+      await expect(validateVersion(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('UNEXPECTED_DOC_VERSION', ValidationWarning)
+    })
+    test('unexpected version on non-existant doc', async () => {
+      const doc = baseTXTDoc
+
+      doc.data.slug = 'draft-ietf-beep-boop-01'
+      fetch.mockResponse('Not Found', { status: 404 })
+      await expect(validateVersion(doc)).resolves.toContainError('UNEXPECTED_DOC_VERSION', ValidationWarning)
+      await expect(validateVersion(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('UNEXPECTED_DOC_VERSION', ValidationWarning)
+      await expect(validateVersion(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('UNEXPECTED_DOC_VERSION', ValidationWarning)
+    })
+  })
 })
 
 describe('TXT Document Type', () => {

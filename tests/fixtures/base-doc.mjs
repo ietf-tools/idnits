@@ -22,7 +22,7 @@ export const baseTXTDoc = {
       ianaConsiderations: null
     },
     title: null,
-    slug: null,
+    slug: 'draft-ietf-beep-boop-01',
     extractedElements: {
       fqdnDomains: [],
       ipv4: [],
