@@ -658,3 +658,32 @@ describe('Parsing references with categorization', () => {
     expect(result.data.extractedElements.referenceSectionDraftReferences).toHaveLength(0)
   })
 })
+
+describe('Document has hyphenated line-breaks', () => {
+  test('The document does not contain line breaks.', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractTXTBlock}
+      ${introductionTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.hyphenatedLines).toHaveLength(0)
+  })
+
+  test('Document has hyphenated line-breaks', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    line has hyphenated line-\nbreaks
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.hyphenatedLines).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ line: 29, pos: 29 })
+      ])
+    )
+  })
+})

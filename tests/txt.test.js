@@ -1,7 +1,7 @@
 import { describe, expect, test } from '@jest/globals'
 import { MODES } from '../lib/config/modes.mjs'
 import { toContainError, ValidationError, ValidationWarning } from '../lib/helpers/error.mjs'
-import { validateLineLength, validateCodeComments } from '../lib/modules/txt.mjs'
+import { validateLineLength, validateCodeComments, validateHyphenatedLineBreaks } from '../lib/modules/txt.mjs'
 import { baseTXTDoc } from './fixtures/base-doc.mjs'
 
 expect.extend({
@@ -86,5 +86,21 @@ describe('validateCodeComments', () => {
         ref: 'https://datatracker.ietf.org/doc/rfc8879'
       })
     ])
+  })
+})
+
+describe('Document hyphenated line-breaks', () => {
+  test('Text document should not contain hyphenated line-breaks', async () => {
+    const doc = { ...baseTXTDoc }
+
+    await expect(validateHyphenatedLineBreaks(doc)).resolves.toHaveLength(0)
+  })
+  test('ext document contain hyphenated line-breaks', async () => {
+    const doc = { ...baseTXTDoc }
+
+    doc.data.possibleIssues.hyphenatedLines = [{ line: 1, pos: 20 }]
+    await expect(validateHyphenatedLineBreaks(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+    await expect(validateHyphenatedLineBreaks(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('HYPHENATED_LINE_BREAKS', ValidationWarning)
+    await expect(validateHyphenatedLineBreaks(doc, { mode: MODES.NORMAL })).resolves.toContainError('HYPHENATED_LINE_BREAKS', ValidationWarning)
   })
 })
