@@ -897,8 +897,8 @@ describe('validateReferencesInText', () => {
         type: 'txt',
         data: {
           extractedElements: {
-            referenceSectionRfc: ['2119', '8174', '1234'],
-            referenceSectionDraftReferences: ['draft-ietf-abc-01'],
+            referenceSectionRfc: [{ value: '2119' }, { value: '8174' }, { value: '1234' }],
+            referenceSectionDraftReferences: [{ value: 'draft-ietf-abc-01' }],
             nonReferenceSectionRfc: ['2119'],
             nonReferenceSectionDraftReferences: []
           }
@@ -931,8 +931,8 @@ describe('validateReferencesInText', () => {
         type: 'txt',
         data: {
           extractedElements: {
-            referenceSectionRfc: ['2119'],
-            referenceSectionDraftReferences: ['draft-ietf-abc-01'],
+            referenceSectionRfc: [{ value: '2119' }],
+            referenceSectionDraftReferences: [{ value: 'draft-ietf-abc-01' }],
             nonReferenceSectionRfc: ['2119'],
             nonReferenceSectionDraftReferences: ['draft-ietf-abc-01']
           }
