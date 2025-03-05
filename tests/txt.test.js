@@ -28,6 +28,28 @@ describe('Text document should not contain over-long lines', () => {
   })
 })
 
+describe('The document should not contain more than 50 lines with intra-line extra spacing.', () => {
+  test('less than 50 indents', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.possibleIssues.linesWithSpaces = [{ line: 10, pos: 5 }]
+
+    await expect(validateLineExtraSpacing(doc)).resolves.toHaveLength(0)
+  })
+  test('more than 50 indents', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.possibleIssues.linesWithSpaces = [...Array(51)].map((item, index) => ({
+      line: index + 1,
+      pos: (index % 10) + 1
+    }))
+
+    await expect(validateLineExtraSpacing(doc, { mode: MODES.NORMAL })).resolves.toContainError('RAGGED_RIGHT', ValidationError)
+    await expect(validateLineExtraSpacing(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('RAGGED_RIGHT', ValidationWarning)
+    await expect(validateLineExtraSpacing(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+  })
+})
+
 describe('validateCodeComments', () => {
   test('should return no warnings for documents without comments outside code blocks', async () => {
     const doc = {
