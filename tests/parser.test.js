@@ -658,3 +658,34 @@ describe('Parsing references with categorization', () => {
     expect(result.data.extractedElements.referenceSectionDraftReferences).toHaveLength(0)
   })
 })
+
+describe('Document starts with PK or BM', () => {
+  test('The document starts with PK', async () => {
+    const txt = `PK
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.isPKorBM).toBeTruthy()
+  })
+
+  test('The document starts with BM', async () => {
+    const txt = `BM
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.isPKorBM).toBeTruthy()
+  })
+  test('The document starts without PK and BM', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.isPKorBM).toBeFalsy()
+  })
+})
