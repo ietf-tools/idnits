@@ -200,3 +200,29 @@ export const RFC8174BoilerplateTXTBlock = `
     document are to be interpreted as described in BCP 14 [RFC2119] [RFC8174] 
     when, and only when, they appear in all capitals, as shown here.
 `
+
+export const statusOfMemoTXTBlock = `
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at https://datatracker.ietf.org/drafts/current/.
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+   This Internet-Draft will expire on 8 September 2023.
+`
+
+export const statusOfMemoNumberedTXTBlock = `
+1. Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP
+`
