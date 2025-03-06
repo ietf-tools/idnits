@@ -657,4 +657,41 @@ describe('Parsing references with categorization', () => {
     expect(result.data.extractedElements.referenceSectionRfc).toHaveLength(0)
     expect(result.data.extractedElements.referenceSectionDraftReferences).toHaveLength(0)
   })
+
+  test('Parses reference with square brackets', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+      7. References
+      [RFC5234] Crocker, D., "Augmented BNF for Syntax Specifications: ABNF", RFC 5234, January 2008.
+      [RFC8446] Rescorla, E., "The Transport Layer Security (TLS) Protocol Version 1.3", RFC 8446, August 2018.
+    `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.extractedElements.bracketedRfcReferences).toEqual(
+      expect.arrayContaining(['[RFC5234]', '[RFC8446]'])
+    )
+    expect(result.data.extractedElements.bracketedRfcReferences).toHaveLength(2)
+  })
+
+  test('Parses references in all text with square brackets', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.extractedElements.bracketedRfcNonReferences).toEqual(
+      expect.arrayContaining(['[RFC1234]'])
+    )
+    expect(result.data.extractedElements.bracketedRfcNonReferences).toHaveLength(1)
+  })
 })

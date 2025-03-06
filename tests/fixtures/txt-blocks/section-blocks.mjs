@@ -49,7 +49,7 @@ export const proposedSolutionTXTBlock = `
 export const securityConsiderationsTXTBlock = `
     5. Security Considerations
     Security implications must be considered when sharing documents, and
-    sensitive information should be appropriately protected.
+    sensitive information should be appropriately protected [RFC1234].
 `
 
 export const ianaConsiderationsTXTBlock = `
