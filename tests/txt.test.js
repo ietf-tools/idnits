@@ -1,7 +1,7 @@
 import { describe, expect, test } from '@jest/globals'
 import { MODES } from '../lib/config/modes.mjs'
 import { toContainError, ValidationError, ValidationWarning } from '../lib/helpers/error.mjs'
-import { validateLineLength, validateCodeComments, validateLineExtraSpacing } from '../lib/modules/txt.mjs'
+import { validateLineLength, validateCodeComments, validateCodeBlockLicenses, validateLineExtraSpacing } from '../lib/modules/txt.mjs'
 import { baseTXTDoc } from './fixtures/base-doc.mjs'
 import { cloneDeep } from 'lodash-es'
 
@@ -108,6 +108,98 @@ describe('validateCodeComments', () => {
         ],
         ref: 'https://datatracker.ietf.org/doc/rfc8879'
       })
+    ])
+  })
+})
+
+describe('validateCodeBlockLicenses', () => {
+  test('should return no warnings if there are no code blocks', async () => {
+    const doc = {
+      data: {
+        contains: {
+          codeBlocks: false,
+          revisedBsdLicense: false
+        }
+      }
+    }
+
+    const result = await validateCodeBlockLicenses(doc, { mode: 0 })
+
+    expect(result).toHaveLength(0)
+  })
+
+  test('should return no warnings if document has code blocks and license declaration', async () => {
+    const doc = {
+      data: {
+        contains: {
+          codeBlocks: true,
+          revisedBsdLicense: true
+        }
+      }
+    }
+
+    const result = await validateCodeBlockLicenses(doc, { mode: 0 })
+
+    expect(result).toHaveLength(0)
+  })
+
+  test('should return a warning if code blocks are detected but no license declaration exists', async () => {
+    const doc = {
+      data: {
+        contains: {
+          codeBlocks: true,
+          revisedBsdLicense: false
+        }
+      }
+    }
+
+    const result = await validateCodeBlockLicenses(doc, { mode: 0 })
+
+    expect(result).toEqual([
+      new ValidationWarning(
+        'CODE_BLOCK_MISSING_LICENSE',
+        'A code-block is detected, but the document does not contain a license declaration.',
+        {
+          ref: 'https://trustee.ietf.org/license-info'
+        }
+      )
+    ])
+  })
+
+  test('should return no warnings in submission mode even if license declaration is missing', async () => {
+    const doc = {
+      data: {
+        contains: {
+          codeBlocks: true,
+          revisedBsdLicense: false
+        }
+      }
+    }
+
+    const result = await validateCodeBlockLicenses(doc, { mode: MODES.SUBMISSION })
+
+    expect(result).toHaveLength(0)
+  })
+
+  test('should handle missing "revisedBsdLicense" gracefully', async () => {
+    const doc = {
+      data: {
+        contains: {
+          codeBlocks: true
+        }
+      }
+    }
+
+    const result = await validateCodeBlockLicenses(doc, { mode: 0 })
+
+    expect(result).toEqual([
+      new ValidationWarning(
+        'CODE_BLOCK_MISSING_LICENSE',
+        'A code-block is detected, but the document does not contain a license declaration.',
+        {
+          ref: 'https://trustee.ietf.org/license-info'
+        }
+      )
     ])
   })
 })
