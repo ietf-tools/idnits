@@ -726,3 +726,75 @@ describe('Parsing references with categorization', () => {
     )
   })
 })
+
+describe('License validation for documents containing code blocks', () => {
+  test('Detects Revised BSD License declaration in a document with code blocks', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${introductionTXTBlock}
+      <CODE BEGINS>
+      console.log('Hello, world!');
+      <CODE ENDS>
+      ${securityConsiderationsTXTBlock}
+      This document is subject to BCP 78 and the IETF Trust's Legal Provisions Relating to IETF Documents (https://trustee.ietf.org/license-info) in effect on the date of publication of this document.
+      Code Components extracted from this document must include Revised BSD License text as described in Section 4.e of the Trust Legal Provisions and are provided without warranty as described in the Revised BSD License.
+    `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.contains.codeBlocks).toBe(true)
+    expect(result.data.contains.revisedBsdLicense).toBe(true)
+  })
+
+  test('Detects missing Revised BSD License declaration in a document with code blocks', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${introductionTXTBlock}
+      <CODE BEGINS>
+      console.log('Hello, world!');
+      <CODE ENDS>
+      ${securityConsiderationsTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.contains.codeBlocks).toBe(true)
+    expect(result.data.contains.revisedBsdLicense).toBe(false)
+  })
+
+  test('Detects document with license declaration but without code blocks', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+      This document is subject to BCP 78 and the IETF Trust's Legal Provisions Relating to IETF Documents (https://trustee.ietf.org/license-info) in effect on the date of publication of this document.
+      Code Components extracted from this document must include Revised BSD License text as described in Section 4.e of the Trust Legal Provisions and are provided without warranty as described in the Revised BSD License.
+    `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.contains.codeBlocks).toBe(false)
+    expect(result.data.contains.revisedBsdLicense).toBe(true)
+  })
+
+  test('Detects document without license declaration and without code blocks', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.contains.codeBlocks).toBe(false)
+    expect(result.data.contains.revisedBsdLicense).toBe(false)
+  })
+})
