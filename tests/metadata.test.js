@@ -7,7 +7,7 @@ import {
   validateObsoleteUpdateRef,
   validateVersion
 } from '../lib/modules/metadata.mjs'
-import { baseXMLDoc } from './fixtures/base-doc.mjs'
+import { baseXMLDoc, baseTXTDoc } from './fixtures/base-doc.mjs'
 import { cloneDeep, set } from 'lodash-es'
 import { DateTime } from 'luxon'
 import fetchMock from 'jest-fetch-mock'
@@ -33,6 +33,8 @@ describe('document should have valid date', () => {
           }
         }
       }
+
+      fetchMock.dontMockOnce()
 
       const result = await validateObsoleteUpdateRef(doc)
 
@@ -62,6 +64,8 @@ describe('document should have valid date', () => {
         }
       }
 
+      fetchMock.dontMockOnce()
+
       const result = await validateObsoleteUpdateRef(doc)
 
       expect(result).toEqual([
@@ -90,6 +94,8 @@ describe('document should have valid date', () => {
         }
       }
 
+      fetchMock.dontMockOnce()
+
       const result = await validateObsoleteUpdateRef(doc)
 
       expect(result).toEqual([
@@ -117,6 +123,8 @@ describe('document should have valid date', () => {
           }
         }
       }
+
+      fetchMock.dontMockOnce()
 
       const result = await validateObsoleteUpdateRef(doc)
 
@@ -229,25 +237,44 @@ describe('document should have valid date', () => {
       expect(result).toEqual([])
     })
 
-    test('Multiple obsoletes and updates mentioned and matched correctly', async () => {
-      const doc = {
-        type: 'txt',
-        data: {
-          content: {
-            abstract: [
-              'This document obsoletes RFC 5678, RFC 6789, and updates RFC 1234, RFC 2345.'
-            ]
-          },
-          extractedElements: {
-            obsoletesRfc: ['5678', '6789'],
-            updatesRfc: ['1234', '2345']
-          }
-        }
-      }
+    test('Obsoletes a non-existant RFC', async () => {
+      const doc = baseTXTDoc
+      doc.data.extractedElements.obsoletesRfc = ['1234, 2345']
 
-      const result = await validateObsoleteUpdateRef(doc)
+      fetch.mockResponse('Not Found', { status: 404 })
+      await expect(validateObsoleteUpdateRef(doc)).resolves.toContainError('OBSOLETES_RFC_NOT_FOUND', ValidationWarning)
+      await expect(validateObsoleteUpdateRef(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('OBSOLETES_RFC_NOT_FOUND', ValidationWarning)
+      await expect(validateObsoleteUpdateRef(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+    })
 
-      expect(result).toEqual([])
+    test('Obsoletes an already obsoleted RFC', async () => {
+      const doc = baseTXTDoc
+      doc.data.extractedElements.obsoletesRfc = ['1234, 2345']
+
+      fetch.mockResponse(JSON.stringify({ obsoleted_by: ['3456'] }))
+      await expect(validateObsoleteUpdateRef(doc)).resolves.toContainError('OBSOLETES_OBSOLETED_RFC', ValidationWarning)
+      await expect(validateObsoleteUpdateRef(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('OBSOLETES_OBSOLETED_RFC', ValidationWarning)
+      await expect(validateObsoleteUpdateRef(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+    })
+
+    test('Updates a non-existant RFC', async () => {
+      const doc = baseTXTDoc
+      doc.data.extractedElements.updatesRfc = ['1234, 2345']
+
+      fetch.mockResponse('Not Found', { status: 404 })
+      await expect(validateObsoleteUpdateRef(doc)).resolves.toContainError('UPDATES_RFC_NOT_FOUND', ValidationWarning)
+      await expect(validateObsoleteUpdateRef(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('UPDATES_RFC_NOT_FOUND', ValidationWarning)
+      await expect(validateObsoleteUpdateRef(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+    })
+
+    test('Updates an already obsoleted RFC', async () => {
+      const doc = baseTXTDoc
+      doc.data.extractedElements.updatesRfc = ['1234, 2345']
+
+      fetch.mockResponse(JSON.stringify({ obsoleted_by: ['3456'] }))
+      await expect(validateObsoleteUpdateRef(doc)).resolves.toContainError('UPDATES_OSOLETED_RFC', ValidationWarning)
+      await expect(validateObsoleteUpdateRef(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('UPDATES_OSOLETED_RFC', ValidationWarning)
+      await expect(validateObsoleteUpdateRef(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
   })
 
