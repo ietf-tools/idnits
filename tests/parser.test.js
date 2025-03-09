@@ -13,7 +13,8 @@ import {
   textWithRFC2119KeywordsTXTBlock,
   RFC2119BoilerplateTXTBlock,
   RFC8174BoilerplateTXTBlock,
-  metaWithoutObsoleteAndUpdatesTXTBlock
+  metaWithoutObsoleteAndUpdatesTXTBlock,
+  ianaConsiderationsTXTBlock
 } from './fixtures/txt-blocks/section-blocks.mjs'
 import { parse } from '../lib/parsers/txt.mjs'
 
@@ -906,5 +907,40 @@ Title of Document
     `
     const result = await parse(txt, 'test-doc.txt')
     expect(result.data.header.date).toBeNull()
+  })
+})
+
+describe('Parsing IANA considerations section', () => {
+  test('Parses IANA considerations section correctly', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+      ${textWithRFC2119KeywordsTXTBlock}
+      ${ianaConsiderationsTXTBlock}
+    `
+
+    const result = await parse(txt, 'test-document.txt')
+
+    expect(result.data.content.ianaConsiderations).toEqual(expect.arrayContaining([
+      '6. IANA Considerations',
+      'No specific actions are required by IANA for this document.'
+    ]))
+  })
+
+  test('Parses text without IANA Considerations section correctly', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.content.ianaConsiderations).toBe(null)
   })
 })
