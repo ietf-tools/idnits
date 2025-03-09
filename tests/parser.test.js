@@ -798,3 +798,44 @@ describe('License validation for documents containing code blocks', () => {
     expect(result.data.contains.revisedBsdLicense).toBe(false)
   })
 })
+
+describe('Parsing document intended status', () => {
+  test('Correctly extracts intended document status', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+    `
+
+    const result = await parse(txt, 'test.txt')
+    expect(result.data.header.intendedStatus).toBe('Standards Track')
+  })
+
+  test('Handles INVALID document status', async () => {
+    const txt = `
+      ${metaTXTBlock.replace('Intended status: Standards Track', 'Category: InvalidStatus')}
+      ${tableOfContentsTXTBlock}
+      ${abstractTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+    `
+
+    const result = await parse(txt, 'test.txt')
+    expect(result.data.header.category).toBe('InvalidStatus')
+  })
+
+  test('Handles incorrect document status', async () => {
+    const txt = `
+      ${metaTXTBlock.replace('Intended status: Standards Track', 'Category: Standards Track')}
+      ${tableOfContentsTXTBlock}
+      ${abstractTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+    `
+
+    const result = await parse(txt, 'test.txt')
+    expect(result.data.header.category).toBe('Standards Track')
+  })
+})
