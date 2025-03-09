@@ -7,11 +7,19 @@ export const baseTXTDoc = {
   },
   data: {
     pageCount: 1,
+    content: {
+      abstract: ['This document obsoletes RFC 5678.']
+    },
+    extractedElements: {
+      obsoletesRfc: ['5678'],
+      updatesRfc: ['1234']
+    },
     header: {
       authors: [],
       date: null,
       source: null,
-      expires: null
+      expires: null,
+      intendedStatus: null
     },
     content: {
       abstract: null,
@@ -22,7 +30,7 @@ export const baseTXTDoc = {
       ianaConsiderations: null
     },
     title: null,
-    slug: null,
+    slug: 'draft-ietf-beep-boop-01',
     extractedElements: {
       fqdnDomains: [],
       ipv4: [],
@@ -37,6 +45,7 @@ export const baseTXTDoc = {
       referenceSectionDraftReferences: []
     },
     possibleIssues: {
+      linesWithSpaces: [],
       inlineCode: [],
       misspeled2119Keywords: [],
       updatesRfcWithLetter: [],
