@@ -944,3 +944,25 @@ describe('Parsing IANA considerations section', () => {
     expect(result.data.content.ianaConsiderations).toBe(null)
   })
 })
+
+describe('Parse document slug', () => {
+  test('Parse document slug correctly', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.slug).toBe('draft-ietf-idr-rt-derived-community-05')
+  })
+
+  test('Parse document without slug correctly', async () => {
+    const txt = `
+      ${metaTXTBlock.replace('draft-ietf-idr-rt-derived-community-05', '')}
+      ${tableOfContentsTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.slug).toBe(null)
+  })
+})
