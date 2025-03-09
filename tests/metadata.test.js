@@ -7,7 +7,7 @@ import {
   validateObsoleteUpdateRef,
   validateVersion
 } from '../lib/modules/metadata.mjs'
-import { baseXMLDoc, baseTXTDoc } from './fixtures/base-doc.mjs'
+import { baseTXTDoc, baseXMLDoc } from './fixtures/base-doc.mjs'
 import { cloneDeep, set } from 'lodash-es'
 import { DateTime } from 'luxon'
 import fetchMock from 'jest-fetch-mock'
@@ -33,6 +33,8 @@ describe('document should have valid date', () => {
           }
         }
       }
+
+      fetchMock.dontMockOnce()
 
       const result = await validateObsoleteUpdateRef(doc)
 
@@ -62,6 +64,8 @@ describe('document should have valid date', () => {
         }
       }
 
+      fetchMock.dontMockOnce()
+
       const result = await validateObsoleteUpdateRef(doc)
 
       expect(result).toEqual([
@@ -90,6 +94,8 @@ describe('document should have valid date', () => {
         }
       }
 
+      fetchMock.dontMockOnce()
+
       const result = await validateObsoleteUpdateRef(doc)
 
       expect(result).toEqual([
@@ -117,6 +123,8 @@ describe('document should have valid date', () => {
           }
         }
       }
+
+      fetchMock.dontMockOnce()
 
       const result = await validateObsoleteUpdateRef(doc)
 
@@ -229,25 +237,44 @@ describe('document should have valid date', () => {
       expect(result).toEqual([])
     })
 
-    test('Multiple obsoletes and updates mentioned and matched correctly', async () => {
-      const doc = {
-        type: 'txt',
-        data: {
-          content: {
-            abstract: [
-              'This document obsoletes RFC 5678, RFC 6789, and updates RFC 1234, RFC 2345.'
-            ]
-          },
-          extractedElements: {
-            obsoletesRfc: ['5678', '6789'],
-            updatesRfc: ['1234', '2345']
-          }
-        }
-      }
+    test('Obsoletes a non-existant RFC', async () => {
+      const doc = baseTXTDoc
+      doc.data.extractedElements.obsoletesRfc = ['1234, 2345']
 
-      const result = await validateObsoleteUpdateRef(doc)
+      fetch.mockResponse('Not Found', { status: 404 })
+      await expect(validateObsoleteUpdateRef(doc)).resolves.toContainError('OBSOLETES_RFC_NOT_FOUND', ValidationWarning)
+      await expect(validateObsoleteUpdateRef(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('OBSOLETES_RFC_NOT_FOUND', ValidationWarning)
+      await expect(validateObsoleteUpdateRef(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+    })
 
-      expect(result).toEqual([])
+    test('Obsoletes an already obsoleted RFC', async () => {
+      const doc = baseTXTDoc
+      doc.data.extractedElements.obsoletesRfc = ['1234, 2345']
+
+      fetch.mockResponse(JSON.stringify({ obsoleted_by: ['3456'] }))
+      await expect(validateObsoleteUpdateRef(doc)).resolves.toContainError('OBSOLETES_OBSOLETED_RFC', ValidationWarning)
+      await expect(validateObsoleteUpdateRef(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('OBSOLETES_OBSOLETED_RFC', ValidationWarning)
+      await expect(validateObsoleteUpdateRef(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+    })
+
+    test('Updates a non-existant RFC', async () => {
+      const doc = baseTXTDoc
+      doc.data.extractedElements.updatesRfc = ['1234, 2345']
+
+      fetch.mockResponse('Not Found', { status: 404 })
+      await expect(validateObsoleteUpdateRef(doc)).resolves.toContainError('UPDATES_RFC_NOT_FOUND', ValidationWarning)
+      await expect(validateObsoleteUpdateRef(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('UPDATES_RFC_NOT_FOUND', ValidationWarning)
+      await expect(validateObsoleteUpdateRef(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+    })
+
+    test('Updates an already obsoleted RFC', async () => {
+      const doc = baseTXTDoc
+      doc.data.extractedElements.updatesRfc = ['1234, 2345']
+
+      fetch.mockResponse(JSON.stringify({ obsoleted_by: ['3456'] }))
+      await expect(validateObsoleteUpdateRef(doc)).resolves.toContainError('UPDATES_OSOLETED_RFC', ValidationWarning)
+      await expect(validateObsoleteUpdateRef(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('UPDATES_OSOLETED_RFC', ValidationWarning)
+      await expect(validateObsoleteUpdateRef(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
   })
 
@@ -255,6 +282,7 @@ describe('document should have valid date', () => {
     test('valid date', async () => {
       const doc = cloneDeep(baseXMLDoc)
       const today = DateTime.now()
+
       set(doc, 'data.rfc.front.date._attr', {
         year: today.year,
         month: today.monthLong,
@@ -294,6 +322,53 @@ describe('document should have valid date', () => {
       await expect(validateDate(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('DOC_DATE_IN_FUTURE', ValidationWarning)
     })
   })
+
+  describe('TXT Document Type', () => {
+    test('valid date', async () => {
+      const today = DateTime.now().setLocale('en-US')
+      const doc = baseTXTDoc
+
+      doc.data.header.date = {
+        year: today.year,
+        month: today.monthLong,
+        day: today.day
+      }
+      await expect(validateDate(doc)).resolves.toHaveLength(0)
+    })
+    test('date missing', async () => {
+      const doc = baseTXTDoc
+      doc.data.header.date = {}
+      await expect(validateDate(doc)).resolves.toContainError('MISSING_DOC_DATE', ValidationWarning)
+      await expect(validateDate(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('MISSING_DOC_DATE', ValidationWarning)
+      await expect(validateDate(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('MISSING_DOC_DATE', ValidationWarning)
+    })
+    test('date in the past', async () => {
+      const doc = baseTXTDoc
+      const today = DateTime.now().setLocale('en-US').minus({ days: 15 })
+
+      doc.data.header.date = {
+        year: today.year,
+        month: today.monthLong,
+        day: today.day
+      }
+      await expect(validateDate(doc)).resolves.toContainError('DOC_DATE_IN_PAST', ValidationWarning)
+      await expect(validateDate(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('DOC_DATE_IN_PAST', ValidationWarning)
+      await expect(validateDate(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('DOC_DATE_IN_PAST', ValidationWarning)
+    })
+    test('date in the future', async () => {
+      const doc = baseTXTDoc
+      const today = DateTime.now().setLocale('en-US').plus({ days: 15 })
+
+      doc.data.header.date = {
+        year: today.year,
+        month: today.monthLong,
+        day: today.day
+      }
+      await expect(validateDate(doc)).resolves.toContainError('DOC_DATE_IN_FUTURE', ValidationWarning)
+      await expect(validateDate(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('DOC_DATE_IN_FUTURE', ValidationWarning)
+      await expect(validateDate(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('DOC_DATE_IN_FUTURE', ValidationWarning)
+    })
+  })
 })
 
 describe('document should have valid category', () => {
@@ -328,6 +403,39 @@ describe('document should have valid category', () => {
         category: 'xyz123',
         docName: 'draft-beep-boop'
       })
+      await expect(validateCategory(doc)).resolves.toContainError('INVALID_DOC_CATEGORY', ValidationWarning)
+      await expect(validateCategory(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('INVALID_DOC_CATEGORY', ValidationWarning)
+      await expect(validateCategory(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('INVALID_DOC_CATEGORY', ValidationWarning)
+    })
+  })
+
+  describe('TXT Document Type', () => {
+    test('valid category', async () => {
+      const doc = baseTXTDoc
+      doc.data.header.intendedStatus = 'Standards Track'
+      doc.data.slug = 'draft-ietf-beep-boop'
+
+      await expect(validateCategory(doc)).resolves.toHaveLength(0)
+    })
+    test('missing category for a draft', async () => {
+      const doc = baseTXTDoc
+      doc.data.slug = 'draft-ietf-beep-boop'
+
+      await expect(validateCategory(doc)).resolves.toHaveLength(0)
+    })
+    test('missing category for a rfc doc', async () => {
+      const doc = baseTXTDoc
+      doc.data.slug = 'beep-boop'
+      doc.data.header.intendedStatus = null
+
+      await expect(validateCategory(doc)).resolves.toContainError('MISSING_DOC_CATEGORY', ValidationWarning)
+      await expect(validateCategory(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('MISSING_DOC_CATEGORY', ValidationWarning)
+      await expect(validateCategory(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('MISSING_DOC_CATEGORY', ValidationWarning)
+    })
+    test('invalid category', async () => {
+      const doc = baseTXTDoc
+      doc.data.header.intendedStatus = 'xyz123'
+      doc.data.slug = 'draft-beep-boop'
       await expect(validateCategory(doc)).resolves.toContainError('INVALID_DOC_CATEGORY', ValidationWarning)
       await expect(validateCategory(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('INVALID_DOC_CATEGORY', ValidationWarning)
       await expect(validateCategory(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('INVALID_DOC_CATEGORY', ValidationWarning)
