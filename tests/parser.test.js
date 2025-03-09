@@ -657,4 +657,72 @@ describe('Parsing references with categorization', () => {
     expect(result.data.extractedElements.referenceSectionRfc).toHaveLength(0)
     expect(result.data.extractedElements.referenceSectionDraftReferences).toHaveLength(0)
   })
+
+  test('Detects unclassified references in reference section', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+      7. References
+      7.1. Additional References
+      [RFC5234] Crocker, D., "Augmented BNF for Syntax Specifications: ABNF", RFC 5234, January 2008.
+      [RFC8446] Rescorla, E., "TLS 1.3", RFC 8446, August 2018.
+    `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.extractedElements.referenceSectionRfc).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ value: '5234', subsection: 'unclassified_references' }),
+        expect.objectContaining({ value: '8446', subsection: 'unclassified_references' })
+      ])
+    )
+  })
+
+  test('Detects unclassified draft references', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+      7. References
+      7.1. Miscellaneous References
+      [I-D.ietf-httpbis-cache] Nottingham, M., "HTTP Caching", draft-ietf-httpbis-cache-09, November 2020.
+      [I-D.ietf-httpbis-client-hints] Grigorik, I., "Client Hints", draft-ietf-httpbis-client-hints-10, January 2021.
+    `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.extractedElements.referenceSectionDraftReferences).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ value: '[I-D.ietf-httpbis-cache]', subsection: 'unclassified_references' }),
+        expect.objectContaining({ value: '[I-D.ietf-httpbis-client-hints]', subsection: 'unclassified_references' })
+      ])
+    )
+  })
+
+  test('Parses reference section without categorization', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+      7. References
+      [RFC9110] Fielding, R., "HTTP Semantics", RFC 9110, June 2022.
+      [RFC9205] Kucherawy, M., "The Use of the Require-Recipient-Valid-Since Header Field in Email", RFC 9205, September 2022.
+    `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.extractedElements.referenceSectionRfc).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ value: '9110', subsection: null }),
+        expect.objectContaining({ value: '9205', subsection: null })
+      ])
+    )
+  })
 })
