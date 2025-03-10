@@ -887,4 +887,31 @@ describe('document should have a valid IANA considerations section', () => {
       await expect(validateIANAConsiderationsSection(doc)).resolves.toContainError('INVALID_IANA_CONSIDERATIONS_SECTION_CHILD', ValidationError)
     })
   })
+  describe('TXT Document Type', () => {
+    test('valid IANA considerations section', async () => {
+      const doc = cloneDeep(baseTXTDoc)
+
+      doc.data.content.ianaConsiderations = ['IANA Considerations']
+      doc.data.content.ianaConsiderations.push('Lorem ipsum dolor sit amet, consectetur adipiscing elit.')
+
+      await expect(validateIANAConsiderationsSection(doc)).resolves.toHaveLength(0)
+    })
+    test('missing IANA considerations section', async () => {
+      const doc = cloneDeep(baseTXTDoc)
+      doc.data.content.ianaConsiderations = []
+      doc.docKind = 'draft'
+      await expect(validateIANAConsiderationsSection(doc)).resolves.toContainError('MISSING_IANA_CONSIDERATIONS_SECTION', ValidationError)
+      await expect(validateIANAConsiderationsSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('MISSING_IANA_CONSIDERATIONS_SECTION', ValidationWarning)
+      await expect(validateIANAConsiderationsSection(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+      doc.docKind = 'rfc'
+      await expect(validateIANAConsiderationsSection(doc)).resolves.toContainError('MISSING_IANA_CONSIDERATIONS_SECTION', ValidationComment)
+      await expect(validateIANAConsiderationsSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('MISSING_IANA_CONSIDERATIONS_SECTION', ValidationComment)
+      await expect(validateIANAConsiderationsSection(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+    })
+    test('invalid IANA considerations section', async () => {
+      const doc = cloneDeep(baseTXTDoc)
+      doc.data.content.ianaConsiderations = ['IANA Considerations']
+      await expect(validateIANAConsiderationsSection(doc)).resolves.toContainError('INVALID_IANA_CONSIDERATIONS_SECTION', ValidationError)
+    })
+  })
 })
