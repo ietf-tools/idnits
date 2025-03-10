@@ -15,7 +15,8 @@ import {
   RFC8174BoilerplateTXTBlock,
   metaWithoutObsoleteAndUpdatesTXTBlock,
   statusOfMemoTXTBlock,
-  statusOfMemoNumberedTXTBlock
+  statusOfMemoNumberedTXTBlock,
+  ianaConsiderationsTXTBlock
 } from './fixtures/txt-blocks/section-blocks.mjs'
 import { parse } from '../lib/parsers/txt.mjs'
 
@@ -658,6 +659,354 @@ describe('Parsing references with categorization', () => {
 
     expect(result.data.extractedElements.referenceSectionRfc).toHaveLength(0)
     expect(result.data.extractedElements.referenceSectionDraftReferences).toHaveLength(0)
+  })
+
+  test('Detects unclassified references in reference section', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+      7. References
+      7.1. Additional References
+      [RFC5234] Crocker, D., "Augmented BNF for Syntax Specifications: ABNF", RFC 5234, January 2008.
+      [RFC8446] Rescorla, E., "TLS 1.3", RFC 8446, August 2018.
+    `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.extractedElements.referenceSectionRfc).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ value: '5234', subsection: 'unclassified_references' }),
+        expect.objectContaining({ value: '8446', subsection: 'unclassified_references' })
+      ])
+    )
+  })
+
+  test('Detects unclassified draft references', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+      7. References
+      7.1. Miscellaneous References
+      [I-D.ietf-httpbis-cache] Nottingham, M., "HTTP Caching", draft-ietf-httpbis-cache-09, November 2020.
+      [I-D.ietf-httpbis-client-hints] Grigorik, I., "Client Hints", draft-ietf-httpbis-client-hints-10, January 2021.
+    `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.extractedElements.referenceSectionDraftReferences).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ value: '[I-D.ietf-httpbis-cache]', subsection: 'unclassified_references' }),
+        expect.objectContaining({ value: '[I-D.ietf-httpbis-client-hints]', subsection: 'unclassified_references' })
+      ])
+    )
+  })
+
+  test('Parses reference section without categorization', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+      7. References
+      [RFC9110] Fielding, R., "HTTP Semantics", RFC 9110, June 2022.
+      [RFC9205] Kucherawy, M., "The Use of the Require-Recipient-Valid-Since Header Field in Email", RFC 9205, September 2022.
+    `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.extractedElements.referenceSectionRfc).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ value: '9110', subsection: null }),
+        expect.objectContaining({ value: '9205', subsection: null })
+      ])
+    )
+  })
+})
+
+describe('License validation for documents containing code blocks', () => {
+  test('Detects Revised BSD License declaration in a document with code blocks', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${introductionTXTBlock}
+      <CODE BEGINS>
+      console.log('Hello, world!');
+      <CODE ENDS>
+      ${securityConsiderationsTXTBlock}
+      This document is subject to BCP 78 and the IETF Trust's Legal Provisions Relating to IETF Documents (https://trustee.ietf.org/license-info) in effect on the date of publication of this document.
+      Code Components extracted from this document must include Revised BSD License text as described in Section 4.e of the Trust Legal Provisions and are provided without warranty as described in the Revised BSD License.
+    `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.contains.codeBlocks).toBe(true)
+    expect(result.data.contains.revisedBsdLicense).toBe(true)
+  })
+
+  test('Detects missing Revised BSD License declaration in a document with code blocks', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${introductionTXTBlock}
+      <CODE BEGINS>
+      console.log('Hello, world!');
+      <CODE ENDS>
+      ${securityConsiderationsTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.contains.codeBlocks).toBe(true)
+    expect(result.data.contains.revisedBsdLicense).toBe(false)
+  })
+
+  test('Detects document with license declaration but without code blocks', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+      This document is subject to BCP 78 and the IETF Trust's Legal Provisions Relating to IETF Documents (https://trustee.ietf.org/license-info) in effect on the date of publication of this document.
+      Code Components extracted from this document must include Revised BSD License text as described in Section 4.e of the Trust Legal Provisions and are provided without warranty as described in the Revised BSD License.
+    `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.contains.codeBlocks).toBe(false)
+    expect(result.data.contains.revisedBsdLicense).toBe(true)
+  })
+
+  test('Detects document without license declaration and without code blocks', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.contains.codeBlocks).toBe(false)
+    expect(result.data.contains.revisedBsdLicense).toBe(false)
+  })
+})
+
+describe('Parsing document intended status', () => {
+  test('Correctly extracts intended document status', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+    `
+
+    const result = await parse(txt, 'test.txt')
+    expect(result.data.header.intendedStatus).toBe('Standards Track')
+  })
+
+  test('Handles INVALID document status', async () => {
+    const txt = `
+      ${metaTXTBlock.replace('Intended status: Standards Track', 'Category: InvalidStatus')}
+      ${tableOfContentsTXTBlock}
+      ${abstractTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+    `
+
+    const result = await parse(txt, 'test.txt')
+    expect(result.data.header.category).toBe('InvalidStatus')
+  })
+
+  test('Handles incorrect document status', async () => {
+    const txt = `
+      ${metaTXTBlock.replace('Intended status: Standards Track', 'Category: Standards Track')}
+      ${tableOfContentsTXTBlock}
+      ${abstractTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+    `
+
+    const result = await parse(txt, 'test.txt')
+    expect(result.data.header.category).toBe('Standards Track')
+  })
+})
+
+describe('Parsing document date', () => {
+  test('Parses document date correctly', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.header.date).toEqual(expect.objectContaining({ day: 21, month: 'January', year: 2025 }))
+  })
+
+  test('Parses date with missing day (day becomes NaN)', async () => {
+    const metaBlock = `
+Source   A. Author
+January 2025
+Title of Document
+`
+    const txt = `
+      ${metaBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+    `
+    const result = await parse(txt, 'test-doc.txt')
+    expect(result.data.header.date.month).toEqual('January')
+    expect(result.data.header.date.year).toEqual(2025)
+    expect(isNaN(result.data.header.date.day)).toBe(true)
+  })
+
+  test('Parses valid date from header left part correctly', async () => {
+    const metaBlock = `
+Source   A. Author
+21 January 2025
+Title of Document
+`
+    const txt = `
+      ${metaBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+    `
+    const result = await parse(txt, 'test-doc.txt')
+    expect(result.data.header.date).toEqual({ day: 21, month: 'January', year: 2025 })
+  })
+
+  test('Returns null if date string is invalid', async () => {
+    const metaBlock = `
+Source   A. Author
+Invalid Date
+Title of Document
+`
+    const txt = `
+      ${metaBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+    `
+    const result = await parse(txt, 'test-doc.txt')
+    expect(result.data.header.date).toBeNull()
+  })
+})
+
+describe('Parsing IANA considerations section', () => {
+  test('Parses IANA considerations section correctly', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+      ${textWithRFC2119KeywordsTXTBlock}
+      ${ianaConsiderationsTXTBlock}
+    `
+
+    const result = await parse(txt, 'test-document.txt')
+
+    expect(result.data.content.ianaConsiderations).toEqual(expect.arrayContaining([
+      '6. IANA Considerations',
+      'No specific actions are required by IANA for this document.'
+    ]))
+  })
+
+  test('Parses text without IANA Considerations section correctly', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.content.ianaConsiderations).toBe(null)
+  })
+})
+
+describe('Parse document slug', () => {
+  test('Parse document slug correctly', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.slug).toBe('draft-ietf-idr-rt-derived-community-05')
+  })
+
+  test('Parse document without slug correctly', async () => {
+    const txt = `
+      ${metaTXTBlock.replace('draft-ietf-idr-rt-derived-community-05', '')}
+      ${tableOfContentsTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.slug).toBe(null)
+  })
+})
+
+describe('The document does not appear to be ragged-right', () => {
+  test('The document appear to be ragged-right', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractTXTBlock}
+      ${securityConsiderationsTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.possibleIssues.linesWithSpaces).toHaveLength(0)
+  })
+
+  test('The document does not appear to be ragged-right', async () => {
+    const line = 'The      translation      of      the     Test'
+    const linesCount = 3
+
+    const textBlock = Array(linesCount)
+      .fill(line)
+      .map((l, i) => ' '.repeat(i % 4 === 0 ? 0 : 16) + l)
+      .join('\n')
+
+    const txt = `
+      ${metaTXTBlock}
+      ${introductionTXTBlock}
+      ${textBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.possibleIssues.linesWithSpaces).toHaveLength(3)
+    expect(result.data.possibleIssues.linesWithSpaces).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ line: 24, pos: 52 }),
+        expect.objectContaining({ line: 25, pos: 62 })
+      ])
+    )
   })
 })
 
