@@ -13,7 +13,9 @@ import {
   textWithRFC2119KeywordsTXTBlock,
   RFC2119BoilerplateTXTBlock,
   RFC8174BoilerplateTXTBlock,
-  metaWithoutObsoleteAndUpdatesTXTBlock
+  metaWithoutObsoleteAndUpdatesTXTBlock,
+  copyrightNoticeTXTBlock,
+  copyrightNoticeWithCurrentYearTXTBlock
 } from './fixtures/txt-blocks/section-blocks.mjs'
 import { parse } from '../lib/parsers/txt.mjs'
 
@@ -656,5 +658,51 @@ describe('Parsing references with categorization', () => {
 
     expect(result.data.extractedElements.referenceSectionRfc).toHaveLength(0)
     expect(result.data.extractedElements.referenceSectionDraftReferences).toHaveLength(0)
+  })
+})
+
+describe('TLP-4 6.b.i copyright date is not this year', () => {
+  test('TLP-4 6.b.i copyright date is not this year', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${copyrightNoticeTXTBlock}
+    ${introductionTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.extractedElements.copyrightDates).toEqual(
+      expect.arrayContaining([2023])
+    )
+  })
+
+  test('TLP-4 6.b.i copyright date is this year', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${copyrightNoticeWithCurrentYearTXTBlock}
+    ${introductionTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.extractedElements.copyrightDates).toEqual(
+      expect.arrayContaining([2025])
+    )
+  })
+
+  test('TLP-4 6.b.i without copyright date', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${introductionTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.extractedElements.copyrightDates).toEqual(
+      expect.arrayContaining([])
+    )
   })
 })

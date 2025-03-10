@@ -124,6 +124,12 @@ if (argv.output === 'pretty') {
   console.log()
 }
 
+// Get Year
+const year = argv.year
+if (argv.output === 'pretty') {
+  console.log(chalk.bgWhite.black(' Year ') + ` ${argv.year} `)
+}
+
 // Initialize progress reporter
 const spinner = ora({
   text: 'Loading...',
@@ -142,6 +148,7 @@ function chalkAdapted (color) {
 // Validate document
 try {
   let result = await checkNits(docRaw, docPathObj.base, {
+    year,
     mode,
     progressReport: (msg) => { spinner.text = msg },
     offline: argv.offline
