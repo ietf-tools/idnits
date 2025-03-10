@@ -1,7 +1,7 @@
 import { describe, expect, test } from '@jest/globals'
 import { MODES } from '../lib/config/modes.mjs'
 import { toContainError, ValidationError, ValidationWarning } from '../lib/helpers/error.mjs'
-import { validateLineLength, validateCodeComments, validateCopyrightNoticeSectionIsNumbered } from '../lib/modules/txt.mjs'
+import { validateLineLength, validateCodeComments, validateCodeBlockLicenses, validateLineExtraSpacing, validateCopyrightNoticeSectionIsNumbered } from '../lib/modules/txt.mjs'
 import { baseTXTDoc } from './fixtures/base-doc.mjs'
 import { cloneDeep } from 'lodash-es'
 
@@ -25,6 +25,28 @@ describe('Text document should not contain over-long lines', () => {
     await expect(validateLineLength(doc)).resolves.toContainError('LINE_TOO_LONG', ValidationError)
     await expect(validateLineLength(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('LINE_TOO_LONG', ValidationWarning)
     await expect(validateLineLength(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('LINE_TOO_LONG', ValidationWarning)
+  })
+})
+
+describe('The document should not contain more than 50 lines with intra-line extra spacing.', () => {
+  test('less than 50 indents', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.possibleIssues.linesWithSpaces = [{ line: 10, pos: 5 }]
+
+    await expect(validateLineExtraSpacing(doc)).resolves.toHaveLength(0)
+  })
+  test('more than 50 indents', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.possibleIssues.linesWithSpaces = [...Array(51)].map((item, index) => ({
+      line: index + 1,
+      pos: (index % 10) + 1
+    }))
+
+    await expect(validateLineExtraSpacing(doc, { mode: MODES.NORMAL })).resolves.toContainError('RAGGED_RIGHT', ValidationError)
+    await expect(validateLineExtraSpacing(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('RAGGED_RIGHT', ValidationWarning)
+    await expect(validateLineExtraSpacing(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
   })
 })
 
@@ -108,5 +130,97 @@ describe('The Copyright Notice section should not be numbered.', () => {
     await expect(validateCopyrightNoticeSectionIsNumbered(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
     await expect(validateCopyrightNoticeSectionIsNumbered(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
     await expect(validateCopyrightNoticeSectionIsNumbered(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+  })
+})
+
+describe('validateCodeBlockLicenses', () => {
+  test('should return no warnings if there are no code blocks', async () => {
+    const doc = {
+      data: {
+        contains: {
+          codeBlocks: false,
+          revisedBsdLicense: false
+        }
+      }
+    }
+
+    const result = await validateCodeBlockLicenses(doc, { mode: 0 })
+
+    expect(result).toHaveLength(0)
+  })
+
+  test('should return no warnings if document has code blocks and license declaration', async () => {
+    const doc = {
+      data: {
+        contains: {
+          codeBlocks: true,
+          revisedBsdLicense: true
+        }
+      }
+    }
+
+    const result = await validateCodeBlockLicenses(doc, { mode: 0 })
+
+    expect(result).toHaveLength(0)
+  })
+
+  test('should return a warning if code blocks are detected but no license declaration exists', async () => {
+    const doc = {
+      data: {
+        contains: {
+          codeBlocks: true,
+          revisedBsdLicense: false
+        }
+      }
+    }
+
+    const result = await validateCodeBlockLicenses(doc, { mode: 0 })
+
+    expect(result).toEqual([
+      new ValidationWarning(
+        'CODE_BLOCK_MISSING_LICENSE',
+        'A code-block is detected, but the document does not contain a license declaration.',
+        {
+          ref: 'https://trustee.ietf.org/license-info'
+        }
+      )
+    ])
+  })
+
+  test('should return no warnings in submission mode even if license declaration is missing', async () => {
+    const doc = {
+      data: {
+        contains: {
+          codeBlocks: true,
+          revisedBsdLicense: false
+        }
+      }
+    }
+
+    const result = await validateCodeBlockLicenses(doc, { mode: MODES.SUBMISSION })
+
+    expect(result).toHaveLength(0)
+  })
+
+  test('should handle missing "revisedBsdLicense" gracefully', async () => {
+    const doc = {
+      data: {
+        contains: {
+          codeBlocks: true
+        }
+      }
+    }
+
+    const result = await validateCodeBlockLicenses(doc, { mode: 0 })
+
+    expect(result).toEqual([
+      new ValidationWarning(
+        'CODE_BLOCK_MISSING_LICENSE',
+        'A code-block is detected, but the document does not contain a license declaration.',
+        {
+          ref: 'https://trustee.ietf.org/license-info'
+        }
+      )
+    ])
   })
 })
