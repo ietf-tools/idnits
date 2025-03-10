@@ -735,6 +735,19 @@ describe('TLP-4 6.b.i or b.ii license notice is not present, or doesn\'t match s
 
     expect(result.data.extractedElements.license6_b_ii).toStrictEqual([textLicense6biiTXTBlock.replace(/\s+/g, ' ').trim()])
   })
+  test('TLP-4 6.b.ii license notice is present more ones', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${textLicense6biiTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${introductionTXTBlock}
+    ${textLicense6biiTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.extractedElements.license6_b_ii).toHaveLength(2)
+  })
   test('TLP-4 6.c.i license notice is not present', async () => {
     const txt = `
     ${metaTXTBlock}

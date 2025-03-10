@@ -187,6 +187,42 @@ describe('validateLicenseDeclarations', () => {
     const result = await validateLicenseDeclarations(doc)
     expect(result).toHaveLength(0)
   })
+
+  test('should return warning where moew than one 6.b.ii license declaration is present', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+    doc.data.slug = 'other-document'
+    doc.data.contains.license6_c_i = true
+    doc.data.contains.license6_c_ii = true
+    doc.data.contains.revisedBsdLicense6_i = true
+    doc.data.extractedElements.license6_b_ii = ['MIT', 'BSD']
+
+    const result = await validateLicenseDeclarations(doc)
+    expect(result).toContainEqual(new ValidationWarning(
+      'TLP4_LICENSE_NOTICE_REPEATED',
+      'The document has multiple instances of the TLP-4 license notice (6.b.i or 6.b.ii).',
+      {
+        ref: 'https://trustee.ietf.org/license-info'
+      }
+    ))
+  })
+
+  test('should return warning where moew than one 6.b.i license declaration is present', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+    doc.data.slug = 'other-document'
+    doc.data.contains.license6_c_i = true
+    doc.data.contains.license6_c_ii = true
+    doc.data.contains.revisedBsdLicense6_i = true
+    doc.data.extractedElements.license6_b_i = ['MIT', 'BSD']
+
+    const result = await validateLicenseDeclarations(doc)
+    expect(result).toContainEqual(new ValidationWarning(
+      'TLP4_LICENSE_NOTICE_REPEATED',
+      'The document has multiple instances of the TLP-4 license notice (6.b.i or 6.b.ii).',
+      {
+        ref: 'https://trustee.ietf.org/license-info'
+      }
+    ))
+  })
 })
 
 describe('The copyright line is not present.', () => {
