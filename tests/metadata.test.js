@@ -1,4 +1,4 @@
-import { describe, expect, test } from '@jest/globals'
+import { afterAll, beforeAll, beforeEach, describe, expect, test } from '@jest/globals'
 import { MODES } from '../lib/config/modes.mjs'
 import { toContainError, ValidationWarning, ValidationComment } from '../lib/helpers/error.mjs'
 import {
@@ -11,6 +11,7 @@ import { baseTXTDoc, baseXMLDoc } from './fixtures/base-doc.mjs'
 import { cloneDeep, set } from 'lodash-es'
 import { DateTime } from 'luxon'
 import fetchMock from 'jest-fetch-mock'
+import { abstractTXTBlock } from './fixtures/txt-blocks/section-blocks.mjs'
 
 fetchMock.enableMocks()
 
@@ -20,6 +21,13 @@ expect.extend({
 
 describe('document should have valid date', () => {
   describe('document should have valid obsolete/update references in text', () => {
+    beforeEach(() => {
+      fetchMock.dontMock()
+    })
+
+    afterAll(() => {
+      fetchMock.resetMocks()
+    })
     test('RFC in obsoletes metadata but missing in abstract', async () => {
       const doc = {
         type: 'txt',
@@ -33,8 +41,6 @@ describe('document should have valid date', () => {
           }
         }
       }
-
-      fetchMock.dontMockOnce()
 
       const result = await validateObsoleteUpdateRef(doc)
 
@@ -240,6 +246,7 @@ describe('document should have valid date', () => {
     test('Obsoletes a non-existant RFC', async () => {
       const doc = baseTXTDoc
       doc.data.extractedElements.obsoletesRfc = ['1234, 2345']
+      doc.data.content.abstract = abstractTXTBlock.split('\n')
 
       fetch.mockResponse('Not Found', { status: 404 })
       await expect(validateObsoleteUpdateRef(doc)).resolves.toContainError('OBSOLETES_RFC_NOT_FOUND', ValidationWarning)
@@ -250,7 +257,9 @@ describe('document should have valid date', () => {
     test('Obsoletes an already obsoleted RFC', async () => {
       const doc = baseTXTDoc
       doc.data.extractedElements.obsoletesRfc = ['1234, 2345']
+      doc.data.content.abstract = abstractTXTBlock.split('\n')
 
+      fetchMock.resetMocks()
       fetch.mockResponse(JSON.stringify({ obsoleted_by: ['3456'] }))
       await expect(validateObsoleteUpdateRef(doc)).resolves.toContainError('OBSOLETES_OBSOLETED_RFC', ValidationWarning)
       await expect(validateObsoleteUpdateRef(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('OBSOLETES_OBSOLETED_RFC', ValidationWarning)
@@ -260,6 +269,7 @@ describe('document should have valid date', () => {
     test('Updates a non-existant RFC', async () => {
       const doc = baseTXTDoc
       doc.data.extractedElements.updatesRfc = ['1234, 2345']
+      doc.data.content.abstract = abstractTXTBlock.split('\n')
 
       fetch.mockResponse('Not Found', { status: 404 })
       await expect(validateObsoleteUpdateRef(doc)).resolves.toContainError('UPDATES_RFC_NOT_FOUND', ValidationWarning)
@@ -269,11 +279,13 @@ describe('document should have valid date', () => {
 
     test('Updates an already obsoleted RFC', async () => {
       const doc = baseTXTDoc
-      doc.data.extractedElements.updatesRfc = ['1234, 2345']
+      doc.data.extractedElements.updatesRfc = ['1264, 2345']
+      doc.data.content.abstract = abstractTXTBlock.split('\n')
 
+      fetchMock.resetMocks()
       fetch.mockResponse(JSON.stringify({ obsoleted_by: ['3456'] }))
-      await expect(validateObsoleteUpdateRef(doc)).resolves.toContainError('UPDATES_OSOLETED_RFC', ValidationWarning)
-      await expect(validateObsoleteUpdateRef(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('UPDATES_OSOLETED_RFC', ValidationWarning)
+      await expect(validateObsoleteUpdateRef(doc)).resolves.toContainError('UPDATES_OBSOLETED_RFC', ValidationWarning)
+      await expect(validateObsoleteUpdateRef(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('UPDATES_OBSOLETED_RFC', ValidationWarning)
       await expect(validateObsoleteUpdateRef(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
   })
