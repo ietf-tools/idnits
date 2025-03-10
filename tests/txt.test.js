@@ -1,8 +1,9 @@
 import { describe, expect, test } from '@jest/globals'
 import { MODES } from '../lib/config/modes.mjs'
 import { toContainError, ValidationError, ValidationWarning } from '../lib/helpers/error.mjs'
-import { validateLineLength, validateCodeComments } from '../lib/modules/txt.mjs'
+import { validateLineLength, validateCodeComments, validateCopyrightSection } from '../lib/modules/txt.mjs'
 import { baseTXTDoc } from './fixtures/base-doc.mjs'
+import { cloneDeep } from 'lodash-es'
 
 expect.extend({
   toContainError
@@ -86,5 +87,26 @@ describe('validateCodeComments', () => {
         ref: 'https://datatracker.ietf.org/doc/rfc8879'
       })
     ])
+  })
+})
+
+describe('The copyright line is not present.', () => {
+  test('Copyright line is not present', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.contains.copyrightSection6_b_i = false
+
+    await expect(validateCopyrightSection(doc, { mode: MODES.NORMAL })).resolves.toContainError('COPYRIGHT_LINE_MISSING', ValidationError)
+    await expect(validateCopyrightSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('COPYRIGHT_LINE_MISSING', ValidationError)
+    await expect(validateCopyrightSection(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('COPYRIGHT_LINE_MISSING', ValidationError)
+  })
+  test('Copyright line is present', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.contains.copyrightSection6_b_i = true
+
+    await expect(validateCopyrightSection(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
+    await expect(validateCopyrightSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
+    await expect(validateCopyrightSection(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
   })
 })
