@@ -2,6 +2,7 @@ export const baseTXTDoc = {
   type: 'txt',
   filename: '',
   body: '',
+  slug: '',
   header: {
     category: null
   },
@@ -22,10 +23,12 @@ export const baseTXTDoc = {
       ianaConsiderations: null
     },
     contains: {
-      copyrightSection6_b_i: null
+      copyrightSection6_b_i: null,
+      copyrightLicenseValid: null,
+      license6_c_i: null,
+      license6_c_ii: null
     },
     title: null,
-    slug: null,
     extractedElements: {
       fqdnDomains: [],
       ipv4: [],
@@ -38,7 +41,8 @@ export const baseTXTDoc = {
       referenceSectionRfc: [],
       nonReferenceSectionDraftReferences: [],
       referenceSectionDraftReferences: [],
-      copyrightDates: []
+      copyrightDates: [],
+      license6_b_ii: []
     },
     possibleIssues: {
       inlineCode: [],

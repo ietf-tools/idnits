@@ -222,3 +222,19 @@ export const copyrightNoticeWithCurrentYearTXTBlock = `
     Copyright (c) 2025 IETF Trust and the persons identified as the
     document authors.  All rights reserved.
 `
+
+export const textLicense6biiTXTBlock = `
+    This document is subject to BCP 78 and the IETF Trust’s Legal Provisions Relating to IETF
+    Documents (http://trustee.ietf.org/license-info) in effect on the date of publication of this
+    document. Please review these documents carefully, as they describe your rights and restrictions
+    with respect to this document.
+`
+export const textLicense6ciiTXTBlock = `
+    This document may not be modified, and derivative works of it may not be created, and it may not
+    be published except as an Internet-Draft.
+`
+
+export const textLicense6ciTXTBlock = `
+    This document may not be modified, and derivative works of it may not be created, except to
+    format it for publication as an RFC or to translate it into languages other than English.
+`

@@ -1,7 +1,7 @@
 import { describe, expect, test } from '@jest/globals'
 import { MODES } from '../lib/config/modes.mjs'
 import { toContainError, ValidationError, ValidationWarning } from '../lib/helpers/error.mjs'
-import { validateLineLength, validateCodeComments, validateCopyrightDate } from '../lib/modules/txt.mjs'
+import { validateLineLength, validateCodeComments, validateCopyrightDate, validateLicenseDeclarations } from '../lib/modules/txt.mjs'
 import { baseTXTDoc } from './fixtures/base-doc.mjs'
 import { cloneDeep } from 'lodash-es'
 
@@ -125,5 +125,66 @@ describe('The copyright date is not valid.', () => {
     await expect(validateCopyrightDate(doc, { mode: MODES.NORMAL, year: 2024 })).resolves.toContainError('COPYRIGHT_DATE_NOT_VALID', ValidationWarning)
     await expect(validateCopyrightDate(doc, { mode: MODES.FORGIVE_CHECKLIST, year: 2024 })).resolves.toContainError('COPYRIGHT_DATE_NOT_VALID', ValidationWarning)
     await expect(validateCopyrightDate(doc, { mode: MODES.SUBMISSION, year: 2024 })).resolves.toContainError('COPYRIGHT_DATE_NOT_VALID', ValidationWarning)
+  })
+})
+
+describe('validateLicenseDeclarations', () => {
+  test('should return error when both licence6_b_ii is empty and revisedBsdLicense6_i is false', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+    doc.data.extractedElements.licence6_b_ii = []
+    doc.data.contains.revisedBsdLicense6_i = false
+    doc.data.slug = 'draft-ietf-example'
+
+    const result = await validateLicenseDeclarations(doc)
+    expect(result).toContainEqual(new ValidationError(
+      'TLP4_LICENSE_NOTICE_MISSING',
+      'The document does not contain a required TLP-4 license notice (6.b.i or 6.b.ii).',
+      { ref: 'https://trustee.ietf.org/license-info' }
+    ))
+  })
+
+  test('should not return error for missing licence6_b_ii if revisedBsdLicense6_i is present', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+    doc.data.extractedElements.license6_b_ii = []
+    doc.data.contains.revisedBsdLicense6_i = true
+    doc.data.slug = 'draft-ietf-example'
+
+    const result = await validateLicenseDeclarations(doc)
+    expect(result).toHaveLength(0)
+  })
+
+  test('should return warning for licence6_c_i when slug starts with "draft-ietf-"', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+    doc.data.slug = 'draft-ietf-example'
+    doc.data.contains.license6_c_i = true
+    const result = await validateLicenseDeclarations(doc)
+    expect(result).toContainEqual(new ValidationWarning(
+      'TLP4_LICENSE_NOTICE',
+      'The document has an IETF Trust Provisions of 28 Dec 2009, Section 6.c(i) Publication Limitation clause.',
+      { ref: 'https://trustee.ietf.org/license-info' }
+    ))
+  })
+
+  test('should return error for licence6_c_ii when slug starts with "draft-ietf-"', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+    doc.data.slug = 'draft-ietf-example'
+    doc.data.contains.license6_c_ii = true
+    const result = await validateLicenseDeclarations(doc)
+    expect(result).toContainEqual(new ValidationError(
+      'TLP4_LICENSE_NOTICE',
+      'The document has an IETF Trust Provisions, 28 Dec 2009, Section 6.c(ii) Publication Limitation clause.',
+      { ref: 'https://trustee.ietf.org/license-info' }
+    ))
+  })
+
+  test('should not check for licence6_c if slug does not start with "draft-ietf-"', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+    doc.data.slug = 'other-document'
+    doc.data.contains.license6_c_i = true
+    doc.data.contains.license6_c_ii = true
+    doc.data.contains.revisedBsdLicense6_i = true
+
+    const result = await validateLicenseDeclarations(doc)
+    expect(result).toHaveLength(0)
   })
 })
