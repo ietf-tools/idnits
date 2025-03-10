@@ -784,6 +784,19 @@ describe('TLP-4 6.b.i or b.ii license notice is not present, or doesn\'t match s
 })
 
 describe('TLP-4 6.b.i copyright line is not present', () => {
+  test('TLP-4 6.b.i copyright line is present', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${copyrightNoticeTXTBlock}
+    ${introductionTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.contains.copyrightSection6_b_i).toBeTruthy()
+  })
+
   test('TTLP-4 6.b.i copyright line is not present', async () => {
     const txt = `
       ${metaTXTBlock}
@@ -796,9 +809,10 @@ describe('TLP-4 6.b.i copyright line is not present', () => {
     expect(result.data.contains.copyrightSection6_b_i).toBeFalsy()
   })
 
-  test('TLP-4 6.b.i copyright line is present', async () => {
+  test('TLP-4 6.b.i copyright line is present twice', async () => {
     const txt = `
     ${metaTXTBlock}
+    ${copyrightNoticeWithCurrentYearTXTBlock}
     ${tableOfContentsTXTBlock}
     ${copyrightNoticeTXTBlock}
     ${introductionTXTBlock}
@@ -806,6 +820,6 @@ describe('TLP-4 6.b.i copyright line is not present', () => {
 
     const result = await parse(txt, 'txt')
 
-    expect(result.data.contains.copyrightSection6_b_i).toBeTruthy()
+    expect(result.data.possibleIssues.copyrightLines6_i).toHaveLength(2)
   })
 })

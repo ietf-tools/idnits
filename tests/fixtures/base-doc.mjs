@@ -46,7 +46,8 @@ export const baseTXTDoc = {
     },
     possibleIssues: {
       inlineCode: [],
-      misspeled2119Keywords: []
+      misspeled2119Keywords: [],
+      copyrightLines6_i: []
     }
   }
 }
