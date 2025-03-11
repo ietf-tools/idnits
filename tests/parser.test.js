@@ -13,7 +13,8 @@ import {
   textWithRFC2119KeywordsTXTBlock,
   RFC2119BoilerplateTXTBlock,
   RFC8174BoilerplateTXTBlock,
-  metaWithoutObsoleteAndUpdatesTXTBlock
+  metaWithoutObsoleteAndUpdatesTXTBlock,
+  textAcceptableParagraphNotingThatDraftTXTBlock
 } from './fixtures/txt-blocks/section-blocks.mjs'
 import { parse } from '../lib/parsers/txt.mjs'
 
@@ -656,5 +657,28 @@ describe('Parsing references with categorization', () => {
 
     expect(result.data.extractedElements.referenceSectionRfc).toHaveLength(0)
     expect(result.data.extractedElements.referenceSectionDraftReferences).toHaveLength(0)
+  })
+})
+
+describe('Missing acceptable paragraph noting that IDs are working documents', () => {
+  test('The acceptable paragraph noting that IDs are working documents is missing', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.contains.acceptableParagraphNotingThatDraft).toBeFalsy()
+  })
+
+  test('The acceptable paragraph noting that IDs are working documents is present', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${textAcceptableParagraphNotingThatDraftTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.contains.acceptableParagraphNotingThatDraft).toBeTruthy()
   })
 })

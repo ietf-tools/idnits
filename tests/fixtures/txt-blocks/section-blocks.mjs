@@ -200,3 +200,8 @@ export const RFC8174BoilerplateTXTBlock = `
     document are to be interpreted as described in BCP 14 [RFC2119] [RFC8174] 
     when, and only when, they appear in all capitals, as shown here.
 `
+
+export const textAcceptableParagraphNotingThatDraftTXTBlock = `
+    Internet-Drafts are working documents of the Internet Engineering
+    Task Force (IETF).
+`
