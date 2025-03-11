@@ -48,7 +48,8 @@ export const baseTXTDoc = {
       linesWithSpaces: [],
       inlineCode: [],
       misspeled2119Keywords: [],
-      linesWithSpaces: []
+      updatesRfcWithLetter: [],
+      obsoletesWithLetter: []
     }
   }
 }

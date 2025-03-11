@@ -248,6 +248,7 @@ describe('document should have valid date', () => {
       doc.data.extractedElements.obsoletesRfc = ['1234, 2345']
       doc.data.content.abstract = abstractTXTBlock.split('\n')
 
+      fetchMock.resetMocks()
       fetch.mockResponse('Not Found', { status: 404 })
       await expect(validateObsoleteUpdateRef(doc)).resolves.toContainError('OBSOLETES_RFC_NOT_FOUND', ValidationWarning)
       await expect(validateObsoleteUpdateRef(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('OBSOLETES_RFC_NOT_FOUND', ValidationWarning)
@@ -271,6 +272,7 @@ describe('document should have valid date', () => {
       doc.data.extractedElements.updatesRfc = ['1234, 2345']
       doc.data.content.abstract = abstractTXTBlock.split('\n')
 
+      fetchMock.resetMocks()
       fetch.mockResponse('Not Found', { status: 404 })
       await expect(validateObsoleteUpdateRef(doc)).resolves.toContainError('UPDATES_RFC_NOT_FOUND', ValidationWarning)
       await expect(validateObsoleteUpdateRef(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('UPDATES_RFC_NOT_FOUND', ValidationWarning)
