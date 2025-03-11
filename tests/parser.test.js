@@ -15,7 +15,8 @@ import {
   RFC8174BoilerplateTXTBlock,
   metaWithoutObsoleteAndUpdatesTXTBlock,
   metaObsoleteAndUpdatesHasCharactersTXTBlock,
-  ianaConsiderationsTXTBlock
+  ianaConsiderationsTXTBlock,
+  PageBreak
 } from './fixtures/txt-blocks/section-blocks.mjs'
 import { parse } from '../lib/parsers/txt.mjs'
 
@@ -1039,5 +1040,86 @@ describe('Parsing obsolete and update metadata with some characters', () => {
     const result = await parse(txt, 'txt')
     expect(result.data.possibleIssues.updatesRfcWithLetter).toHaveLength(0)
     expect(result.data.possibleIssues.obsoletesWithLetter).toHaveLength(0)
+  })
+})
+
+describe('Parsing over long pages', () => {
+  test('No over long pages', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${abstractWithReferencesTXTBlock}
+    ${PageBreak}
+    ${introductionTXTBlock}
+    ${securityConsiderationsTXTBlock}
+    ${PageBreak}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.tooLongPages).toHaveLength(0)
+  })
+
+  test('Over long pages', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${abstractWithReferencesTXTBlock}
+    
+    ${introductionTXTBlock}
+    
+    ${securityConsiderationsTXTBlock}
+    
+    ${RFC2119BoilerplateTXTBlock}
+
+    ${RFC8174BoilerplateTXTBlock}
+    
+    ${authorAddressTXTBlock}
+
+    ${PageBreak}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.tooLongPages).toHaveLength(1)
+    expect(result.data.possibleIssues.tooLongPages).toEqual([expect.objectContaining({ page: 1, lines: 81 })])
+  })
+
+  test('Several over long pages', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${abstractWithReferencesTXTBlock}
+    
+    ${introductionTXTBlock}
+    
+    ${securityConsiderationsTXTBlock}
+    
+    ${RFC2119BoilerplateTXTBlock}
+
+    ${RFC8174BoilerplateTXTBlock}
+    
+    ${authorAddressTXTBlock}
+
+    ${PageBreak}
+
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${abstractWithReferencesTXTBlock}
+    
+    ${introductionTXTBlock}
+    
+    ${securityConsiderationsTXTBlock}
+    
+    ${RFC2119BoilerplateTXTBlock}
+
+    ${RFC8174BoilerplateTXTBlock}
+    
+    ${authorAddressTXTBlock}
+
+    ${PageBreak}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.tooLongPages).toHaveLength(2)
+    expect(result.data.possibleIssues.tooLongPages).toEqual([expect.objectContaining({ page: 1, lines: 81 }), expect.objectContaining({ page: 2, lines: 83 })])
   })
 })
