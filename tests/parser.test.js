@@ -13,7 +13,8 @@ import {
   textWithRFC2119KeywordsTXTBlock,
   RFC2119BoilerplateTXTBlock,
   RFC8174BoilerplateTXTBlock,
-  metaWithoutObsoleteAndUpdatesTXTBlock
+  metaWithoutObsoleteAndUpdatesTXTBlock,
+  textAcceptableParagraphCallingOutSixMonthValidity
 } from './fixtures/txt-blocks/section-blocks.mjs'
 import { parse } from '../lib/parsers/txt.mjs'
 
@@ -656,5 +657,28 @@ describe('Parsing references with categorization', () => {
 
     expect(result.data.extractedElements.referenceSectionRfc).toHaveLength(0)
     expect(result.data.extractedElements.referenceSectionDraftReferences).toHaveLength(0)
+  })
+})
+
+describe('Missing acceptable paragraph calling out 6 month validity', () => {
+  test('The acceptable paragraph calling out 6 month validity is missing', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.contains.draftParagraphOutSixMonthValidity).toBeFalsy()
+  })
+
+  test('The acceptable paragraph calling out 6 month validity is present', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${textAcceptableParagraphCallingOutSixMonthValidity}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.contains.draftParagraphOutSixMonthValidity).toBeTruthy()
   })
 })
