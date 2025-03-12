@@ -7,13 +7,6 @@ export const baseTXTDoc = {
   },
   data: {
     pageCount: 1,
-    content: {
-      abstract: ['This document obsoletes RFC 5678.']
-    },
-    extractedElements: {
-      obsoletesRfc: ['5678'],
-      updatesRfc: ['1234']
-    },
     header: {
       authors: [],
       date: null,
@@ -22,7 +15,7 @@ export const baseTXTDoc = {
       intendedStatus: null
     },
     content: {
-      abstract: null,
+      abstract: ['This document obsoletes RFC 5678.'],
       introduction: null,
       securityConsiderations: null,
       authorAddress: null,
@@ -37,8 +30,8 @@ export const baseTXTDoc = {
       ipv6: [],
       keywords2119: [],
       boilerplate2119Keywords: [],
-      obsoletesRfc: [],
-      updatesRfc: [],
+      obsoletesRfc: ['5678'],
+      updatesRfc: ['1234'],
       nonReferenceSectionRfc: [],
       referenceSectionRfc: [],
       nonReferenceSectionDraftReferences: [],
@@ -48,7 +41,9 @@ export const baseTXTDoc = {
       linesWithSpaces: [],
       inlineCode: [],
       misspeled2119Keywords: [],
-      linesWithSpaces: []
+      hyphenatedLines: [],
+      updatesRfcWithLetter: [],
+      obsoletesWithLetter: []
     }
   }
 }

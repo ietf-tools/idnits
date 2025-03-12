@@ -14,6 +14,7 @@ import {
   RFC2119BoilerplateTXTBlock,
   RFC8174BoilerplateTXTBlock,
   metaWithoutObsoleteAndUpdatesTXTBlock,
+  metaObsoleteAndUpdatesHasCharactersTXTBlock,
   ianaConsiderationsTXTBlock
 } from './fixtures/txt-blocks/section-blocks.mjs'
 import { parse } from '../lib/parsers/txt.mjs'
@@ -1005,5 +1006,67 @@ describe('The document does not appear to be ragged-right', () => {
         expect.objectContaining({ line: 25, pos: 62 })
       ])
     )
+  })
+})
+
+describe('Document has hyphenated line-breaks', () => {
+  test('The document does not contain line breaks.', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractTXTBlock}
+      ${introductionTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.hyphenatedLines).toHaveLength(0)
+  })
+
+  test('Document has hyphenated line-breaks', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    line has hyphenated line-\nbreaks
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.hyphenatedLines).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ line: 29, pos: 29 })
+      ])
+    )
+  })
+})
+
+describe('Parsing obsolete and update metadata with some characters', () => {
+  test('Parsing obsolete metadata with some characters', async () => {
+    const txt = `
+      ${metaObsoleteAndUpdatesHasCharactersTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.possibleIssues.updatesRfcWithLetter).toEqual(['RFC7890', 'RFC8901'])
+    expect(result.data.possibleIssues.obsoletesWithLetter).toEqual(['RFC5678', 'RFC2345', 'RFC3456'])
+    expect(result.data.possibleIssues.updatesRfcWithLetter).toHaveLength(2)
+    expect(result.data.possibleIssues.obsoletesWithLetter).toHaveLength(3)
+  })
+
+  test('Parsing text obsolete and update metadata without with some characters ', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.updatesRfcWithLetter).toHaveLength(0)
+    expect(result.data.possibleIssues.obsoletesWithLetter).toHaveLength(0)
   })
 })
