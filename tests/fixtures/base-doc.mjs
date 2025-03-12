@@ -21,9 +21,6 @@ export const baseTXTDoc = {
       references: null,
       ianaConsiderations: null
     },
-    contains: {
-      draftParagraphPointingToTheListOfCurrentId: null
-    },
     title: null,
     slug: null,
     extractedElements: {
@@ -41,7 +38,8 @@ export const baseTXTDoc = {
     },
     possibleIssues: {
       inlineCode: [],
-      misspeled2119Keywords: []
+      misspeled2119Keywords: [],
+      paragraphPointingToTheListOfCurrentId: []
     }
   }
 }

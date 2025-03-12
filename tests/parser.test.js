@@ -669,7 +669,7 @@ describe('Missing acceptable paragraph pointing the list of current id', () => {
     `
 
     const result = await parse(txt, 'txt')
-    expect(result.data.contains.draftParagraphPointingToTheListOfCurrentId).toBeFalsy()
+    expect(result.data.possibleIssues.paragraphPointingToTheListOfCurrentId).toHaveLength(0)
   })
 
   test('The acceptable paragraph pointing the list of current id is present', async () => {
@@ -681,6 +681,19 @@ describe('Missing acceptable paragraph pointing the list of current id', () => {
   `
 
     const result = await parse(txt, 'txt')
-    expect(result.data.contains.draftParagraphPointingToTheListOfCurrentId).toBeTruthy()
+    expect(result.data.possibleIssues.paragraphPointingToTheListOfCurrentId).toHaveLength(1)
+  })
+
+  test('The acceptable paragraph pointing the list of current id is present twice', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${textAcceptableParagraphPointingTheListOfCurrentId}
+    ${abstractTXTBlock}
+    ${textAcceptableParagraphPointingTheListOfCurrentId}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.paragraphPointingToTheListOfCurrentId).toHaveLength(2)
   })
 })
