@@ -1,7 +1,7 @@
 import { describe, expect, test } from '@jest/globals'
 import { MODES } from '../lib/config/modes.mjs'
 import { toContainError, ValidationError, ValidationWarning } from '../lib/helpers/error.mjs'
-import { validateLineLength, validateCodeComments, validateCodeBlockLicenses, validateLineExtraSpacing, validateHyphenatedLineBreaks, validateUpdatesAndObsoletesLines } from '../lib/modules/txt.mjs'
+import { validateLineLength, validateCodeComments, validateCodeBlockLicenses, validateLineExtraSpacing, validateHyphenatedLineBreaks, validateUpdatesAndObsoletesLines, validateTitleUnexpectedIndentation } from '../lib/modules/txt.mjs'
 import { baseTXTDoc } from './fixtures/base-doc.mjs'
 import { cloneDeep } from 'lodash-es'
 
@@ -244,5 +244,27 @@ describe('validateCodeBlockLicenses', () => {
         }
       )
     ])
+  })
+})
+
+describe('Validate section title', () => {
+  test('Section title don`t have unexpected indentation', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.possibleIssues.unexpectedIndentation = []
+
+    await expect(validateTitleUnexpectedIndentation(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
+    await expect(validateTitleUnexpectedIndentation(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
+    await expect(validateTitleUnexpectedIndentation(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+  })
+
+  test('Section title have unexpected indentation', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.possibleIssues.unexpectedIndentation = [{ line: 1, pos: 12 }]
+
+    await expect(validateTitleUnexpectedIndentation(doc, { mode: MODES.NORMAL })).resolves.toContainError('SECTION_TITLE_HAS_UNEXPECTED_INDENTATION', ValidationWarning)
+    await expect(validateTitleUnexpectedIndentation(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('SECTION_TITLE_HAS_UNEXPECTED_INDENTATION', ValidationWarning)
+    await expect(validateTitleUnexpectedIndentation(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
   })
 })

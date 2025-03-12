@@ -38,6 +38,7 @@ export const baseTXTDoc = {
       referenceSectionDraftReferences: []
     },
     possibleIssues: {
+      unexpectedIndentation: [],
       linesWithSpaces: [],
       inlineCode: [],
       misspeled2119Keywords: [],
