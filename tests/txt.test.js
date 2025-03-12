@@ -1,7 +1,7 @@
 import { describe, expect, test } from '@jest/globals'
 import { MODES } from '../lib/config/modes.mjs'
 import { toContainError, ValidationError, ValidationWarning, ValidationComment } from '../lib/helpers/error.mjs'
-import { validateLineLength, validateCodeComments, validateReferenceStyle, validateCodeBlockLicenses, validateLineExtraSpacing, validateUpdatesAndObsoletesLines } from '../lib/modules/txt.mjs'
+import { validateLineLength, validateCodeComments, validateReferenceStyle, validateCodeBlockLicenses, validateLineExtraSpacing, validateUpdatesAndObsoletesLines, validateHyphenatedLineBreaks } from '../lib/modules/txt.mjs'
 import { baseTXTDoc } from './fixtures/base-doc.mjs'
 import { cloneDeep } from 'lodash-es'
 
@@ -132,6 +132,22 @@ describe('Validate document references style.', () => {
     await expect(validateReferenceStyle(doc, { mode: MODES.NORMAL })).resolves.toContainError('DOCUMENT_USE_STRING_REFERENCES', ValidationComment)
     await expect(validateReferenceStyle(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('DOCUMENT_USE_STRING_REFERENCES', ValidationComment)
     await expect(validateReferenceStyle(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+  })
+})
+
+describe('Document hyphenated line-breaks', () => {
+  test('Text document should not contain hyphenated line-breaks', async () => {
+    const doc = { ...baseTXTDoc }
+
+    await expect(validateHyphenatedLineBreaks(doc)).resolves.toHaveLength(0)
+  })
+  test('ext document contain hyphenated line-breaks', async () => {
+    const doc = { ...baseTXTDoc }
+
+    doc.data.possibleIssues.hyphenatedLines = [{ line: 1, pos: 20 }]
+    await expect(validateHyphenatedLineBreaks(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+    await expect(validateHyphenatedLineBreaks(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('HYPHENATED_LINE_BREAKS', ValidationWarning)
+    await expect(validateHyphenatedLineBreaks(doc, { mode: MODES.NORMAL })).resolves.toContainError('HYPHENATED_LINE_BREAKS', ValidationWarning)
   })
 })
 
