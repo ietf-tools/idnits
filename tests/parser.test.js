@@ -13,7 +13,8 @@ import {
   textWithRFC2119KeywordsTXTBlock,
   RFC2119BoilerplateTXTBlock,
   RFC8174BoilerplateTXTBlock,
-  metaWithoutObsoleteAndUpdatesTXTBlock
+  metaWithoutObsoleteAndUpdatesTXTBlock,
+  textAcceptableParagraphPointingTheListOfCurrentId
 } from './fixtures/txt-blocks/section-blocks.mjs'
 import { parse } from '../lib/parsers/txt.mjs'
 
@@ -656,5 +657,30 @@ describe('Parsing references with categorization', () => {
 
     expect(result.data.extractedElements.referenceSectionRfc).toHaveLength(0)
     expect(result.data.extractedElements.referenceSectionDraftReferences).toHaveLength(0)
+  })
+})
+
+describe('Missing acceptable paragraph pointing the list of current id', () => {
+  test('The acceptable paragraph pointing the list of current id is missing', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${introductionTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.contains.draftParagraphPointingToTheListOfCurrentId).toBeFalsy()
+  })
+
+  test('The acceptable paragraph pointing the list of current id is present', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${abstractTXTBlock}
+    ${textAcceptableParagraphPointingTheListOfCurrentId}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.contains.draftParagraphPointingToTheListOfCurrentId).toBeTruthy()
   })
 })

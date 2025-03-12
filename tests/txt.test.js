@@ -1,8 +1,9 @@
 import { describe, expect, test } from '@jest/globals'
 import { MODES } from '../lib/config/modes.mjs'
 import { toContainError, ValidationError, ValidationWarning } from '../lib/helpers/error.mjs'
-import { validateLineLength, validateCodeComments } from '../lib/modules/txt.mjs'
+import { validateLineLength, validateCodeComments, validateAcceptableParagraphPointingListId } from '../lib/modules/txt.mjs'
 import { baseTXTDoc } from './fixtures/base-doc.mjs'
+import { cloneDeep } from 'lodash-es'
 
 expect.extend({
   toContainError
@@ -86,5 +87,27 @@ describe('validateCodeComments', () => {
         ref: 'https://datatracker.ietf.org/doc/rfc8879'
       })
     ])
+  })
+})
+
+describe('The Document have an acceptable paragraph pointing to the list of current id.', () => {
+  test('Document have acceptable paragraph pointing to the list of current id', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.contains.draftParagraphPointingToTheListOfCurrentId = true
+
+    await expect(validateAcceptableParagraphPointingListId(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
+    await expect(validateAcceptableParagraphPointingListId(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
+    await expect(validateAcceptableParagraphPointingListId(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+  })
+
+  test('Document don`t acceptable paragraph pointing to the list of current id', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.contains.draftParagraphPointingToTheListOfCurrentId = false
+
+    await expect(validateAcceptableParagraphPointingListId(doc, { mode: MODES.NORMAL })).resolves.toContainError('ACCEPTABLE_PARAGRAPH_POINTING_LIST_ID_MISSING', ValidationError)
+    await expect(validateAcceptableParagraphPointingListId(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('ACCEPTABLE_PARAGRAPH_POINTING_LIST_ID_MISSING', ValidationError)
+    await expect(validateAcceptableParagraphPointingListId(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('ACCEPTABLE_PARAGRAPH_POINTING_LIST_ID_MISSING', ValidationError)
   })
 })
