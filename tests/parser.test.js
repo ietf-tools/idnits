@@ -13,7 +13,8 @@ import {
   textWithRFC2119KeywordsTXTBlock,
   RFC2119BoilerplateTXTBlock,
   RFC8174BoilerplateTXTBlock,
-  metaWithoutObsoleteAndUpdatesTXTBlock
+  metaWithoutObsoleteAndUpdatesTXTBlock,
+  metaWithoutDocumentNameTXTBlock
 } from './fixtures/txt-blocks/section-blocks.mjs'
 import { parse } from '../lib/parsers/txt.mjs'
 
@@ -656,5 +657,25 @@ describe('Parsing references with categorization', () => {
 
     expect(result.data.extractedElements.referenceSectionRfc).toHaveLength(0)
     expect(result.data.extractedElements.referenceSectionDraftReferences).toHaveLength(0)
+  })
+})
+
+describe('Missing document name on first page', () => {
+  test('The document name on first page is missing', async () => {
+    const txt = `
+    ${metaWithoutDocumentNameTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.slug).toBeNull()
+  })
+
+  test('The document name on first page is present', async () => {
+    const txt = `
+      ${metaTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.slug).toBe('draft-ietf-idr-rt-derived-community-05')
   })
 })

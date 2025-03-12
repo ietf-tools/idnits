@@ -1,8 +1,9 @@
 import { describe, expect, test } from '@jest/globals'
 import { MODES } from '../lib/config/modes.mjs'
 import { toContainError, ValidationError, ValidationWarning } from '../lib/helpers/error.mjs'
-import { validateLineLength, validateCodeComments } from '../lib/modules/txt.mjs'
+import { validateLineLength, validateCodeComments, validateDocumentName } from '../lib/modules/txt.mjs'
 import { baseTXTDoc } from './fixtures/base-doc.mjs'
+import { cloneDeep } from 'lodash-es'
 
 expect.extend({
   toContainError
@@ -86,5 +87,26 @@ describe('validateCodeComments', () => {
         ref: 'https://datatracker.ietf.org/doc/rfc8879'
       })
     ])
+  })
+})
+
+describe('Validate document name on first page.', () => {
+  test('Document name doesn`t on first page', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.slug = null
+
+    await expect(validateDocumentName(doc, { mode: MODES.NORMAL })).resolves.toContainError('DOCUMENT_NAME_MISSING', ValidationError)
+    await expect(validateDocumentName(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('DOCUMENT_NAME_MISSING', ValidationError)
+    await expect(validateDocumentName(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('DOCUMENT_NAME_MISSING', ValidationError)
+  })
+  test('Document name is present', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.slug = 'draft-'
+
+    await expect(validateDocumentName(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
+    await expect(validateDocumentName(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
+    await expect(validateDocumentName(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
   })
 })
