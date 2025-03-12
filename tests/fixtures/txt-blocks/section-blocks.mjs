@@ -1,18 +1,18 @@
 export const abstractTXTBlock = `
-    Abstract
-    This document specifies a way to derive an Extended Community from a
-    Route Target and describes some example use cases.
+Abstract
+   This document specifies a way to derive an Extended Community from a
+   Route Target and describes some example use cases.
 `
 
 export const abstractWithReferencesTXTBlock = `
-    Abstract
-    This document specifies a way to derive an Extended Community from a
-    Route Target and describes some example use cases.
-    See reference below [1]
+Abstract
+   This document specifies a way to derive an Extended Community from a
+   Route Target and describes some example use cases.
+   See reference below [1]
 `
 
 export const tableOfContentsTXTBlock = `
-    Table of Contents
+Table of Contents
     1. Introduction .................................................... 3
     2. Background ...................................................... 4
     3. Problem Statement ............................................... 5
@@ -23,9 +23,9 @@ export const tableOfContentsTXTBlock = `
 `
 
 export const introductionTXTBlock = `
-    1. Introduction
-    The purpose of this document is to define the structure and standards
-    for creating documents in accordance with current guidelines.
+1. Introduction
+   The purpose of this document is to define the structure and standards
+   for creating documents in accordance with current guidelines.
 `
 
 export const backgroundTXTBlock = `
@@ -47,9 +47,9 @@ export const proposedSolutionTXTBlock = `
 `
 
 export const securityConsiderationsTXTBlock = `
-    5. Security Considerations
-    Security implications must be considered when sharing documents, and
-    sensitive information should be appropriately protected.
+5. Security Considerations
+   Security implications must be considered when sharing documents, and
+   sensitive information should be appropriately protected.
 `
 
 export const ianaConsiderationsTXTBlock = `
@@ -58,10 +58,12 @@ export const ianaConsiderationsTXTBlock = `
 `
 
 export const referencesTXTBlockShort = `
-    7. References
-    [RFC2119] Bradner, S., "Key words for use in RFCs to Indicate
+7. References
+
+   [RFC2119] Bradner, S., "Key words for use in RFCs to Indicate
               Requirement Levels", BCP 14, RFC 2119, March 1997.
-    [RFC8174] Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC 2119
+
+   [RFC8174] Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC 2119
               Key Words", RFC 8174, May 2017.
 `
 export const metaTXTBlock = `
