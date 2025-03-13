@@ -15,7 +15,8 @@ import {
   RFC8174BoilerplateTXTBlock,
   metaWithoutObsoleteAndUpdatesTXTBlock,
   metaObsoleteAndUpdatesHasCharactersTXTBlock,
-  ianaConsiderationsTXTBlock
+  ianaConsiderationsTXTBlock,
+  PageBlock
 } from './fixtures/txt-blocks/section-blocks.mjs'
 import { parse } from '../lib/parsers/txt.mjs'
 
@@ -1099,5 +1100,67 @@ describe('Parsing obsolete and update metadata with some characters', () => {
     const result = await parse(txt, 'txt')
     expect(result.data.possibleIssues.updatesRfcWithLetter).toHaveLength(0)
     expect(result.data.possibleIssues.obsoletesWithLetter).toHaveLength(0)
+  })
+})
+
+describe('Parsing pages (page count)', () => {
+  test('Document should have at least one page even without pagebreak', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.pageCount).toEqual(1)
+  })
+
+  test('Parsing page breaks', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+      ${PageBlock}
+      ${securityConsiderationsTXTBlock}
+      ${PageBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.pageCount).toEqual(3)
+  })
+
+  test('Parser should detect table of contents in the document', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${abstractWithReferencesTXTBlock}
+    ${introductionTXTBlock}
+    ${securityConsiderationsTXTBlock}
+    ${PageBlock}
+    ${securityConsiderationsTXTBlock}
+    ${PageBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.isTableOfContentsExists).toBeTruthy()
+  })
+
+  test('Parser should not detect table of contents if it doesn\'t exist', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${abstractWithReferencesTXTBlock}
+    ${introductionTXTBlock}
+    ${securityConsiderationsTXTBlock}
+    ${PageBlock}
+    ${securityConsiderationsTXTBlock}
+    ${PageBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.isTableOfContentsExists).toBeFalsy()
   })
 })

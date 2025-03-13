@@ -218,3 +218,9 @@ export const RFC8174BoilerplateTXTBlock = `
     document are to be interpreted as described in BCP 14 [RFC2119] [RFC8174] 
     when, and only when, they appear in all capitals, as shown here.
 `
+
+export const PageBlock = `
+Zhang, et al.           Expires 8 September 2023                [Page 1]
+
+Internet-Draft               RT-derived ECs                   March 2023
+`
