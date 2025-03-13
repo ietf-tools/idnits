@@ -13,7 +13,9 @@ import {
   textWithRFC2119KeywordsTXTBlock,
   RFC2119BoilerplateTXTBlock,
   RFC8174BoilerplateTXTBlock,
-  metaWithoutObsoleteAndUpdatesTXTBlock
+  metaWithoutObsoleteAndUpdatesTXTBlock,
+  textWithFormFeedTXTBlock,
+  textWithoutFormFeedTXTBlock
 } from './fixtures/txt-blocks/section-blocks.mjs'
 import { parse } from '../lib/parsers/txt.mjs'
 
@@ -656,5 +658,27 @@ describe('Parsing references with categorization', () => {
 
     expect(result.data.extractedElements.referenceSectionRfc).toHaveLength(0)
     expect(result.data.extractedElements.referenceSectionDraftReferences).toHaveLength(0)
+  })
+})
+
+describe('Pages are not separated by formfeeds', () => {
+  test('Pages are not separated by formfeeds', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${textWithoutFormFeedTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.pageCount).toBe(1)
+  })
+
+  test('Pages are separated by formfeeds', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${textWithFormFeedTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.pageCount).toBe(2)
   })
 })

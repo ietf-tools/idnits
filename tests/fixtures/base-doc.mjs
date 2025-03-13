@@ -21,6 +21,9 @@ export const baseTXTDoc = {
       references: null,
       ianaConsiderations: null
     },
+    contains: {
+      pagesFound: 0
+    },
     title: null,
     slug: null,
     extractedElements: {
