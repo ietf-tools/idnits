@@ -223,3 +223,8 @@ export const TLP406aTXTBlock = `
    This Internet-Draft is submitted in full conformance with the
    provisions of BCP 78 and BCP 79.
 `
+export const PageBlock = `
+Zhang, et al.           Expires 8 September 2023                [Page 1]
+
+Internet-Draft               RT-derived ECs                   March 2023
+`

@@ -16,7 +16,8 @@ import {
   metaWithoutObsoleteAndUpdatesTXTBlock,
   metaObsoleteAndUpdatesHasCharactersTXTBlock,
   ianaConsiderationsTXTBlock,
-  TLP406aTXTBlock
+  TLP406aTXTBlock,
+  PageBlock
 } from './fixtures/txt-blocks/section-blocks.mjs'
 import { parse } from '../lib/parsers/txt.mjs'
 
@@ -1128,5 +1129,36 @@ describe('Parsing TLP 4.0 6.a text', () => {
 
     const result = await parse(txt, 'txt')
     expect(result.data.contains.submissionCompliance).toBeTruthy()
+  })
+})
+
+describe('Parsing TLP 4.0 6.a line page', () => {
+  test('Parsing TLP 4.5 6.a line page on the second page', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${abstractWithReferencesTXTBlock}
+    ${introductionTXTBlock}
+    ${PageBlock}
+    ${TLP406aTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.submissionCompliancePage).toEqual(2)
+  })
+
+  test('Should detect TLP 4.0 6.a on first page', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${abstractWithReferencesTXTBlock}
+    ${introductionTXTBlock}
+    ${TLP406aTXTBlock}
+    ${PageBlock}
+    ${securityConsiderationsTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.submissionCompliancePage).toEqual(1)
   })
 })
