@@ -15,7 +15,8 @@ import {
   RFC8174BoilerplateTXTBlock,
   metaWithoutObsoleteAndUpdatesTXTBlock,
   textWithFormFeedTXTBlock,
-  textWithoutFormFeedTXTBlock
+  textWithoutFormFeedTXTBlock,
+  textWithFormFeedOnLineTXTBlock
 } from './fixtures/txt-blocks/section-blocks.mjs'
 import { parse } from '../lib/parsers/txt.mjs'
 
@@ -680,5 +681,31 @@ describe('Pages are not separated by formfeeds', () => {
 
     const result = await parse(txt, 'txt')
     expect(result.data.pageCount).toBe(2)
+  })
+})
+
+describe('Formfeed and Page occur on a line, possibly separated by spaces', () => {
+  test('Formfeed and Page not occur on a line', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${textWithFormFeedTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.pageLineWithFormFeed).toHaveLength(0)
+  })
+
+  test('Formfeed and Page occur on a line', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${textWithFormFeedOnLineTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.pageLineWithFormFeed).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ lines: 20, page: 1 })
+      ])
+    )
   })
 })

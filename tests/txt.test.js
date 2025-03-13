@@ -1,7 +1,7 @@
 import { describe, expect, test } from '@jest/globals'
 import { MODES } from '../lib/config/modes.mjs'
-import { toContainError, ValidationError, ValidationWarning } from '../lib/helpers/error.mjs'
-import { validateLineLength, validateCodeComments, validateSeparatedFormfeeds } from '../lib/modules/txt.mjs'
+import { toContainError, ValidationError, ValidationWarning, ValidationComment } from '../lib/helpers/error.mjs'
+import { validateLineLength, validateCodeComments, validateSeparatedFormfeeds, validateFormFeedOnSeparateLine } from '../lib/modules/txt.mjs'
 import { baseTXTDoc } from './fixtures/base-doc.mjs'
 import { cloneDeep } from 'lodash-es'
 
@@ -110,5 +110,27 @@ describe('Validate pages are not separated by formfeeds.', () => {
     await expect(validateSeparatedFormfeeds(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
     await expect(validateSeparatedFormfeeds(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
     await expect(validateSeparatedFormfeeds(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+  })
+})
+
+describe('FORMFEED and [Page occur on a line, possibly separated by spaces (indicates NROFF post-processing wasn`t successful).', () => {
+  test('Document don`t have formfeed and page occur on a line', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.possibleIssues.pageLineWithFormFeed = []
+
+    await expect(validateFormFeedOnSeparateLine(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
+    await expect(validateFormFeedOnSeparateLine(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
+    await expect(validateFormFeedOnSeparateLine(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+  })
+
+  test('Document have formfeed and page occur on a line', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.possibleIssues.pageLineWithFormFeed = [{ page: 1, line: 2 }]
+
+    await expect(validateFormFeedOnSeparateLine(doc, { mode: MODES.NORMAL })).resolves.toContainError('DOCUMENT_DIDN`T_SUCCESSFULLY_PASS_NROFF_POST_PROCESSING', ValidationComment)
+    await expect(validateFormFeedOnSeparateLine(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('DOCUMENT_DIDN`T_SUCCESSFULLY_PASS_NROFF_POST_PROCESSING', ValidationComment)
+    await expect(validateFormFeedOnSeparateLine(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('DOCUMENT_DIDN`T_SUCCESSFULLY_PASS_NROFF_POST_PROCESSING', ValidationComment)
   })
 })
