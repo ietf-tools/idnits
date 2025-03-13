@@ -11,10 +11,11 @@ export const baseTXTDoc = {
       authors: [],
       date: null,
       source: null,
-      expires: null
+      expires: null,
+      intendedStatus: null
     },
     content: {
-      abstract: null,
+      abstract: ['This document obsoletes RFC 5678.'],
       introduction: null,
       securityConsiderations: null,
       authorAddress: null,
@@ -25,15 +26,15 @@ export const baseTXTDoc = {
       copyrightSection6_b_i: null
     },
     title: null,
-    slug: null,
+    slug: 'draft-ietf-beep-boop-01',
     extractedElements: {
       fqdnDomains: [],
       ipv4: [],
       ipv6: [],
       keywords2119: [],
       boilerplate2119Keywords: [],
-      obsoletesRfc: [],
-      updatesRfc: [],
+      obsoletesRfc: ['5678'],
+      updatesRfc: ['1234'],
       nonReferenceSectionRfc: [],
       referenceSectionRfc: [],
       nonReferenceSectionDraftReferences: [],
@@ -41,8 +42,13 @@ export const baseTXTDoc = {
       copyrightDates: []
     },
     possibleIssues: {
+      linesWithSpaces: [],
       inlineCode: [],
-      misspeled2119Keywords: []
+      misspeled2119Keywords: [],
+      isPKorBM: null,
+      hyphenatedLines: [],
+      updatesRfcWithLetter: [],
+      obsoletesWithLetter: []
     }
   }
 }
