@@ -99,6 +99,24 @@ Expires: 8 September 2023                                      K. Patel
                  draft-ietf-idr-rt-derived-community-05
 `
 
+export const metaObsoleteAndUpdatesHasCharactersTXTBlock = `
+
+
+
+
+idr                                                            Z. Zhang
+Internet-Draft                                                  J. Haas
+Intended status: Standards Track                       Juniper Networks
+Expires: 8 September 2023                                      K. Patel
+Obsoletes: RFC5678, 1234, RFC2345, RFC3456                       Arrcus
+                                                        21 January 2025
+Updates: 6789, RFC7890, RFC8901, 9012 (if approved)
+
+
+            Extended Communities Derived from Route Targets
+                 draft-ietf-idr-rt-derived-community-05
+`
+
 export const authorAddressTXTBlock = `
 Authors' Addresses
 
