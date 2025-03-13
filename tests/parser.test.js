@@ -15,7 +15,8 @@ import {
   RFC8174BoilerplateTXTBlock,
   metaWithoutObsoleteAndUpdatesTXTBlock,
   metaObsoleteAndUpdatesHasCharactersTXTBlock,
-  ianaConsiderationsTXTBlock
+  ianaConsiderationsTXTBlock,
+  TLP406aTXTBlock
 } from './fixtures/txt-blocks/section-blocks.mjs'
 import { parse } from '../lib/parsers/txt.mjs'
 
@@ -1099,5 +1100,33 @@ describe('Parsing obsolete and update metadata with some characters', () => {
     const result = await parse(txt, 'txt')
     expect(result.data.possibleIssues.updatesRfcWithLetter).toHaveLength(0)
     expect(result.data.possibleIssues.obsoletesWithLetter).toHaveLength(0)
+  })
+})
+
+describe('Parsing TLP 4.0 6.a text', () => {
+  test('No TLP 4.0 6.a text', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${abstractWithReferencesTXTBlock}
+    ${introductionTXTBlock}
+    ${securityConsiderationsTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.contains.submissionCompliance).toBeFalsy()
+  })
+
+  test('TLP 4.0 6.a text appears', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${abstractWithReferencesTXTBlock}
+    ${introductionTXTBlock}
+    ${TLP406aTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.contains.submissionCompliance).toBeTruthy()
   })
 })
