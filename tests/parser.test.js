@@ -1135,3 +1135,77 @@ describe('Parsing obsolete and update metadata with some characters', () => {
     expect(result.data.possibleIssues.obsoletesWithLetter).toHaveLength(0)
   })
 })
+
+describe('Reference is declared, but not used in the document', () => {
+  test('Parsing declared but not used references', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+      ${referenceTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.referenceSectionRfc).toEqual([
+      expect.objectContaining({ subsection: 'normative_references', value: '4360' }),
+      expect.objectContaining({ subsection: 'normative_references', value: '5701' }),
+      expect.objectContaining({ subsection: 'normative_references', value: '7153' }),
+      expect.objectContaining({ subsection: 'normative_references', value: '7432' }),
+      expect.objectContaining({ subsection: 'normative_references', value: '2345' })
+    ])
+    expect(result.data.extractedElements.referenceSectionDraftReferences).toEqual([
+      expect.objectContaining({ value: '[Lalalala-Refere-Sponsor]' }),
+      expect.objectContaining({ value: '[I-D.ietf-bess-evpn-igmp-mld-proxy]' }),
+      expect.objectContaining({ value: '[I-D.ietf-bess-bgp-multicast-controller]' }),
+      expect.objectContaining({ value: '[I-D.ietf-idr-legacy-rtc]' })
+    ])
+  })
+
+  test('Parsing references in text (only one reference)', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+      ${referenceTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.nonReferenceSectionDraftReferences).toContain('[1]')
+    expect(result.data.extractedElements.nonReferenceSectionRfc).toHaveLength(0)
+  })
+
+  test('Parsing references in text (multiple references)', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      [RFC255], [RFC256], [RFC257], [RFC258]
+      ${abstractWithReferencesTXTBlock}
+      ${introductionTXTBlock}
+      [I-D.ietf-bess-evpn-igmp-mld-proxy], [I-D.ietf-bess-bgp-multicast-controller], [I-D.ietf-idr-legacy-rtc]
+      ${securityConsiderationsTXTBlock}
+      ${referenceTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.nonReferenceSectionDraftReferences).toContain('[1]', '[I-D.ietf-bess-evpn-igmp-mld-proxy]', '[I-D.ietf-bess-bgp-multicast-controller]', '[I-D.ietf-idr-legacy-rtc]')
+    expect(result.data.extractedElements.nonReferenceSectionRfc).toContain('255', '256', '257', '258')
+  })
+
+  test('Parsing text without reference section', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.referenceSectionRfc).toHaveLength(0)
+    expect(result.data.extractedElements.referenceSectionDraftReferences).toHaveLength(0)
+  })
+})
