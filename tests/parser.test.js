@@ -15,6 +15,7 @@ import {
   RFC8174BoilerplateTXTBlock,
   metaWithoutObsoleteAndUpdatesTXTBlock,
   abstractNumberedTXTBlock,
+  metaObsoleteAndUpdatesHasCharactersTXTBlock,
   ianaConsiderationsTXTBlock
 } from './fixtures/txt-blocks/section-blocks.mjs'
 import { parse } from '../lib/parsers/txt.mjs'
@@ -1034,5 +1035,172 @@ describe('Abstract section is numbered', () => {
 
     const result = await parse(txt, 'txt')
     expect(result.data.possibleIssues.isAbstractNumbered).toBeFalsy()
+  })
+})
+
+describe('Document starts with PK or BM', () => {
+  test('The document starts with PK', async () => {
+    const txt = `PK
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.isPKorBM).toBeTruthy()
+  })
+
+  test('The document starts with BM', async () => {
+    const txt = `BM
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.isPKorBM).toBeTruthy()
+  })
+  test('The document starts without PK and BM', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.isPKorBM).toBeFalsy()
+  })
+})
+
+describe('Document has hyphenated line-breaks', () => {
+  test('The document does not contain line breaks.', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractTXTBlock}
+      ${introductionTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.hyphenatedLines).toHaveLength(0)
+  })
+
+  test('Document has hyphenated line-breaks', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    line has hyphenated line-\nbreaks
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.hyphenatedLines).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ line: 29, pos: 29 })
+      ])
+    )
+  })
+})
+
+describe('Parsing obsolete and update metadata with some characters', () => {
+  test('Parsing obsolete metadata with some characters', async () => {
+    const txt = `
+      ${metaObsoleteAndUpdatesHasCharactersTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.possibleIssues.updatesRfcWithLetter).toEqual(['RFC7890', 'RFC8901'])
+    expect(result.data.possibleIssues.obsoletesWithLetter).toEqual(['RFC5678', 'RFC2345', 'RFC3456'])
+    expect(result.data.possibleIssues.updatesRfcWithLetter).toHaveLength(2)
+    expect(result.data.possibleIssues.obsoletesWithLetter).toHaveLength(3)
+  })
+
+  test('Parsing text obsolete and update metadata without with some characters ', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.updatesRfcWithLetter).toHaveLength(0)
+    expect(result.data.possibleIssues.obsoletesWithLetter).toHaveLength(0)
+  })
+})
+
+describe('Reference is declared, but not used in the document', () => {
+  test('Parsing declared but not used references', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+      ${referenceTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.referenceSectionRfc).toEqual([
+      expect.objectContaining({ subsection: 'normative_references', value: '4360' }),
+      expect.objectContaining({ subsection: 'normative_references', value: '5701' }),
+      expect.objectContaining({ subsection: 'normative_references', value: '7153' }),
+      expect.objectContaining({ subsection: 'normative_references', value: '7432' }),
+      expect.objectContaining({ subsection: 'normative_references', value: '2345' })
+    ])
+    expect(result.data.extractedElements.referenceSectionDraftReferences).toEqual([
+      expect.objectContaining({ value: '[Lalalala-Refere-Sponsor]' }),
+      expect.objectContaining({ value: '[I-D.ietf-bess-evpn-igmp-mld-proxy]' }),
+      expect.objectContaining({ value: '[I-D.ietf-bess-bgp-multicast-controller]' }),
+      expect.objectContaining({ value: '[I-D.ietf-idr-legacy-rtc]' })
+    ])
+  })
+
+  test('Parsing references in text (only one reference)', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+      ${referenceTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.nonReferenceSectionDraftReferences).toContain('[1]')
+    expect(result.data.extractedElements.nonReferenceSectionRfc).toHaveLength(0)
+  })
+
+  test('Parsing references in text (multiple references)', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      [RFC255], [RFC256], [RFC257], [RFC258]
+      ${abstractWithReferencesTXTBlock}
+      ${introductionTXTBlock}
+      [I-D.ietf-bess-evpn-igmp-mld-proxy], [I-D.ietf-bess-bgp-multicast-controller], [I-D.ietf-idr-legacy-rtc]
+      ${securityConsiderationsTXTBlock}
+      ${referenceTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.nonReferenceSectionDraftReferences).toContain('[1]', '[I-D.ietf-bess-evpn-igmp-mld-proxy]', '[I-D.ietf-bess-bgp-multicast-controller]', '[I-D.ietf-idr-legacy-rtc]')
+    expect(result.data.extractedElements.nonReferenceSectionRfc).toContain('255', '256', '257', '258')
+  })
+
+  test('Parsing text without reference section', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.referenceSectionRfc).toHaveLength(0)
+    expect(result.data.extractedElements.referenceSectionDraftReferences).toHaveLength(0)
   })
 })
