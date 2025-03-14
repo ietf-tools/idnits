@@ -1,7 +1,7 @@
 import { describe, expect, test } from '@jest/globals'
 import { MODES } from '../lib/config/modes.mjs'
 import { toContainError, ValidationError, ValidationWarning, ValidationComment } from '../lib/helpers/error.mjs'
-import { validateLineLength, validateCodeComments, validatePKorBM, validateCodeBlockLicenses, validateLineExtraSpacing, validateUpdatesAndObsoletesLines, validateHyphenatedLineBreaks, validateReferenceStyle, validateAbstractSectionIsNumbered } from '../lib/modules/txt.mjs'
+import { validateLineLength, validateCodeComments, validatePKorBM, validateCodeBlockLicenses, validateLineExtraSpacing, validateUpdatesAndObsoletesLines, validateHyphenatedLineBreaks, validateReferenceStyle, validateLinksInText, validateAbstractSectionIsNumbered } from '../lib/modules/txt.mjs'
 import { baseTXTDoc } from './fixtures/base-doc.mjs'
 import { cloneDeep } from 'lodash-es'
 
@@ -130,6 +130,33 @@ describe('The abstract section should not be numbered.', () => {
     await expect(validateAbstractSectionIsNumbered(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
     await expect(validateAbstractSectionIsNumbered(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
     await expect(validateAbstractSectionIsNumbered(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+  })
+})
+
+describe('Document has some links like a reference appears but does not occur in any reference section', () => {
+  test('Text document should not contain some links live reference', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.extractedElements.bracketedRfcReferences = ['[RFC1234]']
+    doc.data.extractedElements.referenceSectionRfc = [{ value: '4567' }]
+
+    doc.data.extractedElements.bracketedRfcNonReferences = ['[RFC1234]', '[RFC4567]']
+
+    await expect(validateLinksInText(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
+    await expect(validateLinksInText(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
+    await expect(validateLinksInText(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+  })
+  test('Text document should contain some links live reference', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.extractedElements.bracketedRfcReferences = ['[RFC1234]']
+    doc.data.extractedElements.referenceSectionRfc = [{ value: '4567' }]
+
+    doc.data.extractedElements.bracketedRfcNonReferences = ['[RFC87411]', '[RFC1111]']
+
+    await expect(validateLinksInText(doc, { mode: MODES.NORMAL })).resolves.toContainError('REFERENCE_MISSING_IN_REFERENCE_SECTION', ValidationWarning)
+    await expect(validateLinksInText(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('REFERENCE_MISSING_IN_REFERENCE_SECTION', ValidationWarning)
+    await expect(validateLinksInText(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('REFERENCE_MISSING_IN_REFERENCE_SECTION', ValidationWarning)
   })
 })
 
