@@ -14,6 +14,7 @@ import {
   RFC2119BoilerplateTXTBlock,
   RFC8174BoilerplateTXTBlock,
   metaWithoutObsoleteAndUpdatesTXTBlock,
+  abstractNumberedTXTBlock,
   metaObsoleteAndUpdatesHasCharactersTXTBlock,
   ianaConsiderationsTXTBlock
 } from './fixtures/txt-blocks/section-blocks.mjs'
@@ -1040,6 +1041,34 @@ describe('The document does not appear to be ragged-right', () => {
         expect.objectContaining({ line: 25, pos: 62 })
       ])
     )
+  })
+})
+
+describe('Abstract section is numbered', () => {
+  test('The abstract section is numbered', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractNumberedTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.isAbstractNumbered).toBeTruthy()
+  })
+
+  test('The abstract section is not numbered', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${abstractTXTBlock}
+    ${introductionTXTBlock}
+    ${securityConsiderationsTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.isAbstractNumbered).toBeFalsy()
   })
 })
 

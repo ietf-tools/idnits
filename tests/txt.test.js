@@ -1,7 +1,7 @@
 import { describe, expect, test } from '@jest/globals'
 import { MODES } from '../lib/config/modes.mjs'
 import { toContainError, ValidationError, ValidationWarning, ValidationComment } from '../lib/helpers/error.mjs'
-import { validateLineLength, validateCodeComments, validatePKorBM, validateCodeBlockLicenses, validateLineExtraSpacing, validateUpdatesAndObsoletesLines, validateHyphenatedLineBreaks, validateReferenceStyle, validateLinksInText } from '../lib/modules/txt.mjs'
+import { validateLineLength, validateCodeComments, validatePKorBM, validateCodeBlockLicenses, validateLineExtraSpacing, validateUpdatesAndObsoletesLines, validateHyphenatedLineBreaks, validateReferenceStyle, validateLinksInText, validateAbstractSectionIsNumbered } from '../lib/modules/txt.mjs'
 import { baseTXTDoc } from './fixtures/base-doc.mjs'
 import { cloneDeep } from 'lodash-es'
 
@@ -109,6 +109,27 @@ describe('validateCodeComments', () => {
         ref: 'https://datatracker.ietf.org/doc/rfc8879'
       })
     ])
+  })
+})
+
+describe('The abstract section should not be numbered.', () => {
+  test('Abstract section numbered', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.possibleIssues.isAbstractNumbered = true
+
+    await expect(validateAbstractSectionIsNumbered(doc, { mode: MODES.NORMAL })).resolves.toContainError('ABSTRACT_SECTION_IS_NUMBERED', ValidationError)
+    await expect(validateAbstractSectionIsNumbered(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('ABSTRACT_SECTION_IS_NUMBERED', ValidationError)
+    await expect(validateAbstractSectionIsNumbered(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('ABSTRACT_SECTION_IS_NUMBERED', ValidationError)
+  })
+  test('Abstract section not numbered', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.possibleIssues.isAbstractNumbered = false
+
+    await expect(validateAbstractSectionIsNumbered(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
+    await expect(validateAbstractSectionIsNumbered(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
+    await expect(validateAbstractSectionIsNumbered(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
   })
 })
 
