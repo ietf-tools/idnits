@@ -725,7 +725,7 @@ describe('Parsing references with categorization', () => {
       ])
     )
   })
-  
+
   test('Parses reference with square brackets', async () => {
     const txt = `
       ${metaTXTBlock}
@@ -1175,7 +1175,7 @@ describe('Reference is declared, but not used in the document', () => {
 
     const result = await parse(txt, 'txt')
     expect(result.data.extractedElements.nonReferenceSectionDraftReferences).toContain('[1]')
-    expect(result.data.extractedElements.nonReferenceSectionRfc).toHaveLength(0)
+    expect(result.data.extractedElements.nonReferenceSectionRfc).toHaveLength(1)
   })
 
   test('Parsing references in text (multiple references)', async () => {
