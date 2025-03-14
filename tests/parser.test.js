@@ -675,15 +675,13 @@ describe('Parsing references with categorization', () => {
 
     const result = await parse(txt, 'txt')
 
-    expect(result.data.extractedElements.referenceSectionRfc).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ value: '5234', subsection: 'unclassified_references' }),
-        expect.objectContaining({ value: '8446', subsection: 'unclassified_references' })
-      ])
+    expect(result.data.extractedElements.bracketedRfcReferences).toEqual(
+      expect.arrayContaining(['[RFC5234]', '[RFC8446]'])
     )
+    expect(result.data.extractedElements.bracketedRfcReferences).toHaveLength(2)
   })
 
-  test('Detects unclassified draft references', async () => {
+  test('Parses references in all text with square brackets', async () => {
     const txt = `
       ${metaTXTBlock}
       ${tableOfContentsTXTBlock}
@@ -726,6 +724,43 @@ describe('Parsing references with categorization', () => {
         expect.objectContaining({ value: '9205', subsection: null })
       ])
     )
+  })
+
+  test('Parses reference with square brackets', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+      7. References
+      [RFC5234] Crocker, D., "Augmented BNF for Syntax Specifications: ABNF", RFC 5234, January 2008.
+      [RFC8446] Rescorla, E., "The Transport Layer Security (TLS) Protocol Version 1.3", RFC 8446, August 2018.
+    `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.extractedElements.bracketedRfcReferences).toEqual(
+      expect.arrayContaining(['[RFC5234]', '[RFC8446]'])
+    )
+    expect(result.data.extractedElements.bracketedRfcReferences).toHaveLength(2)
+  })
+
+  test('Parses references in all text with square brackets', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.extractedElements.bracketedRfcNonReferences).toEqual(
+      expect.arrayContaining(['[RFC1234]'])
+    )
+    expect(result.data.extractedElements.bracketedRfcNonReferences).toHaveLength(1)
   })
 })
 
@@ -998,7 +1033,6 @@ describe('The document does not appear to be ragged-right', () => {
     `
 
     const result = await parse(txt, 'txt')
-
     expect(result.data.possibleIssues.linesWithSpaces).toHaveLength(3)
     expect(result.data.possibleIssues.linesWithSpaces).toEqual(
       expect.arrayContaining([
@@ -1141,7 +1175,7 @@ describe('Reference is declared, but not used in the document', () => {
 
     const result = await parse(txt, 'txt')
     expect(result.data.extractedElements.nonReferenceSectionDraftReferences).toContain('[1]')
-    expect(result.data.extractedElements.nonReferenceSectionRfc).toHaveLength(0)
+    expect(result.data.extractedElements.nonReferenceSectionRfc).toHaveLength(1)
   })
 
   test('Parsing references in text (multiple references)', async () => {
