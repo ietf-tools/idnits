@@ -43,6 +43,7 @@ export const baseTXTDoc = {
       linesWithSpaces: [],
       inlineCode: [],
       misspeled2119Keywords: [],
+      isCopyrightNoticeNumbered: null,
       isAbstractNumbered: null,
       isPKorBM: null,
       hyphenatedLines: [],

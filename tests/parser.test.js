@@ -14,6 +14,8 @@ import {
   RFC2119BoilerplateTXTBlock,
   RFC8174BoilerplateTXTBlock,
   metaWithoutObsoleteAndUpdatesTXTBlock,
+  copyrightNoticeNumberedTXTBlock,
+  copyrightNoticeTXTBlock,
   statusOfMemoTXTBlock,
   statusOfMemoNumberedTXTBlock,
   abstractNumberedTXTBlock,
@@ -1265,5 +1267,32 @@ describe('Status of this memo section is numbered', () => {
 
     const result = await parse(txt, 'txt')
     expect(result.data.possibleIssues.isStatusOfThisMemoNumbered).toBeTruthy()
+  })
+})
+
+describe('Copyright Notice section is numbered', () => {
+  test('Copyright Notice section is numbered', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${introductionTXTBlock}
+      ${copyrightNoticeTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.isCopyrightNoticeNumbered).toBeFalsy()
+  })
+
+  test('Copyright Notice section is not numbered', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${abstractTXTBlock}
+    ${introductionTXTBlock}
+    ${copyrightNoticeNumberedTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.isCopyrightNoticeNumbered).toBeTruthy()
   })
 })

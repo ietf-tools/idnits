@@ -12,7 +12,8 @@ import {
   validateReferenceStyle,
   validateLinksInText,
   validateAbstractSectionIsNumbered,
-  validateStatusOfThisMemoSectionIsNumbered
+  validateStatusOfThisMemoSectionIsNumbered,
+  validateCopyrightNoticeSectionIsNumbered
 } from '../lib/modules/txt.mjs'
 import { baseTXTDoc } from './fixtures/base-doc.mjs'
 import { cloneDeep } from 'lodash-es'
@@ -121,6 +122,27 @@ describe('validateCodeComments', () => {
         ref: 'https://datatracker.ietf.org/doc/rfc8879'
       })
     ])
+  })
+})
+
+describe('The Copyright Notice section should not be numbered.', () => {
+  test('Copyright Notice section numbered', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.possibleIssues.isCopyrightNoticeNumbered = true
+
+    await expect(validateCopyrightNoticeSectionIsNumbered(doc, { mode: MODES.NORMAL })).resolves.toContainError('COPYRIGHT_NOTICE_SECTION_IS_NUMBERED', ValidationError)
+    await expect(validateCopyrightNoticeSectionIsNumbered(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('COPYRIGHT_NOTICE_SECTION_IS_NUMBERED', ValidationError)
+    await expect(validateCopyrightNoticeSectionIsNumbered(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('COPYRIGHT_NOTICE_SECTION_IS_NUMBERED', ValidationError)
+  })
+  test('Copyright Notice section not numbered', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.possibleIssues.isCopyrightNoticeNumbered = false
+
+    await expect(validateCopyrightNoticeSectionIsNumbered(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
+    await expect(validateCopyrightNoticeSectionIsNumbered(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
+    await expect(validateCopyrightNoticeSectionIsNumbered(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
   })
 })
 
