@@ -4,6 +4,12 @@ export const abstractTXTBlock = `
     Route Target and describes some example use cases.
 `
 
+export const abstractNumberedTXTBlock = `
+    1. Abstract
+    This document specifies a way to derive an Extended Community from a
+    Route Target and describes some example use cases.
+`
+
 export const abstractWithReferencesTXTBlock = `
     Abstract
     This document specifies a way to derive an Extended Community from a
@@ -49,7 +55,7 @@ export const proposedSolutionTXTBlock = `
 export const securityConsiderationsTXTBlock = `
     5. Security Considerations
     Security implications must be considered when sharing documents, and
-    sensitive information should be appropriately protected.
+    sensitive information should be appropriately protected [RFC1234].
 `
 
 export const ianaConsiderationsTXTBlock = `
