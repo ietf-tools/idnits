@@ -281,7 +281,7 @@ describe('document should have valid date', () => {
 
     test('Updates an already obsoleted RFC', async () => {
       const doc = baseTXTDoc
-  
+
       doc.data.extractedElements.updatesRfc = ['1264, 2345']
       doc.data.content.abstract = abstractTXTBlock.split('\n')
 
