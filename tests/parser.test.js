@@ -14,6 +14,8 @@ import {
   RFC2119BoilerplateTXTBlock,
   RFC8174BoilerplateTXTBlock,
   metaWithoutObsoleteAndUpdatesTXTBlock,
+  statusOfMemoTXTBlock,
+  statusOfMemoNumberedTXTBlock,
   abstractNumberedTXTBlock,
   metaObsoleteAndUpdatesHasCharactersTXTBlock,
   ianaConsiderationsTXTBlock
@@ -1236,5 +1238,32 @@ describe('Reference is declared, but not used in the document', () => {
     const result = await parse(txt, 'txt')
     expect(result.data.extractedElements.referenceSectionRfc).toHaveLength(0)
     expect(result.data.extractedElements.referenceSectionDraftReferences).toHaveLength(0)
+  })
+})
+
+describe('Status of this memo section is numbered', () => {
+  test('The Status of this memo section is not numbered', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${introductionTXTBlock}
+      ${statusOfMemoTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.isStatusOfThisMemoNumbered).toBeFalsy()
+  })
+
+  test('The Status of this memo section is numbered', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${abstractTXTBlock}
+    ${introductionTXTBlock}
+    ${statusOfMemoNumberedTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.isStatusOfThisMemoNumbered).toBeTruthy()
   })
 })
