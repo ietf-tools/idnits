@@ -1,4 +1,4 @@
-import { afterAll, beforeEach, describe, expect, test } from '@jest/globals'
+import { afterAll, beforeAll, beforeEach, describe, expect, test } from '@jest/globals'
 import { MODES } from '../lib/config/modes.mjs'
 import { toContainError, ValidationWarning, ValidationComment } from '../lib/helpers/error.mjs'
 import {
@@ -41,8 +41,6 @@ describe('document should have valid date', () => {
           }
         }
       }
-
-      fetchMock.dontMockOnce()
 
       const result = await validateObsoleteUpdateRef(doc)
 
@@ -283,13 +281,14 @@ describe('document should have valid date', () => {
 
     test('Updates an already obsoleted RFC', async () => {
       const doc = baseTXTDoc
-      doc.data.extractedElements.updatesRfc = ['1234, 2345']
+
+      doc.data.extractedElements.updatesRfc = ['1264, 2345']
       doc.data.content.abstract = abstractTXTBlock.split('\n')
 
       fetchMock.resetMocks()
       fetch.mockResponse(JSON.stringify({ obsoleted_by: ['3456'] }))
-      await expect(validateObsoleteUpdateRef(doc)).resolves.toContainError('UPDATES_OSOLETED_RFC', ValidationWarning)
-      await expect(validateObsoleteUpdateRef(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('UPDATES_OSOLETED_RFC', ValidationWarning)
+      await expect(validateObsoleteUpdateRef(doc)).resolves.toContainError('UPDATES_OBSOLETED_RFC', ValidationWarning)
+      await expect(validateObsoleteUpdateRef(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('UPDATES_OBSOLETED_RFC', ValidationWarning)
       await expect(validateObsoleteUpdateRef(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
   })
