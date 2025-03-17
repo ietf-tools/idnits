@@ -4,6 +4,12 @@ export const abstractTXTBlock = `
     Route Target and describes some example use cases.
 `
 
+export const abstractNumberedTXTBlock = `
+    1. Abstract
+    This document specifies a way to derive an Extended Community from a
+    Route Target and describes some example use cases.
+`
+
 export const abstractWithReferencesTXTBlock = `
     Abstract
     This document specifies a way to derive an Extended Community from a
@@ -49,7 +55,7 @@ export const proposedSolutionTXTBlock = `
 export const securityConsiderationsTXTBlock = `
     5. Security Considerations
     Security implications must be considered when sharing documents, and
-    sensitive information should be appropriately protected.
+    sensitive information should be appropriately protected [RFC1234].
 `
 
 export const ianaConsiderationsTXTBlock = `
@@ -223,4 +229,50 @@ export const PageBreak = `
 Zhang, et al.           Expires 8 September 2023               [Page 1]
 
 Internet-Draft               RT-derived ECs                  March 2023
+`
+
+export const statusOfMemoTXTBlock = `
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at https://datatracker.ietf.org/drafts/current/.
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+   This Internet-Draft will expire on 8 September 2023.
+`
+
+export const statusOfMemoNumberedTXTBlock = `
+1. Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP
+`
+
+export const copyrightNoticeTXTBlock = `
+Copyright Notice
+   Copyright (c) 2023 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents (https://trustee.ietf.org/
+   license-info) in effect on the date of publication of this document.
+   Please review these documents carefully, as they describe your rights
+   and restrictions with respect to this document.  Code Components
+   extracted from this document must include Revised BSD License text as
+   described in Section 4.e of the Trust Legal Provisions and are
+   provided without warranty as described in the Revised BSD License.
+`
+
+export const copyrightNoticeNumberedTXTBlock = `
+1. Copyright Notice
+   Copyright (c) 2023 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
 `
