@@ -23,6 +23,7 @@ import {
   ianaConsiderationsTXTBlock
 } from './fixtures/txt-blocks/section-blocks.mjs'
 import { parse } from '../lib/parsers/txt.mjs'
+import { DateTime } from 'luxon'
 
 beforeAll(() => {
   jest.spyOn(console, 'info').mockImplementation(() => {})
@@ -1294,5 +1295,34 @@ describe('Copyright Notice section is numbered', () => {
 
     const result = await parse(txt, 'txt')
     expect(result.data.possibleIssues.isCopyrightNoticeNumbered).toBeTruthy()
+  })
+})
+
+describe('Parsing expires line', () => {
+  test('Parsing expires line', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractTXTBlock}
+      ${introductionTXTBlock}
+      ${copyrightNoticeNumberedTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.header.expires).toBeDefined()
+    expect(result.data.header.expires.toISODate()).toEqual('2023-09-08')
+  })
+
+  test('No expires line', async () => {
+    const txt = `
+      ${metaTXTBlock.replace('Expires: 8 September 2023', '')}
+      ${tableOfContentsTXTBlock}
+      ${abstractTXTBlock}
+      ${introductionTXTBlock}
+      ${copyrightNoticeNumberedTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.header.expires).toBeNull()
   })
 })
