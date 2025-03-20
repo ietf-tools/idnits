@@ -7,7 +7,8 @@ import {
   validateSecurityConsiderationsSection,
   validateAuthorSection,
   validateReferencesSection,
-  validateIANAConsiderationsSection
+  validateIANAConsiderationsSection,
+  validateReferencesInText
 } from '../lib/modules/sections.mjs'
 import { baseTXTDoc, baseXMLDoc } from './fixtures/base-doc.mjs'
 import { cloneDeep, set, times } from 'lodash-es'
@@ -885,6 +886,200 @@ describe('document should have a valid IANA considerations section', () => {
       set(doc, 'data.rfc.middle.section[0].t', 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.')
       set(doc, 'data.rfc.middle.section[0].abc', 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.')
       await expect(validateIANAConsiderationsSection(doc)).resolves.toContainError('INVALID_IANA_CONSIDERATIONS_SECTION_CHILD', ValidationError)
+    })
+  })
+  describe('TXT Document Type', () => {
+    test('valid IANA considerations section', async () => {
+      const doc = cloneDeep(baseTXTDoc)
+
+      doc.data.content.ianaConsiderations = ['IANA Considerations']
+      doc.data.content.ianaConsiderations.push('Lorem ipsum dolor sit amet, consectetur adipiscing elit.')
+
+      await expect(validateIANAConsiderationsSection(doc)).resolves.toHaveLength(0)
+    })
+    test('missing IANA considerations section', async () => {
+      const doc = cloneDeep(baseTXTDoc)
+      doc.data.content.ianaConsiderations = []
+      doc.docKind = 'draft'
+      await expect(validateIANAConsiderationsSection(doc)).resolves.toContainError('MISSING_IANA_CONSIDERATIONS_SECTION', ValidationError)
+      await expect(validateIANAConsiderationsSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('MISSING_IANA_CONSIDERATIONS_SECTION', ValidationWarning)
+      await expect(validateIANAConsiderationsSection(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+      doc.docKind = 'rfc'
+      await expect(validateIANAConsiderationsSection(doc)).resolves.toContainError('MISSING_IANA_CONSIDERATIONS_SECTION', ValidationComment)
+      await expect(validateIANAConsiderationsSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('MISSING_IANA_CONSIDERATIONS_SECTION', ValidationComment)
+      await expect(validateIANAConsiderationsSection(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+    })
+    test('invalid IANA considerations section', async () => {
+      const doc = cloneDeep(baseTXTDoc)
+      doc.data.content.ianaConsiderations = ['IANA Considerations']
+      await expect(validateIANAConsiderationsSection(doc)).resolves.toContainError('INVALID_IANA_CONSIDERATIONS_SECTION', ValidationError)
+    })
+  })
+})
+
+describe('validateReferencesInText', () => {
+  describe('TXT documents', () => {
+    test('should return warnings for unused references in a TXT document', async () => {
+      const txtDoc = {
+        type: 'txt',
+        data: {
+          extractedElements: {
+            referenceSectionRfc: [{ value: '2119' }, { value: '8174' }, { value: '1234' }],
+            referenceSectionDraftReferences: [{ value: 'draft-ietf-abc-01' }],
+            nonReferenceSectionRfc: ['2119'],
+            nonReferenceSectionDraftReferences: []
+          }
+        }
+      }
+
+      const result = await validateReferencesInText(txtDoc)
+
+      expect(result).toEqual([
+        new ValidationWarning(
+          'REFERENCE_NOT_USED',
+          'The reference RFC 8174 is listed in the References section but is not mentioned in the document text.',
+          { ref: 'https://authors.ietf.org/en/required-content#references' }
+        ),
+        new ValidationWarning(
+          'REFERENCE_NOT_USED',
+          'The reference RFC 1234 is listed in the References section but is not mentioned in the document text.',
+          { ref: 'https://authors.ietf.org/en/required-content#references' }
+        ),
+        new ValidationWarning(
+          'REFERENCE_NOT_USED',
+          'The reference RFC draft-ietf-abc-01 is listed in the References section but is not mentioned in the document text.',
+          { ref: 'https://authors.ietf.org/en/required-content#references' }
+        )
+      ])
+    })
+
+    test('should return an empty array if all references are used in a TXT document', async () => {
+      const txtDoc = {
+        type: 'txt',
+        data: {
+          extractedElements: {
+            referenceSectionRfc: [{ value: '2119' }],
+            referenceSectionDraftReferences: [{ value: 'draft-ietf-abc-01' }],
+            nonReferenceSectionRfc: ['2119'],
+            nonReferenceSectionDraftReferences: ['draft-ietf-abc-01']
+          }
+        }
+      }
+
+      const result = await validateReferencesInText(txtDoc)
+
+      expect(result).toEqual([])
+    })
+
+    test('should handle empty references in a TXT document', async () => {
+      const txtDoc = {
+        type: 'txt',
+        data: {
+          extractedElements: {
+            referenceSectionRfc: [],
+            referenceSectionDraftReferences: [],
+            nonReferenceSectionRfc: [],
+            nonReferenceSectionDraftReferences: []
+          }
+        }
+      }
+
+      const result = await validateReferencesInText(txtDoc)
+
+      expect(result).toEqual([])
+    })
+  })
+
+  describe('XML documents', () => {
+    test('should return warnings for unused references in an XML document', async () => {
+      const xmlDoc = {
+        type: 'xml',
+        data: {
+          rfc: {
+            back: {
+              references: {
+                references: [
+                  {
+                    reference: [
+                      { _attr: { anchor: 'RFC2119' } },
+                      { _attr: { anchor: 'RFC8174' } },
+                      { _attr: { anchor: 'RFC1234' } }
+                    ]
+                  }
+                ]
+              }
+            },
+            xref: [
+              { _attr: { target: 'RFC2119' } }
+            ]
+          }
+        }
+      }
+
+      const result = await validateReferencesInText(xmlDoc)
+
+      expect(result).toEqual([
+        new ValidationWarning(
+          'REFERENCE_NOT_USED',
+          'The reference RFC8174 is listed in the References section but is not mentioned in the document text.',
+          { ref: 'https://authors.ietf.org/en/required-content#references' }
+        ),
+        new ValidationWarning(
+          'REFERENCE_NOT_USED',
+          'The reference RFC1234 is listed in the References section but is not mentioned in the document text.',
+          { ref: 'https://authors.ietf.org/en/required-content#references' }
+        )
+      ])
+    })
+
+    test('should return an empty array if all references are used in an XML document', async () => {
+      const xmlDoc = {
+        type: 'xml',
+        data: {
+          rfc: {
+            back: {
+              references: {
+                references: [
+                  {
+                    reference: [
+                      { _attr: { anchor: 'RFC2119' } },
+                      { _attr: { anchor: 'RFC8174' } }
+                    ]
+                  }
+                ]
+              }
+            },
+            xref: [
+              { _attr: { target: 'RFC2119' } },
+              { _attr: { target: 'RFC8174' } }
+            ]
+          }
+        }
+      }
+
+      const result = await validateReferencesInText(xmlDoc)
+
+      expect(result).toEqual([])
+    })
+
+    test('should handle empty references in an XML document', async () => {
+      const xmlDoc = {
+        type: 'xml',
+        data: {
+          rfc: {
+            back: {
+              references: {
+                references: []
+              }
+            },
+            xref: []
+          }
+        }
+      }
+
+      const result = await validateReferencesInText(xmlDoc)
+
+      expect(result).toEqual([])
     })
   })
 })
