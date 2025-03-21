@@ -35,13 +35,17 @@ export const baseTXTDoc = {
       nonReferenceSectionRfc: [],
       referenceSectionRfc: [],
       nonReferenceSectionDraftReferences: [],
-      referenceSectionDraftReferences: []
+      referenceSectionDraftReferences: [],
+      bracketedRfcReferences: [],
+      bracketedRfcNonReferences: []
     },
     possibleIssues: {
       isTableOfContentsExists: null,
       linesWithSpaces: [],
       inlineCode: [],
       misspeled2119Keywords: [],
+      isCopyrightNoticeNumbered: null,
+      isAbstractNumbered: null,
       isPKorBM: null,
       hyphenatedLines: [],
       updatesRfcWithLetter: [],
