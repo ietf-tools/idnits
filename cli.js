@@ -140,7 +140,7 @@ try {
   let result = []
 
   // Validate document using task processor
-  if (argv.output === 'pretty') {
+  if (argv.output === 'pretty' && argv.progress) {
     const validations = getAllValidations(docPathObj.base.endsWith('.xml') ? 'xml' : 'txt')
     const tasks = new Listr(
       validations.map(valGroup => ({
