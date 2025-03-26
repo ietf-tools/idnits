@@ -18,6 +18,10 @@ if (!gte(process.version, '18.0.0')) {
   process.exit(1)
 }
 
+// Get package version
+const cliDir = path.dirname(fileURLToPath(import.meta.url))
+const pkgInfo = JSON.parse(await readFile(path.join(cliDir, 'package.json'), 'utf8'))
+
 // Define CLI arguments config
 const argv = yargs(process.argv.slice(2))
   .scriptName('idnits')
@@ -90,12 +94,9 @@ const argv = yargs(process.argv.slice(2))
   .strict()
   .alias({ h: 'help' })
   .help()
-  .version()
+  .version(pkgInfo.version)
   .argv
 
-// Get package version
-const cliDir = path.dirname(fileURLToPath(import.meta.url))
-const pkgInfo = JSON.parse(await readFile(path.join(cliDir, 'package.json'), 'utf8'))
 if (argv.output === 'pretty') {
   console.log(chalk.bgGray.white('▄'.repeat(64)))
   console.log(chalk.bgWhite.black(`${pad('idnits ▶ ' + pkgInfo.version, 64)}`))
