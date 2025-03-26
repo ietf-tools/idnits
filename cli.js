@@ -8,8 +8,8 @@ import { pad } from 'lodash-es'
 import { readFile } from 'node:fs/promises'
 import { DateTime } from 'luxon'
 import { gte } from 'semver'
-import ora from 'ora'
-import { checkNits } from './lib/index.mjs'
+import { Listr, ListrDefaultRendererLogLevels } from 'listr2'
+import { checkNits, getAllValidations } from './lib/index.mjs'
 import { getModeByName } from './lib/config/modes.mjs'
 
 // Check Node.js version
@@ -124,12 +124,7 @@ if (argv.output === 'pretty') {
   console.log()
 }
 
-// Initialize progress reporter
-const spinner = ora({
-  text: 'Loading...',
-  isSilent: argv.output !== 'pretty' || !argv.progress
-}).start()
-
+// Solarized-adapted chalk
 function chalkAdapted (color) {
   switch (color) {
     case 'whiteBright':
@@ -141,13 +136,59 @@ function chalkAdapted (color) {
 
 // Validate document
 try {
-  let result = await checkNits(docRaw, docPathObj.base, {
-    mode,
-    progressReport: (msg) => { spinner.text = msg },
-    offline: argv.offline
-  })
+  let result = []
 
-  spinner.stop()
+  // Validate document using task processor
+  if (argv.output === 'pretty') {
+    const validations = getAllValidations(docPathObj.base.endsWith('.xml') ? 'xml' : 'txt')
+    const tasks = new Listr(
+      validations.map(valGroup => ({
+        title: valGroup.title,
+        task: () => new Listr(
+          valGroup.tasks.map(valTask => ({
+            title: valTask.title,
+            task: async (ctx) => {
+              if (valTask.isVoid) {
+                return valTask.task(ctx)
+              } else {
+                result.push(...(await valTask.task(ctx)))
+              }
+            }
+          })),
+          {
+            concurrent: valGroup.concurrent
+          }
+        )
+      })),
+      {
+        ctx: {
+          raw: docRaw,
+          filename: docPathObj.base,
+          options: {
+            mode,
+            offline: argv.offline
+          }
+        },
+        collectErrors: true,
+        exitOnError: true,
+        rendererOptions: {
+          collapseErrors: false,
+          collapseSubtasks: true,
+          icon: {
+            [ListrDefaultRendererLogLevels.COMPLETED]: '☑️',
+            [ListrDefaultRendererLogLevels.FAILED]: '❌'
+          }
+        }
+      }
+    )
+    await tasks.run()
+    console.info('')
+  } else {
+    result = await checkNits(docRaw, docPathObj.base, {
+      mode,
+      offline: argv.offline
+    })
+  }
 
   // Filter severity types
   if (argv.filter && argv.filter.length > 0) {
@@ -250,7 +291,6 @@ try {
     }
   }
 } catch (err) {
-  spinner.stop()
   console.debug(err)
   console.error(chalk.redBright(`Validation failed:\n- ${err.message}`))
   process.exit(1)
