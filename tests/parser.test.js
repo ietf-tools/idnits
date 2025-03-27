@@ -16,6 +16,11 @@ import {
   metaWithoutObsoleteAndUpdatesTXTBlock,
   copyrightNoticeTXTBlock,
   copyrightNoticeWithCurrentYearTXTBlock,
+  copyrightNoticeNumberedTXTBlock,
+  copyrightNoticeTXTBlock,
+  statusOfMemoTXTBlock,
+  statusOfMemoNumberedTXTBlock,
+  abstractNumberedTXTBlock,
   metaObsoleteAndUpdatesHasCharactersTXTBlock,
   ianaConsiderationsTXTBlock
 } from './fixtures/txt-blocks/section-blocks.mjs'
@@ -677,15 +682,13 @@ describe('Parsing references with categorization', () => {
 
     const result = await parse(txt, 'txt')
 
-    expect(result.data.extractedElements.referenceSectionRfc).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ value: '5234', subsection: 'unclassified_references' }),
-        expect.objectContaining({ value: '8446', subsection: 'unclassified_references' })
-      ])
+    expect(result.data.extractedElements.bracketedRfcReferences).toEqual(
+      expect.arrayContaining(['[RFC5234]', '[RFC8446]'])
     )
+    expect(result.data.extractedElements.bracketedRfcReferences).toHaveLength(2)
   })
 
-  test('Detects unclassified draft references', async () => {
+  test('Parses references in all text with square brackets', async () => {
     const txt = `
       ${metaTXTBlock}
       ${tableOfContentsTXTBlock}
@@ -728,6 +731,43 @@ describe('Parsing references with categorization', () => {
         expect.objectContaining({ value: '9205', subsection: null })
       ])
     )
+  })
+
+  test('Parses reference with square brackets', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+      7. References
+      [RFC5234] Crocker, D., "Augmented BNF for Syntax Specifications: ABNF", RFC 5234, January 2008.
+      [RFC8446] Rescorla, E., "The Transport Layer Security (TLS) Protocol Version 1.3", RFC 8446, August 2018.
+    `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.extractedElements.bracketedRfcReferences).toEqual(
+      expect.arrayContaining(['[RFC5234]', '[RFC8446]'])
+    )
+    expect(result.data.extractedElements.bracketedRfcReferences).toHaveLength(2)
+  })
+
+  test('Parses references in all text with square brackets', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.extractedElements.bracketedRfcNonReferences).toEqual(
+      expect.arrayContaining(['[RFC1234]'])
+    )
+    expect(result.data.extractedElements.bracketedRfcNonReferences).toHaveLength(1)
   })
 })
 
@@ -1000,7 +1040,6 @@ describe('The document does not appear to be ragged-right', () => {
     `
 
     const result = await parse(txt, 'txt')
-
     expect(result.data.possibleIssues.linesWithSpaces).toHaveLength(3)
     expect(result.data.possibleIssues.linesWithSpaces).toEqual(
       expect.arrayContaining([
@@ -1008,6 +1047,34 @@ describe('The document does not appear to be ragged-right', () => {
         expect.objectContaining({ line: 25, pos: 62 })
       ])
     )
+  })
+})
+
+describe('Abstract section is numbered', () => {
+  test('The abstract section is numbered', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractNumberedTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.isAbstractNumbered).toBeTruthy()
+  })
+
+  test('The abstract section is not numbered', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${abstractTXTBlock}
+    ${introductionTXTBlock}
+    ${securityConsiderationsTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.isAbstractNumbered).toBeFalsy()
   })
 })
 
@@ -1147,5 +1214,133 @@ describe('TLP-5 6.b.i copyright date is not this year', () => {
     expect(result.data.extractedElements.copyrightDates).toEqual(
       expect.arrayContaining([])
     )
+  })
+})
+
+describe('Reference is declared, but not used in the document', () => {
+  test('Parsing declared but not used references', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+      ${referenceTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.referenceSectionRfc).toEqual([
+      expect.objectContaining({ subsection: 'normative_references', value: '4360' }),
+      expect.objectContaining({ subsection: 'normative_references', value: '5701' }),
+      expect.objectContaining({ subsection: 'normative_references', value: '7153' }),
+      expect.objectContaining({ subsection: 'normative_references', value: '7432' }),
+      expect.objectContaining({ subsection: 'normative_references', value: '2345' })
+    ])
+    expect(result.data.extractedElements.referenceSectionDraftReferences).toEqual([
+      expect.objectContaining({ value: '[Lalalala-Refere-Sponsor]' }),
+      expect.objectContaining({ value: '[I-D.ietf-bess-evpn-igmp-mld-proxy]' }),
+      expect.objectContaining({ value: '[I-D.ietf-bess-bgp-multicast-controller]' }),
+      expect.objectContaining({ value: '[I-D.ietf-idr-legacy-rtc]' })
+    ])
+  })
+
+  test('Parsing references in text (only one reference)', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+      ${referenceTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.nonReferenceSectionDraftReferences).toContain('[1]')
+    expect(result.data.extractedElements.nonReferenceSectionRfc).toHaveLength(1)
+  })
+
+  test('Parsing references in text (multiple references)', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      [RFC255], [RFC256], [RFC257], [RFC258]
+      ${abstractWithReferencesTXTBlock}
+      ${introductionTXTBlock}
+      [I-D.ietf-bess-evpn-igmp-mld-proxy], [I-D.ietf-bess-bgp-multicast-controller], [I-D.ietf-idr-legacy-rtc]
+      ${securityConsiderationsTXTBlock}
+      ${referenceTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.nonReferenceSectionDraftReferences).toContain('[1]', '[I-D.ietf-bess-evpn-igmp-mld-proxy]', '[I-D.ietf-bess-bgp-multicast-controller]', '[I-D.ietf-idr-legacy-rtc]')
+    expect(result.data.extractedElements.nonReferenceSectionRfc).toContain('255', '256', '257', '258')
+  })
+
+  test('Parsing text without reference section', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.referenceSectionRfc).toHaveLength(0)
+    expect(result.data.extractedElements.referenceSectionDraftReferences).toHaveLength(0)
+  })
+})
+
+describe('Status of this memo section is numbered', () => {
+  test('The Status of this memo section is not numbered', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${introductionTXTBlock}
+      ${statusOfMemoTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.isStatusOfThisMemoNumbered).toBeFalsy()
+  })
+
+  test('The Status of this memo section is numbered', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${abstractTXTBlock}
+    ${introductionTXTBlock}
+    ${statusOfMemoNumberedTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.isStatusOfThisMemoNumbered).toBeTruthy()
+  })
+})
+
+describe('Copyright Notice section is numbered', () => {
+  test('Copyright Notice section is numbered', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${introductionTXTBlock}
+      ${copyrightNoticeTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.isCopyrightNoticeNumbered).toBeFalsy()
+  })
+
+  test('Copyright Notice section is not numbered', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${abstractTXTBlock}
+    ${introductionTXTBlock}
+    ${copyrightNoticeNumberedTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.isCopyrightNoticeNumbered).toBeTruthy()
   })
 })
