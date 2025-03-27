@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import chalk from 'chalk'
+import { Chalk } from 'chalk'
 import yargs from 'yargs/yargs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -70,7 +70,7 @@ const argv = yargs(process.argv.slice(2))
   .option('output', {
     alias: 'o',
     describe: 'Output format',
-    choices: ['pretty', 'json', 'count'],
+    choices: ['pretty', 'simple', 'json', 'count'],
     default: 'pretty',
     type: 'string'
   })
@@ -79,10 +79,14 @@ const argv = yargs(process.argv.slice(2))
     describe: 'Use alternate colors for a solarized light themed terminal',
     type: 'boolean'
   })
-  .option('year', {
-    alias: 'y',
-    describe: 'Expect the given year in the boilerplate',
-    type: 'number'
+  .option('color', {
+    default: true,
+    type: 'boolean',
+    hidden: true
+  })
+  .option('no-color', {
+    describe: 'Disable color in pretty output',
+    type: 'boolean'
   })
   .command('* <file>', 'parse and validate document', (y) => {
     y.positional('file', {
@@ -96,6 +100,8 @@ const argv = yargs(process.argv.slice(2))
   .help()
   .version(pkgInfo.version)
   .argv
+
+const chalk = (argv.color === false) ? new Chalk({ level: 0 }) : new Chalk()
 
 if (argv.output === 'pretty') {
   console.log(chalk.bgGray.white('▄'.repeat(64)))
@@ -233,6 +239,25 @@ try {
           ...r.lines && { line: r.lines }
         }))
       }))
+      break
+    }
+    // SIMPLE | Results as a simple list
+    case 'simple': {
+      if (result.length === 0) {
+        console.log(`PASS - Document ${docPath} is VALID. (mode: ${argv.mode})\n`)
+      } else {
+        console.error(`FAIL - Document ${docPath} is INVALID. (mode: ${argv.mode})\n`)
+        let entryIdx = 1
+        const validationSeverity = {
+          ValidationError: 'Error',
+          ValidationWarning: 'Warning',
+          ValidationComment: 'Comment'
+        }
+        for (const entry of result) {
+          console.log(`[${entryIdx}] ${validationSeverity[entry.constructor.name]} | ${entry.name} | ${entry.message}`)
+          entryIdx++
+        }
+      }
       break
     }
     // PRETTY | Human-readable result view

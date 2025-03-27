@@ -3,7 +3,7 @@ import { MODES } from '../lib/config/modes.mjs'
 import { toContainError, ValidationWarning, ValidationError, ValidationComment } from '../lib/helpers/error.mjs'
 import { baseXMLDoc, baseTXTDoc } from './fixtures/base-doc.mjs'
 import { cloneDeep, set } from 'lodash-es'
-import { validateDownrefs, validateNormativeReferences, validateUnclassifiedReferences, validatePublishedDraftReferences } from '../lib/modules/downref.mjs'
+import { validateDownrefs, validateInformativeReferences, validateNormativeReferences, validateUnclassifiedReferences, validatePublishedDraftReferences } from '../lib/modules/downref.mjs'
 import fetchMock from 'jest-fetch-mock'
 
 expect.extend({
@@ -520,5 +520,76 @@ describe('validatePublishedDraftReferences', () => {
       const result = await validatePublishedDraftReferences(doc, { mode: MODES.SUBMISSION })
       expect(result).toHaveLength(0)
     })
+  })
+})
+
+describe('validateInformativeReferences', () => {
+  test('valid informative references', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+    set(doc, 'data.extractedElements.referenceSectionRfc', [
+      { value: '4086', subsection: 'informative_references' },
+      { value: '8141', subsection: 'informative_references' }
+    ])
+
+    fetchMock.mockResponse(JSON.stringify({ status: 'Informational', obsoleted_by: [] }))
+
+    const result = await validateInformativeReferences(doc, { mode: MODES.NORMAL })
+    expect(result).toHaveLength(0)
+  })
+
+  test('informative reference with undefined status', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+    set(doc, 'data.extractedElements.referenceSectionRfc', [
+      { value: '4086', subsection: 'informative_references' }
+    ])
+
+    fetchMock.mockResponse(JSON.stringify({}))
+
+    const result = await validateInformativeReferences(doc, { mode: MODES.NORMAL })
+    expect(result).toEqual([
+      new ValidationComment(
+        'UNDEFINED_STATUS',
+        'The informative reference RFC 4086 does not have a defined status or could not be fetched.',
+        { ref: 'https://www.rfc-editor.org/info/rfc4086' }
+      )
+    ])
+  })
+
+  test('informative reference to an obsolete RFC', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+    set(doc, 'data.extractedElements.referenceSectionRfc', [
+      { value: '4086', subsection: 'informative_references' }
+    ])
+
+    fetchMock.mockResponse(
+      JSON.stringify({ status: 'Informational', obsoleted_by: ['9000'] })
+    )
+
+    const result = await validateInformativeReferences(doc, { mode: MODES.NORMAL })
+    expect(result).toContainEqual(
+      expect.objectContaining({
+        name: 'OBSOLETE_INFORMATIVE_REFERENCE',
+        message: expect.stringContaining('The informative reference RFC 4086 is obsolete and has been replaced by: 9000.')
+      })
+    )
+  })
+
+  test('FORGIVE_CHECKLIST mode for an obsolete informative RFC', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+    set(doc, 'data.extractedElements.referenceSectionRfc', [
+      { value: '4086', subsection: 'informative_references' }
+    ])
+
+    fetchMock.mockResponse(
+      JSON.stringify({ status: 'Informational', obsoleted_by: ['9000'] })
+    )
+
+    const result = await validateInformativeReferences(doc, { mode: MODES.FORGIVE_CHECKLIST })
+    expect(result).toContainEqual(
+      expect.objectContaining({
+        name: 'OBSOLETE_INFORMATIVE_REFERENCE',
+        message: expect.stringContaining('The informative reference RFC 4086 is obsolete and has been replaced by: 9000.')
+      })
+    )
   })
 })
