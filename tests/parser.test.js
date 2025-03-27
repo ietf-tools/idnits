@@ -1169,8 +1169,8 @@ describe('Parsing obsolete and update metadata with some characters', () => {
   })
 })
 
-describe('TLP-4 6.b.i copyright line is not present', () => {
-  test('TTLP-4 6.b.i copyright line is not present', async () => {
+describe('TLP-5 6.b.i copyright line is not present', () => {
+  test('TTLP-5 6.b.i copyright line is not present', async () => {
     const txt = `
       ${metaTXTBlock}
       ${tableOfContentsTXTBlock}
@@ -1182,7 +1182,7 @@ describe('TLP-4 6.b.i copyright line is not present', () => {
     expect(result.data.contains.copyrightSection6_b_i).toBeFalsy()
   })
 
-  test('TLP-4 6.b.i copyright line is present', async () => {
+  test('TLP-5 6.b.i copyright line is present', async () => {
     const txt = `
     ${metaTXTBlock}
     ${tableOfContentsTXTBlock}
