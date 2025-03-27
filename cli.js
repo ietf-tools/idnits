@@ -316,6 +316,11 @@ try {
       throw new Error('Invalid Output Mode')
     }
   }
+
+  // Exit with code 1 if validation failed
+  if (result.length > 0) {
+    process.exit(1)
+  }
 } catch (err) {
   console.debug(err)
   console.error(chalk.redBright(`Validation failed:\n- ${err.message}`))
