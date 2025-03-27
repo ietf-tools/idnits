@@ -17,7 +17,6 @@ import {
   copyrightNoticeTXTBlock,
   copyrightNoticeWithCurrentYearTXTBlock,
   copyrightNoticeNumberedTXTBlock,
-  copyrightNoticeTXTBlock,
   statusOfMemoTXTBlock,
   statusOfMemoNumberedTXTBlock,
   abstractNumberedTXTBlock,
