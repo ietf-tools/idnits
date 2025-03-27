@@ -393,7 +393,7 @@ describe('validateUnclassifiedReferences', () => {
   })
 })
 
-describe('validatePublishedDraftReferences', () => {
+describe('Validating published as a RFC draft references', () => {
   describe('TXT Document Type', () => {
     test('should return no warnings for valid drafts with defined states', async () => {
       const doc = cloneDeep(baseTXTDoc)
