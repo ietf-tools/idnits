@@ -1323,3 +1323,32 @@ describe('Copyright Notice section is numbered', () => {
     expect(result.data.possibleIssues.isCopyrightNoticeNumbered).toBeTruthy()
   })
 })
+
+describe('Document has obsolete TLP section', () => {
+  test('Document has obsolete TLP section', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${abstractTXTBlock}
+    Copyright (c) 2023 The Internet Society and the persons identified as the
+    document authors.  All rights reserved.
+    ${introductionTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.contains.previous6_b_i_copyright).toBeTruthy()
+    expect(result.data.contains.copyrightSection6_b_i).toBeFalsy()
+  })
+
+  test('Document does not have obsolete TLP section', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${abstractTXTBlock}
+    ${introductionTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.contains.previous6_b_i).toBeFalsy()
+  })
+})
