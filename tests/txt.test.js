@@ -116,7 +116,8 @@ describe('The copyright date is not valid.', () => {
   test('Copyright text date valid', async () => {
     const doc = cloneDeep(baseTXTDoc)
 
-    doc.data.extractedElements.copyrightDates = [2025]
+    const currentYear = new Date().getFullYear()
+    doc.data.extractedElements.copyrightDates = [currentYear]
 
     await expect(validateCopyrightDate(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
     await expect(validateCopyrightDate(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
@@ -124,7 +125,9 @@ describe('The copyright date is not valid.', () => {
   })
   test('Copyright console date valid', async () => {
     const doc = cloneDeep(baseTXTDoc)
-    doc.data.extractedElements.copyrightDates = [2025]
+
+    const currentYear = new Date().getFullYear()
+    doc.data.extractedElements.copyrightDates = [currentYear]
 
     await expect(validateCopyrightDate(doc, { mode: MODES.NORMAL, year: 2025 })).resolves.toHaveLength(0)
     await expect(validateCopyrightDate(doc, { mode: MODES.FORGIVE_CHECKLIST, year: 2025 })).resolves.toHaveLength(0)

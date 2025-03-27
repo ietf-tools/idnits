@@ -1104,8 +1104,8 @@ describe('Parsing obsolete and update metadata with some characters', () => {
   })
 })
 
-describe('TLP-4 6.b.i copyright date is not this year', () => {
-  test('TLP-4 6.b.i copyright date is not this year', async () => {
+describe('TLP-5 6.b.i copyright date is not this year', () => {
+  test('TLP-5 6.b.i copyright date is not this year', async () => {
     const txt = `
     ${metaTXTBlock}
     ${tableOfContentsTXTBlock}
@@ -1120,7 +1120,7 @@ describe('TLP-4 6.b.i copyright date is not this year', () => {
     )
   })
 
-  test('TLP-4 6.b.i copyright date is this year', async () => {
+  test('TLP-5 6.b.i copyright date is this year', async () => {
     const txt = `
     ${metaTXTBlock}
     ${tableOfContentsTXTBlock}
@@ -1135,7 +1135,7 @@ describe('TLP-4 6.b.i copyright date is not this year', () => {
     )
   })
 
-  test('TLP-4 6.b.i without copyright date', async () => {
+  test('TLP-5 6.b.i without copyright date', async () => {
     const txt = `
     ${metaTXTBlock}
     ${tableOfContentsTXTBlock}
