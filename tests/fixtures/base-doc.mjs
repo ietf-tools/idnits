@@ -44,13 +44,17 @@ export const baseTXTDoc = {
       nonReferenceSectionDraftReferences: [],
       referenceSectionDraftReferences: [],
       copyrightDates: [],
-      license6_b_ii: []
+      license6_b_ii: [],
+      bracketedRfcReferences: [],
+      bracketedRfcNonReferences: []
     },
     possibleIssues: {
       linesWithSpaces: [],
       inlineCode: [],
       misspeled2119Keywords: [],
       copyrightLines6_i: [],
+      isCopyrightNoticeNumbered: null,
+      isAbstractNumbered: null,
       isPKorBM: null,
       hyphenatedLines: [],
       updatesRfcWithLetter: [],
