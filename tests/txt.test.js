@@ -160,7 +160,7 @@ describe('validateLicenseDeclarations', () => {
     const result = await validateLicenseDeclarations(doc)
     expect(result).toContainEqual(new ValidationError(
       'TLP4_LICENSE_NOTICE_MISSING',
-      'The document does not contain a required TLP-4 license notice (6.b.i or 6.b.ii).',
+      'The document does not contain a required TLP-5 license notice (6.b.i or 6.b.ii).',
       { ref: 'https://trustee.ietf.org/license-info' }
     ))
   })
