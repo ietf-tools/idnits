@@ -126,8 +126,8 @@ describe('validateCodeComments', () => {
   })
 })
 
-describe('validateIDIndicator', () => {
-  test('should return no warnings in SUBMISSION mode', async () => {
+describe('Validate ID indicator', () => {
+  test('Should return error if ID indicator is missing in SUBMISSION mode', async () => {
     const doc = cloneDeep(baseTXTDoc)
     const result = await validateIDIndicator(doc, { mode: MODES.SUBMISSION })
     expect(result).toEqual([
