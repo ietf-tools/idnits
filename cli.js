@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import chalk from 'chalk'
+import { Chalk } from 'chalk'
 import yargs from 'yargs/yargs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -8,8 +8,8 @@ import { pad } from 'lodash-es'
 import { readFile } from 'node:fs/promises'
 import { DateTime } from 'luxon'
 import { gte } from 'semver'
-import ora from 'ora'
-import { checkNits } from './lib/index.mjs'
+import { Listr, ListrDefaultRendererLogLevels } from 'listr2'
+import { checkNits, getAllValidations } from './lib/index.mjs'
 import { getModeByName } from './lib/config/modes.mjs'
 
 // Check Node.js version
@@ -17,6 +17,10 @@ if (!gte(process.version, '18.0.0')) {
   console.error('idnits3 requires Node.js v18 or later.')
   process.exit(1)
 }
+
+// Get package version
+const cliDir = path.dirname(fileURLToPath(import.meta.url))
+const pkgInfo = JSON.parse(await readFile(path.join(cliDir, 'package.json'), 'utf8'))
 
 // Define CLI arguments config
 const argv = yargs(process.argv.slice(2))
@@ -66,7 +70,7 @@ const argv = yargs(process.argv.slice(2))
   .option('output', {
     alias: 'o',
     describe: 'Output format',
-    choices: ['pretty', 'json', 'count'],
+    choices: ['pretty', 'simple', 'json', 'count'],
     default: 'pretty',
     type: 'string'
   })
@@ -75,10 +79,14 @@ const argv = yargs(process.argv.slice(2))
     describe: 'Use alternate colors for a solarized light themed terminal',
     type: 'boolean'
   })
-  .option('year', {
-    alias: 'y',
-    describe: 'Expect the given year in the boilerplate',
-    type: 'number'
+  .option('color', {
+    default: true,
+    type: 'boolean',
+    hidden: true
+  })
+  .option('no-color', {
+    describe: 'Disable color in pretty output',
+    type: 'boolean'
   })
   .command('* <file>', 'parse and validate document', (y) => {
     y.positional('file', {
@@ -90,12 +98,11 @@ const argv = yargs(process.argv.slice(2))
   .strict()
   .alias({ h: 'help' })
   .help()
-  .version()
+  .version(pkgInfo.version)
   .argv
 
-// Get package version
-const cliDir = path.dirname(fileURLToPath(import.meta.url))
-const pkgInfo = JSON.parse(await readFile(path.join(cliDir, 'package.json'), 'utf8'))
+const chalk = (argv.color === false) ? new Chalk({ level: 0 }) : new Chalk()
+
 if (argv.output === 'pretty') {
   console.log(chalk.bgGray.white('▄'.repeat(64)))
   console.log(chalk.bgWhite.black(`${pad('idnits ▶ ' + pkgInfo.version, 64)}`))
@@ -124,12 +131,7 @@ if (argv.output === 'pretty') {
   console.log()
 }
 
-// Initialize progress reporter
-const spinner = ora({
-  text: 'Loading...',
-  isSilent: argv.output !== 'pretty' || !argv.progress
-}).start()
-
+// Solarized-adapted chalk
 function chalkAdapted (color) {
   switch (color) {
     case 'whiteBright':
@@ -141,13 +143,59 @@ function chalkAdapted (color) {
 
 // Validate document
 try {
-  let result = await checkNits(docRaw, docPathObj.base, {
-    mode,
-    progressReport: (msg) => { spinner.text = msg },
-    offline: argv.offline
-  })
+  let result = []
 
-  spinner.stop()
+  // Validate document using task processor
+  if (argv.output === 'pretty' && argv.progress) {
+    const validations = getAllValidations(docPathObj.base.endsWith('.xml') ? 'xml' : 'txt')
+    const tasks = new Listr(
+      validations.map(valGroup => ({
+        title: valGroup.title,
+        task: () => new Listr(
+          valGroup.tasks.map(valTask => ({
+            title: valTask.title,
+            task: async (ctx) => {
+              if (valTask.isVoid) {
+                return valTask.task(ctx)
+              } else {
+                result.push(...(await valTask.task(ctx)))
+              }
+            }
+          })),
+          {
+            concurrent: valGroup.concurrent
+          }
+        )
+      })),
+      {
+        ctx: {
+          raw: docRaw,
+          filename: docPathObj.base,
+          options: {
+            mode,
+            offline: argv.offline
+          }
+        },
+        collectErrors: true,
+        exitOnError: true,
+        rendererOptions: {
+          collapseErrors: false,
+          collapseSubtasks: true,
+          icon: {
+            [ListrDefaultRendererLogLevels.COMPLETED]: '☑️',
+            [ListrDefaultRendererLogLevels.FAILED]: '❌'
+          }
+        }
+      }
+    )
+    await tasks.run()
+    console.info('')
+  } else {
+    result = await checkNits(docRaw, docPathObj.base, {
+      mode,
+      offline: argv.offline
+    })
+  }
 
   // Filter severity types
   if (argv.filter && argv.filter.length > 0) {
@@ -191,6 +239,25 @@ try {
           ...r.lines && { line: r.lines }
         }))
       }))
+      break
+    }
+    // SIMPLE | Results as a simple list
+    case 'simple': {
+      if (result.length === 0) {
+        console.log(`PASS - Document ${docPath} is VALID. (mode: ${argv.mode})\n`)
+      } else {
+        console.error(`FAIL - Document ${docPath} is INVALID. (mode: ${argv.mode})\n`)
+        let entryIdx = 1
+        const validationSeverity = {
+          ValidationError: 'Error',
+          ValidationWarning: 'Warning',
+          ValidationComment: 'Comment'
+        }
+        for (const entry of result) {
+          console.log(`[${entryIdx}] ${validationSeverity[entry.constructor.name]} | ${entry.name} | ${entry.message}`)
+          entryIdx++
+        }
+      }
       break
     }
     // PRETTY | Human-readable result view
@@ -249,8 +316,12 @@ try {
       throw new Error('Invalid Output Mode')
     }
   }
+
+  // Exit with code 1 if validation failed
+  if (result.length > 0) {
+    process.exit(1)
+  }
 } catch (err) {
-  spinner.stop()
   console.debug(err)
   console.error(chalk.redBright(`Validation failed:\n- ${err.message}`))
   process.exit(1)
