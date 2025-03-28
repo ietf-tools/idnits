@@ -273,7 +273,7 @@ export const copyrightNoticeNumberedTXTBlock = `
 
 export const copyrightNoticeWithCurrentYearTXTBlock = `
     Copyright Notice
-    Copyright (c) 2025 IETF Trust and the persons identified as the
+    Copyright (c) ${new Date().getFullYear()} IETF Trust and the persons identified as the
     document authors.  All rights reserved.
 `
 
