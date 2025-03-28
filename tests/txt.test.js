@@ -175,7 +175,7 @@ describe('validateLicenseDeclarations', () => {
 
     const result = await validateLicenseDeclarations(doc)
     expect(result).toContainEqual(new ValidationError(
-      'TLP4_LICENSE_NOTICE_MISSING',
+      'TLP5_LICENSE_RESTRICTION_NOTICE_MISSING',
       'The document does not contain a required TLP-5 license notice (6.b.i or 6.b.ii).',
       { ref: 'https://trustee.ietf.org/license-info' }
     ))
@@ -197,7 +197,7 @@ describe('validateLicenseDeclarations', () => {
     doc.data.contains.license6_c_i = true
     const result = await validateLicenseDeclarations(doc)
     expect(result).toContainEqual(new ValidationWarning(
-      'TLP4_LICENSE_NOTICE',
+      'TLP5_LICENSE_RESTRICTION_NOTICE',
       'The document has an IETF Trust Provisions of 28 Dec 2009, Section 6.c(i) Publication Limitation clause.',
       { ref: 'https://trustee.ietf.org/license-info' }
     ))
@@ -209,7 +209,7 @@ describe('validateLicenseDeclarations', () => {
     doc.data.contains.license6_c_ii = true
     const result = await validateLicenseDeclarations(doc)
     expect(result).toContainEqual(new ValidationError(
-      'TLP4_LICENSE_NOTICE',
+      'TLP5_LICENSE_RESTRICTION_NOTICE',
       'The document has an IETF Trust Provisions, 28 Dec 2009, Section 6.c(ii) Publication Limitation clause.',
       { ref: 'https://trustee.ietf.org/license-info' }
     ))

@@ -1361,7 +1361,7 @@ describe('TLP-5 6.b.i or b.ii license notice is not present, or doesn\'t match s
     expect(result.data.extractedElements.license6_b_ii).toStrictEqual([])
   })
 
-  test('TLP-5 6.b.ii license notice is present', async () => {
+  test('TLP-5 6.b.ii license restriction notice is present', async () => {
     const txt = `
     ${metaTXTBlock}
     ${tableOfContentsTXTBlock}
@@ -1384,7 +1384,7 @@ describe('TLP-5 6.b.i or b.ii license notice is not present, or doesn\'t match s
 
     expect(result.data.contains.license6_c_i).toBeFalsy()
   })
-  test('TLP-5 6.c.i license notice is present', async () => {
+  test('TLP-5 6.c.i license restriction notice is present', async () => {
     const txt = `
     ${metaTXTBlock}
     ${tableOfContentsTXTBlock}
@@ -1408,7 +1408,7 @@ describe('TLP-5 6.b.i or b.ii license notice is not present, or doesn\'t match s
     expect(result.data.contains.license6_c_ii).toBeFalsy()
   })
 
-  test('TLP-5 6.c.ii license notice is present', async () => {
+  test('TLP-5 6.c.ii license restriction notice is present', async () => {
     const txt = `
     ${metaTXTBlock}
     ${tableOfContentsTXTBlock}
