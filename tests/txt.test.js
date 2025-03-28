@@ -116,7 +116,7 @@ describe('The copyright date is not valid.', () => {
   test('Copyright text date valid', async () => {
     const doc = cloneDeep(baseTXTDoc)
 
-    doc.data.extractedElements.copyrightDates = [2025]
+    doc.data.extractedElements.copyrightDates = [new Date().getFullYear()]
 
     await expect(validateCopyrightDate(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
     await expect(validateCopyrightDate(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
@@ -124,11 +124,13 @@ describe('The copyright date is not valid.', () => {
   })
   test('Copyright console date valid', async () => {
     const doc = cloneDeep(baseTXTDoc)
-    doc.data.extractedElements.copyrightDates = [2025]
 
-    await expect(validateCopyrightDate(doc, { mode: MODES.NORMAL, year: 2025 })).resolves.toHaveLength(0)
-    await expect(validateCopyrightDate(doc, { mode: MODES.FORGIVE_CHECKLIST, year: 2025 })).resolves.toHaveLength(0)
-    await expect(validateCopyrightDate(doc, { mode: MODES.SUBMISSION, year: 2025 })).resolves.toHaveLength(0)
+    const year = new Date().getFullYear()
+    doc.data.extractedElements.copyrightDates = [year]
+
+    await expect(validateCopyrightDate(doc, { mode: MODES.NORMAL, year })).resolves.toHaveLength(0)
+    await expect(validateCopyrightDate(doc, { mode: MODES.FORGIVE_CHECKLIST, year })).resolves.toHaveLength(0)
+    await expect(validateCopyrightDate(doc, { mode: MODES.SUBMISSION, year })).resolves.toHaveLength(0)
   })
   test('Copyright text date not valid', async () => {
     const doc = cloneDeep(baseTXTDoc)
@@ -142,7 +144,8 @@ describe('The copyright date is not valid.', () => {
   test('Copyright console date not valid', async () => {
     const doc = cloneDeep(baseTXTDoc)
 
-    doc.data.extractedElements.copyrightDates = [2034]
+    const year = new Date().getFullYear() + 10
+    doc.data.extractedElements.copyrightDates = [year]
 
     await expect(validateCopyrightDate(doc, { mode: MODES.NORMAL, year: 2024 })).resolves.toContainError('COPYRIGHT_DATE_NOT_VALID', ValidationWarning)
     await expect(validateCopyrightDate(doc, { mode: MODES.FORGIVE_CHECKLIST, year: 2024 })).resolves.toContainError('COPYRIGHT_DATE_NOT_VALID', ValidationWarning)
@@ -160,7 +163,7 @@ describe('validateLicenseDeclarations', () => {
     const result = await validateLicenseDeclarations(doc)
     expect(result).toContainEqual(new ValidationError(
       'TLP4_LICENSE_NOTICE_MISSING',
-      'The document does not contain a required TLP-4 license notice (6.b.i or 6.b.ii).',
+      'The document does not contain a required TLP-5 license notice (6.b.i or 6.b.ii).',
       { ref: 'https://trustee.ietf.org/license-info' }
     ))
   })
