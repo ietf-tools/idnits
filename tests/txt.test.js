@@ -14,7 +14,7 @@ import {
   validateAbstractSectionIsNumbered,
   validateStatusOfThisMemoSectionIsNumbered,
   validateCopyrightNoticeSectionIsNumbered,
-  validateAcceptableParagraphNotingThatDraft
+  validateSaysWorkingDocuments
 } from '../lib/modules/txt.mjs'
 import { baseTXTDoc } from './fixtures/base-doc.mjs'
 import { cloneDeep } from 'lodash-es'
@@ -132,9 +132,9 @@ describe('The Document have acceptable paragraph noting that IDs are working doc
 
     doc.data.contains.acceptableParagraphNotingThatDraft = true
 
-    await expect(validateAcceptableParagraphNotingThatDraft(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
-    await expect(validateAcceptableParagraphNotingThatDraft(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
-    await expect(validateAcceptableParagraphNotingThatDraft(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+    await expect(validateSaysWorkingDocuments(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
+    await expect(validateSaysWorkingDocuments(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
+    await expect(validateSaysWorkingDocuments(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
   })
 
   test('Document don`t acceptable paragraph', async () => {
@@ -142,9 +142,9 @@ describe('The Document have acceptable paragraph noting that IDs are working doc
 
     doc.data.contains.acceptableParagraphNotingThatDraft = false
 
-    await expect(validateAcceptableParagraphNotingThatDraft(doc, { mode: MODES.NORMAL })).resolves.toContainError('ACCEPTABLE_PARAGRAPH_NOTING_THAT_DRAFT_MISSING', ValidationError)
-    await expect(validateAcceptableParagraphNotingThatDraft(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('ACCEPTABLE_PARAGRAPH_NOTING_THAT_DRAFT_MISSING', ValidationError)
-    await expect(validateAcceptableParagraphNotingThatDraft(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('ACCEPTABLE_PARAGRAPH_NOTING_THAT_DRAFT_MISSING', ValidationError)
+    await expect(validateSaysWorkingDocuments(doc, { mode: MODES.NORMAL })).resolves.toContainError('ACCEPTABLE_PARAGRAPH_NOTING_THAT_DRAFT_MISSING', ValidationError)
+    await expect(validateSaysWorkingDocuments(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('ACCEPTABLE_PARAGRAPH_NOTING_THAT_DRAFT_MISSING', ValidationError)
+    await expect(validateSaysWorkingDocuments(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('ACCEPTABLE_PARAGRAPH_NOTING_THAT_DRAFT_MISSING', ValidationError)
   })
 })
 
