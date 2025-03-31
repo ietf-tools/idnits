@@ -1349,10 +1349,11 @@ describe('TLP-5 6.b.i copyright date is not this year', () => {
     ${introductionTXTBlock}
   `
 
+    const currentYear = new Date().getFullYear()
     const result = await parse(txt, 'txt')
 
     expect(result.data.extractedElements.copyrightDates).toEqual(
-      expect.arrayContaining([2025])
+      expect.arrayContaining([currentYear])
     )
   })
 
