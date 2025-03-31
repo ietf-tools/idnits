@@ -225,7 +225,7 @@ export const RFC8174BoilerplateTXTBlock = `
     when, and only when, they appear in all capitals, as shown here.
 `
 
-export const TLP406aTXTBlock = `
+export const trust28Dec2009Section6aTXTBlock = `
    This Internet-Draft is submitted in full conformance with the
    provisions of BCP 78 and BCP 79.
 `

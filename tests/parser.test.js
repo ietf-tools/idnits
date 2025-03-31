@@ -21,7 +21,7 @@ import {
   abstractNumberedTXTBlock,
   metaObsoleteAndUpdatesHasCharactersTXTBlock,
   ianaConsiderationsTXTBlock,
-  TLP406aTXTBlock,
+  trust28Dec2009Section6aTXTBlock,
   PageBlock
 } from './fixtures/txt-blocks/section-blocks.mjs'
 import { parse } from '../lib/parsers/txt.mjs'
@@ -1191,7 +1191,7 @@ describe('Parsing TLP 4.0 6.a text', () => {
     ${tableOfContentsTXTBlock}
     ${abstractWithReferencesTXTBlock}
     ${introductionTXTBlock}
-    ${TLP406aTXTBlock}
+    ${trust28Dec2009Section6aTXTBlock}
   `
 
     const result = await parse(txt, 'txt')
@@ -1207,7 +1207,7 @@ describe('Parsing TLP 4.0 6.a line page', () => {
     ${abstractWithReferencesTXTBlock}
     ${introductionTXTBlock}
     ${PageBlock}
-    ${TLP406aTXTBlock}
+    ${trust28Dec2009Section6aTXTBlock}
   `
 
     const result = await parse(txt, 'txt')
@@ -1220,13 +1220,40 @@ describe('Parsing TLP 4.0 6.a line page', () => {
     ${tableOfContentsTXTBlock}
     ${abstractWithReferencesTXTBlock}
     ${introductionTXTBlock}
-    ${TLP406aTXTBlock}
+    ${trust28Dec2009Section6aTXTBlock}
     ${PageBlock}
     ${securityConsiderationsTXTBlock}
   `
 
     const result = await parse(txt, 'txt')
     expect(result.data.possibleIssues.submissionCompliancePage).toEqual(1)
+  })
+})
+
+describe('TLP-5 6.b.i copyright line is not present', () => {
+  test('TTLP-5 6.b.i copyright line is not present', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.contains.copyrightSection6_b_i).toBeFalsy()
+  })
+
+  test('TLP-5 6.b.i copyright line is present', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${copyrightNoticeTXTBlock}
+    ${introductionTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.contains.copyrightSection6_b_i).toBeTruthy()
   })
 })
 
