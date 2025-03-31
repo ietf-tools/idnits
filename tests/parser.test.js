@@ -1170,6 +1170,33 @@ describe('Parsing obsolete and update metadata with some characters', () => {
   })
 })
 
+describe('TLP-5 6.b.i copyright line is not present', () => {
+  test('TTLP-5 6.b.i copyright line is not present', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.contains.copyrightSection6_b_i).toBeFalsy()
+  })
+
+  test('TLP-5 6.b.i copyright line is present', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${copyrightNoticeTXTBlock}
+    ${introductionTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.contains.copyrightSection6_b_i).toBeTruthy()
+  })
+})
+
 describe('Reference is declared, but not used in the document', () => {
   test('Parsing declared but not used references', async () => {
     const txt = `

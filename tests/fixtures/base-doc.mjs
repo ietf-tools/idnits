@@ -23,7 +23,8 @@ export const baseTXTDoc = {
       ianaConsiderations: null
     },
     contains: {
-      idIndication: false
+      idIndication: false,
+      copyrightSection6_b_i: null
     },
     title: null,
     slug: 'draft-ietf-beep-boop-01',
