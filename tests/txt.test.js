@@ -18,6 +18,7 @@ import {
 } from '../lib/modules/txt.mjs'
 import { baseTXTDoc } from './fixtures/base-doc.mjs'
 import { cloneDeep } from 'lodash-es'
+import { DateTime } from 'luxon'
 
 expect.extend({
   toContainError
@@ -396,12 +397,13 @@ describe('validateCodeBlockLicenses', () => {
 })
 
 describe('Validate Expires Line in the document', () => {
-  test('should return an error if the Expires line is missing', async () => {
+  test('should return an error if the Expires lines are missing', async () => {
     const doc = cloneDeep(baseTXTDoc)
+
     await expect(validateExpiresLine(doc, { mode: MODES.NORMAL })).resolves.toEqual([
       new ValidationError(
         'EXPIRES_LINE_MISSING',
-        'Document does not contain an Expires line or it is invalid.',
+        'Document does not have expiration date on first and last page or it is invalid.',
         {
           ref: 'https://authors.ietf.org/en/drafting-in-plaintext#checklist'
         }
@@ -409,16 +411,18 @@ describe('Validate Expires Line in the document', () => {
     ])
   })
 
-  test('should return no errors if the Expires line is present', async () => {
+  test('should return no errors if the Expires lines are present and match', async () => {
     const doc = cloneDeep(baseTXTDoc)
-    doc.data.header.expires = new Date('2023-09-08')
+    doc.data.header.expires = DateTime.fromFormat('2023-09-08', 'yyyy-MM-dd')
+    doc.data.extractedElements.lastPageExpiration = DateTime.fromFormat('2023-09-08', 'yyyy-MM-dd')
 
     await expect(validateExpiresLine(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
   })
 
   test('should return no errors if the Expires line is present in submission mode', async () => {
     const doc = cloneDeep(baseTXTDoc)
-    doc.data.header.expires = new Date('2023-09-08')
+    doc.data.header.expires = DateTime.fromFormat('2023-09-08', 'yyyy-MM-dd')
+    doc.data.extractedElements.lastPageExpiration = DateTime.fromFormat('2023-09-08', 'yyyy-MM-dd')
 
     await expect(validateExpiresLine(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
   })
@@ -430,7 +434,23 @@ describe('Validate Expires Line in the document', () => {
     await expect(validateExpiresLine(doc, { mode: MODES.SUBMISSION })).resolves.toEqual([
       new ValidationError(
         'EXPIRES_LINE_MISSING',
-        'Document does not contain an Expires line or it is invalid.',
+        'Document does not have expiration date on first and last page or it is invalid.',
+        {
+          ref: 'https://authors.ietf.org/en/drafting-in-plaintext#checklist'
+        }
+      )
+    ])
+  })
+
+  test('should return an error if the Expires line is different', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+    doc.data.header.expires = DateTime.fromFormat('2023-09-08', 'yyyy-MM-dd')
+    doc.data.extractedElements.lastPageExpiration = DateTime.fromFormat('2023-09-09', 'yyyy-MM-dd')
+
+    await expect(validateExpiresLine(doc, { mode: MODES.NORMAL })).resolves.toEqual([
+      new ValidationError(
+        'EXPIRES_LINE_MISMATCH',
+        'Document has different expiration date on first and last page.',
         {
           ref: 'https://authors.ietf.org/en/drafting-in-plaintext#checklist'
         }

@@ -20,10 +20,10 @@ import {
   statusOfMemoNumberedTXTBlock,
   abstractNumberedTXTBlock,
   metaObsoleteAndUpdatesHasCharactersTXTBlock,
-  ianaConsiderationsTXTBlock
+  ianaConsiderationsTXTBlock,
+  expiresLineFooterTXTBlock
 } from './fixtures/txt-blocks/section-blocks.mjs'
 import { parse } from '../lib/parsers/txt.mjs'
-import { DateTime } from 'luxon'
 
 beforeAll(() => {
   jest.spyOn(console, 'info').mockImplementation(() => {})
@@ -1311,6 +1311,7 @@ describe('Parsing expires line', () => {
     const result = await parse(txt, 'txt')
     expect(result.data.header.expires).toBeDefined()
     expect(result.data.header.expires.toISODate()).toEqual('2023-09-08')
+    expect(result.data.extractedElements.lastPageExpiration).toBeNull()
   })
 
   test('No expires line', async () => {
@@ -1324,5 +1325,22 @@ describe('Parsing expires line', () => {
 
     const result = await parse(txt, 'txt')
     expect(result.data.header.expires).toBeNull()
+    expect(result.data.extractedElements.lastPageExpiration).toBeNull()
+  })
+
+  test('Expiration date on first and last page are present', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractTXTBlock}
+      ${introductionTXTBlock}
+      ${expiresLineFooterTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.header.expires).toBeDefined()
+    expect(result.data.header.expires.toISODate()).toEqual('2023-09-08')
+    expect(result.data.extractedElements.lastPageExpiration).toBeDefined()
+    expect(result.data.extractedElements.lastPageExpiration.toISODate()).toEqual('2023-03-07')
   })
 })

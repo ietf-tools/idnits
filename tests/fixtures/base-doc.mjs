@@ -37,7 +37,8 @@ export const baseTXTDoc = {
       nonReferenceSectionDraftReferences: [],
       referenceSectionDraftReferences: [],
       bracketedRfcReferences: [],
-      bracketedRfcNonReferences: []
+      bracketedRfcNonReferences: [],
+      lastPageExpiration: null
     },
     possibleIssues: {
       linesWithSpaces: [],
