@@ -21,7 +21,7 @@ import {
   abstractNumberedTXTBlock,
   metaObsoleteAndUpdatesHasCharactersTXTBlock,
   ianaConsiderationsTXTBlock,
-  TLP406aTXTBlock
+  trust28Dec2009Section6aTXTBlock
 } from './fixtures/txt-blocks/section-blocks.mjs'
 import { parse } from '../lib/parsers/txt.mjs'
 
@@ -1190,7 +1190,7 @@ describe('Parsing TLP 4.0 6.a text', () => {
     ${tableOfContentsTXTBlock}
     ${abstractWithReferencesTXTBlock}
     ${introductionTXTBlock}
-    ${TLP406aTXTBlock}
+    ${trust28Dec2009Section6aTXTBlock}
   `
 
     const result = await parse(txt, 'txt')
