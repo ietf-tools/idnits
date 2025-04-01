@@ -270,3 +270,14 @@ export const copyrightNoticeNumberedTXTBlock = `
    Copyright (c) 2023 IETF Trust and the persons identified as the
    document authors.  All rights reserved.
 `
+export const textWithPageNumberedTXTBlock = `
+Zhang, et al.           Expires 8 September 2023                [Page 1]
+
+Internet-Draft               RT-derived ECs                   March 2023
+`
+
+export const textWithoutPageNumberedTXTBlock = `
+Zhang, et al.           Expires 8 September 2023                
+
+Internet-Draft               RT-derived ECs                   March 2023
+`
