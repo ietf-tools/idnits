@@ -48,6 +48,7 @@ export const baseTXTDoc = {
       inlineCode: [],
       misspeled2119Keywords: [],
       pageLineWithFormFeed: [],
+      missingPageNumbering: [],
       isCopyrightNoticeNumbered: null,
       isAbstractNumbered: null,
       isPKorBM: null,

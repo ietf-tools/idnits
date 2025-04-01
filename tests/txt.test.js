@@ -16,7 +16,8 @@ import {
   validateCopyrightNoticeSectionIsNumbered,
   validateSeparatedFormfeeds,
   validateFormFeedOnSeparateLine,
-  validateCopyrightSection
+  validateCopyrightSection,
+  validatePageNumbering
 } from '../lib/modules/txt.mjs'
 import { baseTXTDoc } from './fixtures/base-doc.mjs'
 import { cloneDeep } from 'lodash-es'
@@ -170,6 +171,28 @@ describe('FORMFEED and [Page occur on a line, possibly separated by spaces (indi
     await expect(validateFormFeedOnSeparateLine(doc, { mode: MODES.NORMAL })).resolves.toContainError('DOCUMENT_CONTAINS_FORM_FEED_NOT_ON_SEPARATE_LINE', ValidationComment)
     await expect(validateFormFeedOnSeparateLine(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('DOCUMENT_CONTAINS_FORM_FEED_NOT_ON_SEPARATE_LINE', ValidationComment)
     await expect(validateFormFeedOnSeparateLine(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('DOCUMENT_CONTAINS_FORM_FEED_NOT_ON_SEPARATE_LINE', ValidationComment)
+  })
+})
+
+describe('Document have page numbering', () => {
+  test('Document have page numbering', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.possibleIssues.missingPageNumbering = []
+
+    await expect(validatePageNumbering(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
+    await expect(validatePageNumbering(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
+    await expect(validatePageNumbering(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+  })
+
+  test('Document don`t have page numbering', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.possibleIssues.missingPageNumbering = [{ page: 1, line: 2 }]
+
+    await expect(validatePageNumbering(doc, { mode: MODES.NORMAL })).resolves.toContainError('DOCUMENT_NOT_CONTAINS_PAGE_NUMBERING', ValidationComment)
+    await expect(validatePageNumbering(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('DOCUMENT_NOT_CONTAINS_PAGE_NUMBERING', ValidationComment)
+    await expect(validatePageNumbering(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('DOCUMENT_NOT_CONTAINS_PAGE_NUMBERING', ValidationComment)
   })
 })
 

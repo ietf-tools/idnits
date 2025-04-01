@@ -23,7 +23,9 @@ import {
   statusOfMemoNumberedTXTBlock,
   abstractNumberedTXTBlock,
   metaObsoleteAndUpdatesHasCharactersTXTBlock,
-  ianaConsiderationsTXTBlock
+  ianaConsiderationsTXTBlock,
+  textWithPageNumberedTXTBlock,
+  textWithoutPageNumberedTXTBlock
 } from './fixtures/txt-blocks/section-blocks.mjs'
 import { parse } from '../lib/parsers/txt.mjs'
 
@@ -1370,6 +1372,32 @@ describe('Formfeed and Page occur on a line, possibly separated by spaces', () =
     expect(result.data.possibleIssues.pageLineWithFormFeed).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ lines: 20, page: 1 })
+      ])
+    )
+  })
+})
+
+describe('Document pages numbered', () => {
+  test('Document pages numbered', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${textWithPageNumberedTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.missingPageNumbering).toHaveLength(0)
+  })
+
+  test('Document pages not numbered', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${textWithoutPageNumberedTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.missingPageNumbering).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ lines: 21, page: 1 })
       ])
     )
   })
