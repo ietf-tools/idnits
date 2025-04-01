@@ -18,6 +18,7 @@ import {
 } from '../lib/modules/txt.mjs'
 import { baseTXTDoc } from './fixtures/base-doc.mjs'
 import { cloneDeep } from 'lodash-es'
+import { PAGE_THRESHOLD_REQUIRING_TOC } from '../lib/config/consts.mjs'
 
 expect.extend({
   toContainError
@@ -406,14 +407,14 @@ describe('The document has more than 15 pages and not Table of Contents.', () =>
     await expect(validateTableOfContentsAndDocumentPages(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
     await expect(validateTableOfContentsAndDocumentPages(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
   })
-  test('Table of Contents missing and pages less 15', async () => {
+  test('Table of Contents missing and pages are current threshold', async () => {
     const doc = cloneDeep(baseTXTDoc)
     doc.data.possibleIssues.isTableOfContentsExists = false
-    doc.data.pageCount = 14
+    doc.data.pageCount = PAGE_THRESHOLD_REQUIRING_TOC
 
-    await expect(validateTableOfContentsAndDocumentPages(doc, { mode: MODES.NORMAL })).resolves.toContainError('DOCUMENT_HAVE_MORE_15_PAGES_OR_MISS_TABLE_OF_CONTENTS', ValidationError)
-    await expect(validateTableOfContentsAndDocumentPages(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('DOCUMENT_HAVE_MORE_15_PAGES_OR_MISS_TABLE_OF_CONTENTS', ValidationError)
-    await expect(validateTableOfContentsAndDocumentPages(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('DOCUMENT_HAVE_MORE_15_PAGES_OR_MISS_TABLE_OF_CONTENTS', ValidationWarning)
+    await expect(validateTableOfContentsAndDocumentPages(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
+    await expect(validateTableOfContentsAndDocumentPages(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
+    await expect(validateTableOfContentsAndDocumentPages(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
   })
   test('Table of Contents missing and pages more 15', async () => {
     const doc = cloneDeep(baseTXTDoc)
