@@ -1172,7 +1172,7 @@ describe('Parsing obsolete and update metadata with some characters', () => {
 })
 
 describe('Parsing unexpected indentations', () => {
-  test('Correct text without enexpected indentations', async () => {
+  test('Correct text without unexpected indentations', async () => {
     const txt = `${metaTXTBlock}
 ${tableOfContentsTXTBlock}
 ${abstractWithReferencesTXTBlock}
