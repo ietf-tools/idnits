@@ -151,7 +151,7 @@ describe('Validate pages are not separated by formfeeds.', () => {
   })
 })
 
-describe('FORMFEED and [Page occur on a line, possibly separated by spaces (indicates NROFF post-processing wasn`t successful).', () => {
+describe('FORMFEED and [Page occur on a line, possibly separated by spaces.', () => {
   test('Document don`t have formfeed and page occur on a line', async () => {
     const doc = cloneDeep(baseTXTDoc)
 
