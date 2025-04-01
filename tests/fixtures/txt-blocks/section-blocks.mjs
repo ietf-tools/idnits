@@ -225,6 +225,13 @@ export const RFC8174BoilerplateTXTBlock = `
     when, and only when, they appear in all capitals, as shown here.
 `
 
+export const copyrightNoticeWithCurrentYearTXTBlock = `
+    Copyright Notice
+
+    Copyright (c) ${new Date().getFullYear()} IETF Trust and the persons identified as the
+    document authors.  All rights reserved.
+`
+
 export const statusOfMemoTXTBlock = `
 Status of This Memo
 
