@@ -1344,6 +1344,200 @@ describe('TLP-5 6.b.i copyright date is not this year', () => {
     )
   })
 
+  test('TLP-5 6.b.i copyright date is this year', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${copyrightNoticeWithCurrentYearTXTBlock}
+    ${introductionTXTBlock}
+  `
+
+    const currentYear = new Date().getFullYear()
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.extractedElements.copyrightDates).toEqual(
+      expect.arrayContaining([currentYear])
+    )
+  })
+
+  test('TLP-5 6.b.i without copyright date', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${introductionTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.extractedElements.copyrightDates).toEqual(
+      expect.arrayContaining([])
+    )
+  })
+})
+
+describe('TLP-5 6.b.i copyright date is not this year', () => {
+  test('TLP-5 6.b.i copyright date is not this year', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${copyrightNoticeTXTBlock}
+    ${introductionTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.extractedElements.copyrightDates).toEqual(
+      expect.arrayContaining([2023])
+    )
+  })
+
+  test('TLP-5 6.b.i without copyright date', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${introductionTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.extractedElements.copyrightDates).toEqual(
+      expect.arrayContaining([])
+    )
+  })
+
+  test('TLP-5 6.b.i copyright date is this year', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${copyrightNoticeWithCurrentYearTXTBlock}
+    ${introductionTXTBlock}
+  `
+
+    const currentYear = new Date().getFullYear()
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.extractedElements.copyrightDates).toEqual(
+      expect.arrayContaining([currentYear])
+    )
+  })
+})
+
+describe('TLP-5 6.b.i or b.ii license notice is not present, or doesn\'t match stream IETF stream document sufficiently matches TLP-5 6.c.i or 6.c.ii text (restrictions on publication or derivative works)', () => {
+  test('TLP-5 6.b.ii license notice is not present', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${introductionTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.extractedElements.license6_b_ii).toStrictEqual([])
+  })
+
+  test('TLP-5 6.b.ii license restriction notice is present', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${introductionTXTBlock}
+    ${textLicense6biiTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.extractedElements.license6_b_ii).toStrictEqual([textLicense6biiTXTBlock.replace(/\s+/g, ' ').trim()])
+  })
+  test('TLP-5 6.c.i license notice is not present', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${introductionTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.contains.license6_c_i).toBeFalsy()
+  })
+
+  test('TLP-5 6.c.i license restriction notice is present', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${textLicense6ciTXTBlock}
+    ${introductionTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.contains.license6_c_i).toBeTruthy()
+  })
+  test('TLP-5 6.c.ii license notice is not present', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${introductionTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.contains.license6_c_ii).toBeFalsy()
+  })
+
+  test('TLP-5 6.c.ii license restriction notice is present', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${textLicense6ciiTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.contains.license6_c_ii).toBeTruthy()
+  })
+})
+
+describe('TLP-5 6.b.i copyright line is not present', () => {
+  test('TTLP-5 6.b.i copyright line is not present', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.contains.copyrightSection6_b_i).toBeFalsy()
+  })
+  test('TLP-5 6.b.i copyright line is present', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${copyrightNoticeTXTBlock}
+    ${introductionTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.contains.copyrightSection6_b_i).toBeTruthy()
+  })
+})
+
+describe('TLP-5 6.b.i copyright date is not this year', () => {
+  test('TLP-5 6.b.i copyright date is not this year', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${copyrightNoticeTXTBlock}
+    ${introductionTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.extractedElements.copyrightDates).toEqual(
+      expect.arrayContaining([2023])
+    )
+  })
+
   test('TLP-5 6.b.i without copyright date', async () => {
     const txt = `
     ${metaTXTBlock}
