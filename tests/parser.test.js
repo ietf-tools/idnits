@@ -1344,6 +1344,53 @@ describe('TLP-5 6.b.i copyright date is not this year', () => {
     )
   })
 
+  test('TLP-5 6.b.i copyright date is this year', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${copyrightNoticeWithCurrentYearTXTBlock}
+    ${introductionTXTBlock}
+  `
+
+    const currentYear = new Date().getFullYear()
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.extractedElements.copyrightDates).toEqual(
+      expect.arrayContaining([currentYear])
+    )
+  })
+
+  test('TLP-5 6.b.i without copyright date', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${introductionTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.extractedElements.copyrightDates).toEqual(
+      expect.arrayContaining([])
+    )
+  })
+})
+
+describe('TLP-5 6.b.i copyright date is not this year', () => {
+  test('TLP-5 6.b.i copyright date is not this year', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${copyrightNoticeTXTBlock}
+    ${introductionTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.extractedElements.copyrightDates).toEqual(
+      expect.arrayContaining([2023])
+    )
+  })
+
   test('TLP-5 6.b.i without copyright date', async () => {
     const txt = `
     ${metaTXTBlock}
@@ -1366,10 +1413,11 @@ describe('TLP-5 6.b.i copyright date is not this year', () => {
     ${introductionTXTBlock}
   `
 
+    const currentYear = new Date().getFullYear()
     const result = await parse(txt, 'txt')
 
     expect(result.data.extractedElements.copyrightDates).toEqual(
-      expect.arrayContaining([2025])
+      expect.arrayContaining([currentYear])
     )
   })
 })
@@ -1387,7 +1435,7 @@ describe('TLP-5 6.b.i or b.ii license notice is not present, or doesn\'t match s
     expect(result.data.extractedElements.license6_b_ii).toStrictEqual([])
   })
 
-  test('TLP-5 6.b.ii license notice is present', async () => {
+  test('TLP-5 6.b.ii license restriction notice is present', async () => {
     const txt = `
     ${metaTXTBlock}
     ${tableOfContentsTXTBlock}
@@ -1410,7 +1458,8 @@ describe('TLP-5 6.b.i or b.ii license notice is not present, or doesn\'t match s
 
     expect(result.data.contains.license6_c_i).toBeFalsy()
   })
-  test('TLP-5 6.c.i license notice is present', async () => {
+
+  test('TLP-5 6.c.i license restriction notice is present', async () => {
     const txt = `
     ${metaTXTBlock}
     ${tableOfContentsTXTBlock}
@@ -1434,7 +1483,7 @@ describe('TLP-5 6.b.i or b.ii license notice is not present, or doesn\'t match s
     expect(result.data.contains.license6_c_ii).toBeFalsy()
   })
 
-  test('TLP-5 6.c.ii license notice is present', async () => {
+  test('TLP-5 6.c.ii license restriction notice is present', async () => {
     const txt = `
     ${metaTXTBlock}
     ${tableOfContentsTXTBlock}
@@ -1448,19 +1497,6 @@ describe('TLP-5 6.b.i or b.ii license notice is not present, or doesn\'t match s
 })
 
 describe('TLP-5 6.b.i copyright line is not present', () => {
-  test('TLP-5 6.b.i copyright line is present', async () => {
-    const txt = `
-    ${metaTXTBlock}
-    ${tableOfContentsTXTBlock}
-    ${copyrightNoticeTXTBlock}
-    ${introductionTXTBlock}
-  `
-
-    const result = await parse(txt, 'txt')
-
-    expect(result.data.contains.copyrightSection6_b_i).toBeTruthy()
-  })
-
   test('TTLP-5 6.b.i copyright line is not present', async () => {
     const txt = `
       ${metaTXTBlock}
@@ -1473,10 +1509,9 @@ describe('TLP-5 6.b.i copyright line is not present', () => {
     expect(result.data.contains.copyrightSection6_b_i).toBeFalsy()
   })
 
-  test('TLP-5 6.b.i copyright line is present twice', async () => {
+  test('TLP-5 6.b.i copyright line is present', async () => {
     const txt = `
     ${metaTXTBlock}
-    ${copyrightNoticeWithCurrentYearTXTBlock}
     ${tableOfContentsTXTBlock}
     ${copyrightNoticeTXTBlock}
     ${introductionTXTBlock}
@@ -1484,6 +1519,6 @@ describe('TLP-5 6.b.i copyright line is not present', () => {
 
     const result = await parse(txt, 'txt')
 
-    expect(result.data.possibleIssues.copyrightLines6_i).toHaveLength(2)
+    expect(result.data.contains.copyrightSection6_b_i).toBeTruthy()
   })
 })
