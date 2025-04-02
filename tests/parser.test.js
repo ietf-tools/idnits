@@ -14,11 +14,11 @@ import {
   RFC2119BoilerplateTXTBlock,
   RFC8174BoilerplateTXTBlock,
   metaWithoutObsoleteAndUpdatesTXTBlock,
+  copyrightNoticeTXTBlock,
+  copyrightNoticeWithCurrentYearTXTBlock,
   textLicense6biiTXTBlock,
   textLicense6ciiTXTBlock,
   textLicense6ciTXTBlock,
-  copyrightNoticeTXTBlock,
-  copyrightNoticeWithCurrentYearTXTBlock,
   copyrightNoticeNumberedTXTBlock,
   statusOfMemoTXTBlock,
   statusOfMemoNumberedTXTBlock,
@@ -1458,6 +1458,7 @@ describe('TLP-5 6.b.i or b.ii license notice is not present, or doesn\'t match s
 
     expect(result.data.contains.license6_c_i).toBeFalsy()
   })
+
   test('TLP-5 6.c.i license restriction notice is present', async () => {
     const txt = `
     ${metaTXTBlock}

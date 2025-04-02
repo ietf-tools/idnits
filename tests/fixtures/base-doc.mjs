@@ -52,6 +52,7 @@ export const baseTXTDoc = {
       linesWithSpaces: [],
       inlineCode: [],
       misspeled2119Keywords: [],
+      copyrightLines6_i: [],
       isCopyrightNoticeNumbered: null,
       isAbstractNumbered: null,
       isPKorBM: null,
