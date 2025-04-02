@@ -27,7 +27,8 @@ export const baseTXTDoc = {
       copyrightSection6_b_i: null,
       copyrightLicenseValid: null,
       license6_c_i: null,
-      license6_c_ii: null
+      license6_c_ii: null,
+      revisedBsdLicense6_i: null
     },
     title: null,
     slug: 'draft-ietf-beep-boop-01',
@@ -45,6 +46,7 @@ export const baseTXTDoc = {
       referenceSectionDraftReferences: [],
       copyrightDates: [],
       license6_b_ii: [],
+      license6_b_i: [],
       bracketedRfcReferences: [],
       bracketedRfcNonReferences: []
     },
