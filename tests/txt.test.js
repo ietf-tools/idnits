@@ -14,6 +14,7 @@ import {
   validateAbstractSectionIsNumbered,
   validateStatusOfThisMemoSectionIsNumbered,
   validateCopyrightNoticeSectionIsNumbered,
+  validateAcceptableParagraphCallingOutSixMonthValidity,
   validateSaysWorkingDocuments,
   validateExpiresLine,
   validateIDIndicator,
@@ -130,6 +131,28 @@ describe('validateCodeComments', () => {
         ref: 'https://datatracker.ietf.org/doc/rfc8879'
       })
     ])
+  })
+})
+
+describe('The Document have acceptable paragraph calling out 6 month validity.', () => {
+  test('Document have acceptable paragraph calling out 6 month validity', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.contains.draftParagraphOutSixMonthValidity = true
+
+    await expect(validateAcceptableParagraphCallingOutSixMonthValidity(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
+    await expect(validateAcceptableParagraphCallingOutSixMonthValidity(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
+    await expect(validateAcceptableParagraphCallingOutSixMonthValidity(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+  })
+
+  test('Document don`t acceptable paragraph calling out 6 month validity', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.contains.draftParagraphOutSixMonthValidity = false
+
+    await expect(validateAcceptableParagraphCallingOutSixMonthValidity(doc, { mode: MODES.NORMAL })).resolves.toContainError('ACCEPTABLE_PARAGRAPH_PROVIDING_FOR_PERIOD_OF_VALIDITY_MISSING', ValidationError)
+    await expect(validateAcceptableParagraphCallingOutSixMonthValidity(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('ACCEPTABLE_PARAGRAPH_PROVIDING_FOR_PERIOD_OF_VALIDITY_MISSING', ValidationError)
+    await expect(validateAcceptableParagraphCallingOutSixMonthValidity(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('ACCEPTABLE_PARAGRAPH_PROVIDING_FOR_PERIOD_OF_VALIDITY_MISSING', ValidationError)
   })
 })
 

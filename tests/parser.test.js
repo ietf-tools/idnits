@@ -14,6 +14,7 @@ import {
   RFC2119BoilerplateTXTBlock,
   RFC8174BoilerplateTXTBlock,
   metaWithoutObsoleteAndUpdatesTXTBlock,
+  textAcceptableParagraphCallingOutSixMonthValidity,
   textAcceptableParagraphNotingThatDraftTXTBlock,
   metaWithoutIdIndicatorTXTBlock,
   copyrightNoticeTXTBlock,
@@ -1383,6 +1384,29 @@ describe('Copyright Notice section is numbered', () => {
 
     const result = await parse(txt, 'txt')
     expect(result.data.possibleIssues.isCopyrightNoticeNumbered).toBeTruthy()
+  })
+})
+
+describe('Missing acceptable paragraph calling out 6 month validity', () => {
+  test('The acceptable paragraph calling out 6 month validity is missing', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.contains.draftParagraphOutSixMonthValidity).toBeFalsy()
+  })
+
+  test('The acceptable paragraph calling out 6 month validity is present', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${textAcceptableParagraphCallingOutSixMonthValidity}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.contains.draftParagraphOutSixMonthValidity).toBeTruthy()
   })
 })
 

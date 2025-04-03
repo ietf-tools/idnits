@@ -224,6 +224,12 @@ export const RFC8174BoilerplateTXTBlock = `
     document are to be interpreted as described in BCP 14 [RFC2119] [RFC8174] 
     when, and only when, they appear in all capitals, as shown here.
 `
+export const textAcceptableParagraphCallingOutSixMonthValidity = `
+    Internet-Drafts are draft documents valid for a maximum of six months
+    and may be updated, replaced, or obsoleted by other documents at any
+    time.  It is inappropriate to use Internet-Drafts as reference
+    material or to cite them other than as "work in progress."
+`
 
 export const PageBreak = `
 Zhang, et al.           Expires 8 September 2023               [Page 1]
