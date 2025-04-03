@@ -15,7 +15,6 @@ import {
   RFC8174BoilerplateTXTBlock,
   metaWithoutObsoleteAndUpdatesTXTBlock,
   metaWithoutIdIndicatorTXTBlock,
-  copyrightNoticeNumberedTXTBlock,
   copyrightNoticeTXTBlock,
   copyrightNoticeWithCurrentYearTXTBlock,
   textLicense6biiTXTBlock,
