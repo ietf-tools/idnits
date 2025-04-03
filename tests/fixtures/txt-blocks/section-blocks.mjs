@@ -316,6 +316,16 @@ export const expiresLineFooterTXTBlock = `
 Zhang, et al.           Expires 7 March 2023                [Page 7]
 `
 
+export const metaWithoutDocumentNameTXTBlock = `
+idr                                                            Z. Zhang
+Internet-Draft                                                  J. Haas
+Intended status: Standards Track                       Juniper Networks
+Expires: 8 September 2023                                      K. Patel
+                                                                Arrcus
+                                                        21 January 2025
+            Extended Communities Derived from Route Targets
+`
+
 export const metaWithoutIdIndicatorTXTBlock = `
 idr                                                            Z. Zhang
 Intended status: Standards Track                       Juniper Networks

@@ -14,6 +14,7 @@ import {
   RFC2119BoilerplateTXTBlock,
   RFC8174BoilerplateTXTBlock,
   metaWithoutObsoleteAndUpdatesTXTBlock,
+  metaWithoutDocumentNameTXTBlock,
   textAcceptableParagraphCallingOutSixMonthValidity,
   textAcceptableParagraphNotingThatDraftTXTBlock,
   metaWithoutIdIndicatorTXTBlock,
@@ -1384,6 +1385,26 @@ describe('Copyright Notice section is numbered', () => {
 
     const result = await parse(txt, 'txt')
     expect(result.data.possibleIssues.isCopyrightNoticeNumbered).toBeTruthy()
+  })
+})
+
+describe('Missing document name on first page', () => {
+  test('The document name on first page is missing', async () => {
+    const txt = `
+    ${metaWithoutDocumentNameTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.slug).toBeNull()
+  })
+
+  test('The document name on first page is present', async () => {
+    const txt = `
+      ${metaTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.slug).toBe('draft-ietf-idr-rt-derived-community-05')
   })
 })
 
