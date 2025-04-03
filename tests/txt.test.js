@@ -14,6 +14,7 @@ import {
   validateAbstractSectionIsNumbered,
   validateStatusOfThisMemoSectionIsNumbered,
   validateCopyrightNoticeSectionIsNumbered,
+  validatePages,
   validateCopyrightDate,
   validateLicenseDeclarations,
   validateCopyrightSection
@@ -433,6 +434,64 @@ describe('validateCodeBlockLicenses', () => {
         {
           ref: 'https://trustee.ietf.org/license-info'
         }
+      )
+    ])
+  })
+})
+
+describe('validatePages', () => {
+  test('should return no warnings if mode is SUBMISSION', async () => {
+    const doc = {
+      data: {
+        possibleIssues: {
+          tooLongPages: []
+        }
+      }
+    }
+
+    const result = await validatePages(doc, { mode: MODES.SUBMISSION })
+
+    expect(result).toHaveLength(0)
+  })
+
+  test('should return no warnings if there are no too long pages', async () => {
+    const doc = {
+      data: {
+        possibleIssues: {
+          tooLongPages: []
+        }
+      }
+    }
+
+    const result = await validatePages(doc, { mode: MODES.NORMAL })
+
+    expect(result).toHaveLength(0)
+  })
+
+  test('should return a warning if there are pages that are too long', async () => {
+    const doc = {
+      data: {
+        possibleIssues: {
+          tooLongPages: [
+            { page: 3, lines: 85 },
+            { page: 5, lines: 90 }
+          ]
+        }
+      }
+    }
+
+    const result = await validatePages(doc, { mode: MODES.NORMAL })
+
+    expect(result).toEqual([
+      new ValidationWarning(
+        'PAGE_TOO_LONG',
+        'Page 3 is too long (85 lines).',
+        { ref: 'https://authors.ietf.org/en/drafting-in-plaintext#checklist' }
+      ),
+      new ValidationWarning(
+        'PAGE_TOO_LONG',
+        'Page 5 is too long (90 lines).',
+        { ref: 'https://authors.ietf.org/en/drafting-in-plaintext#checklist' }
       )
     ])
   })

@@ -225,6 +225,12 @@ export const RFC8174BoilerplateTXTBlock = `
     when, and only when, they appear in all capitals, as shown here.
 `
 
+export const PageBreak = `
+Zhang, et al.           Expires 8 September 2023               [Page 1]
+
+Internet-Draft               RT-derived ECs                  March 2023
+`
+
 export const copyrightNoticeWithCurrentYearTXTBlock = `
     Copyright Notice
 
