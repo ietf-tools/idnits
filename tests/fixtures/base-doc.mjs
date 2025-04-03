@@ -2,6 +2,7 @@ export const baseTXTDoc = {
   type: 'txt',
   filename: '',
   body: '',
+  slug: '',
   header: {
     category: null
   },
@@ -24,7 +25,11 @@ export const baseTXTDoc = {
     },
     contains: {
       idIndication: false,
-      copyrightSection6_b_i: null
+      copyrightSection6_b_i: null,
+      copyrightLicenseValid: null,
+      license6_c_i: null,
+      license6_c_ii: null,
+      revisedBsdLicense6_i: null
     },
     title: null,
     slug: 'draft-ietf-beep-boop-01',
@@ -40,6 +45,9 @@ export const baseTXTDoc = {
       referenceSectionRfc: [],
       nonReferenceSectionDraftReferences: [],
       referenceSectionDraftReferences: [],
+      copyrightDates: [],
+      license6_b_ii: [],
+      license6_b_i: [],
       bracketedRfcReferences: [],
       bracketedRfcNonReferences: []
     },
@@ -47,6 +55,7 @@ export const baseTXTDoc = {
       linesWithSpaces: [],
       inlineCode: [],
       misspeled2119Keywords: [],
+      copyrightLines6_i: [],
       isCopyrightNoticeNumbered: null,
       isAbstractNumbered: null,
       isPKorBM: null,

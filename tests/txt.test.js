@@ -15,6 +15,9 @@ import {
   validateStatusOfThisMemoSectionIsNumbered,
   validateCopyrightNoticeSectionIsNumbered,
   validateIDIndicator,
+  validatePages,
+  validateCopyrightDate,
+  validateLicenseDeclarations,
   validateCopyrightSection
 } from '../lib/modules/txt.mjs'
 import { baseTXTDoc } from './fixtures/base-doc.mjs'
@@ -127,71 +130,44 @@ describe('validateCodeComments', () => {
   })
 })
 
-describe('Validate ID indicator', () => {
-  test('Should return error if ID indicator is missing in SUBMISSION mode', async () => {
+describe('The copyright date is not valid.', () => {
+  test('Copyright text date valid', async () => {
     const doc = cloneDeep(baseTXTDoc)
-    const result = await validateIDIndicator(doc, { mode: MODES.SUBMISSION })
-    expect(result).toEqual([
-      new ValidationError(
-        'ID_INDICATOR_MISSING',
-        'Document does not contain an ID indication.',
-        { ref: 'https://authors.ietf.org/en/drafting-in-plaintext#checklist' }
-      )
-    ])
+
+    const currentYear = new Date().getFullYear()
+    doc.data.extractedElements.copyrightDates = [currentYear]
+
+    await expect(validateCopyrightDate(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
+    await expect(validateCopyrightDate(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
+    await expect(validateCopyrightDate(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
   })
-
-  test('should return no warnings if document contains ID indication', async () => {
+  test('Copyright console date valid', async () => {
     const doc = cloneDeep(baseTXTDoc)
-    doc.data.contains.idIndication = true
-    const result = await validateIDIndicator(doc, { mode: MODES.NORMAL })
-    expect(result).toHaveLength(0)
+
+    const currentYear = new Date().getFullYear()
+    doc.data.extractedElements.copyrightDates = [currentYear]
+
+    await expect(validateCopyrightDate(doc, { mode: MODES.NORMAL, year: 2025 })).resolves.toHaveLength(0)
+    await expect(validateCopyrightDate(doc, { mode: MODES.FORGIVE_CHECKLIST, year: 2025 })).resolves.toHaveLength(0)
+    await expect(validateCopyrightDate(doc, { mode: MODES.SUBMISSION, year: 2025 })).resolves.toHaveLength(0)
   })
-
-  test('should return a warning if document does not contain ID indication', async () => {
+  test('Copyright text date not valid', async () => {
     const doc = cloneDeep(baseTXTDoc)
-    doc.data.contains.idIndication = false
-    const result = await validateIDIndicator(doc, { mode: MODES.NORMAL })
-    expect(result).toEqual([
-      new ValidationError(
-        'ID_INDICATOR_MISSING',
-        'Document does not contain an ID indication.',
-        { ref: 'https://authors.ietf.org/en/drafting-in-plaintext#checklist' }
-      )
-    ])
+
+    doc.data.extractedElements.copyrightDates = [2023]
+
+    await expect(validateCopyrightDate(doc, { mode: MODES.NORMAL })).resolves.toContainError('COPYRIGHT_DATE_NOT_VALID', ValidationWarning)
+    await expect(validateCopyrightDate(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('COPYRIGHT_DATE_NOT_VALID', ValidationWarning)
+    await expect(validateCopyrightDate(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('COPYRIGHT_DATE_NOT_VALID', ValidationWarning)
   })
-
-  test('should handle missing idIndication property gracefully', async () => {
-    const doc = cloneDeep(baseTXTDoc)
-    delete doc.data.contains.idIndication
-    const result = await validateIDIndicator(doc, { mode: MODES.NORMAL })
-    expect(result).toEqual([
-      new ValidationError(
-        'ID_INDICATOR_MISSING',
-        'Document does not contain an ID indication.',
-        { ref: 'https://authors.ietf.org/en/drafting-in-plaintext#checklist' }
-      )
-    ])
-  })
-})
-
-describe('The copyright line is not present.', () => {
-  test('Copyright line is not present', async () => {
+  test('Copyright console date not valid', async () => {
     const doc = cloneDeep(baseTXTDoc)
 
-    doc.data.contains.copyrightSection6_b_i = false
+    doc.data.extractedElements.copyrightDates = [2034]
 
-    await expect(validateCopyrightSection(doc, { mode: MODES.NORMAL })).resolves.toContainError('COPYRIGHT_LINE_MISSING', ValidationError)
-    await expect(validateCopyrightSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('COPYRIGHT_LINE_MISSING', ValidationError)
-    await expect(validateCopyrightSection(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('COPYRIGHT_LINE_MISSING', ValidationError)
-  })
-  test('Copyright line is present', async () => {
-    const doc = cloneDeep(baseTXTDoc)
-
-    doc.data.contains.copyrightSection6_b_i = true
-
-    await expect(validateCopyrightSection(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
-    await expect(validateCopyrightSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
-    await expect(validateCopyrightSection(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+    await expect(validateCopyrightDate(doc, { mode: MODES.NORMAL, year: 2024 })).resolves.toContainError('COPYRIGHT_DATE_NOT_VALID', ValidationWarning)
+    await expect(validateCopyrightDate(doc, { mode: MODES.FORGIVE_CHECKLIST, year: 2024 })).resolves.toContainError('COPYRIGHT_DATE_NOT_VALID', ValidationWarning)
+    await expect(validateCopyrightDate(doc, { mode: MODES.SUBMISSION, year: 2024 })).resolves.toContainError('COPYRIGHT_DATE_NOT_VALID', ValidationWarning)
   })
 })
 
@@ -459,6 +435,222 @@ describe('validateCodeBlockLicenses', () => {
         {
           ref: 'https://trustee.ietf.org/license-info'
         }
+      )
+    ])
+  })
+})
+
+describe('validatePages', () => {
+  test('should return no warnings if mode is SUBMISSION', async () => {
+    const doc = {
+      data: {
+        possibleIssues: {
+          tooLongPages: []
+        }
+      }
+    }
+
+    const result = await validatePages(doc, { mode: MODES.SUBMISSION })
+
+    expect(result).toHaveLength(0)
+  })
+
+  test('should return no warnings if there are no too long pages', async () => {
+    const doc = {
+      data: {
+        possibleIssues: {
+          tooLongPages: []
+        }
+      }
+    }
+
+    const result = await validatePages(doc, { mode: MODES.NORMAL })
+
+    expect(result).toHaveLength(0)
+  })
+
+  test('should return a warning if there are pages that are too long', async () => {
+    const doc = {
+      data: {
+        possibleIssues: {
+          tooLongPages: [
+            { page: 3, lines: 85 },
+            { page: 5, lines: 90 }
+          ]
+        }
+      }
+    }
+
+    const result = await validatePages(doc, { mode: MODES.NORMAL })
+
+    expect(result).toEqual([
+      new ValidationWarning(
+        'PAGE_TOO_LONG',
+        'Page 3 is too long (85 lines).',
+        { ref: 'https://authors.ietf.org/en/drafting-in-plaintext#checklist' }
+      ),
+      new ValidationWarning(
+        'PAGE_TOO_LONG',
+        'Page 5 is too long (90 lines).',
+        { ref: 'https://authors.ietf.org/en/drafting-in-plaintext#checklist' }
+      )
+    ])
+  })
+})
+
+describe('validateLicenseDeclarations', () => {
+  test('should return error when both licence6_b_ii is empty and revisedBsdLicense6_i is false', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+    doc.data.extractedElements.licence6_b_ii = []
+    doc.data.contains.revisedBsdLicense6_i = false
+    doc.data.slug = 'draft-ietf-example'
+
+    const result = await validateLicenseDeclarations(doc)
+    expect(result).toContainEqual(new ValidationError(
+      'TLP5_LICENSE_NOTICE_MISSING',
+      'The document does not contain a required TLP-5 license notice (6.b.i or 6.b.ii).',
+      { ref: 'https://trustee.ietf.org/license-info' }
+    ))
+  })
+
+  test('should not return error for missing licence6_b_ii if revisedBsdLicense6_i is present', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+    doc.data.extractedElements.license6_b_ii = []
+    doc.data.contains.revisedBsdLicense6_i = true
+    doc.data.slug = 'draft-ietf-example'
+
+    const result = await validateLicenseDeclarations(doc)
+    expect(result).toHaveLength(0)
+  })
+
+  test('should return warning for licence6_c_i when slug starts with "draft-ietf-"', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+    doc.data.slug = 'draft-ietf-example'
+    doc.data.contains.license6_c_i = true
+    const result = await validateLicenseDeclarations(doc)
+    expect(result).toContainEqual(new ValidationWarning(
+      'TLP5_LICENSE_NOTICE',
+      'The document has an IETF Trust Provisions of 28 Dec 2009, Section 6.c(i) Publication Limitation clause.',
+      { ref: 'https://trustee.ietf.org/license-info' }
+    ))
+  })
+
+  test('should return error for licence6_c_ii when slug starts with "draft-ietf-"', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+    doc.data.slug = 'draft-ietf-example'
+    doc.data.contains.license6_c_ii = true
+    const result = await validateLicenseDeclarations(doc)
+    expect(result).toContainEqual(new ValidationError(
+      'TLP5_LICENSE_NOTICE',
+      'The document has an IETF Trust Provisions, 28 Dec 2009, Section 6.c(ii) Publication Limitation clause.',
+      { ref: 'https://trustee.ietf.org/license-info' }
+    ))
+  })
+
+  test('should not check for licence6_c if slug does not start with "draft-ietf-"', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+    doc.data.slug = 'other-document'
+    doc.data.contains.license6_c_i = true
+    doc.data.contains.license6_c_ii = true
+    doc.data.contains.revisedBsdLicense6_i = true
+
+    const result = await validateLicenseDeclarations(doc)
+    expect(result).toHaveLength(0)
+  })
+})
+
+describe('Document contains more than one copyright notice.', () => {
+  test('Document contains one copyright notice', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.contains.copyrightSection6_b_i = true
+    doc.data.possibleIssues.copyrightLines6_i = ['COPYRIGHT']
+
+    await expect(validateCopyrightSection(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
+    await expect(validateCopyrightSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
+    await expect(validateCopyrightSection(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+  })
+
+  test('Document contains more than one copyright notice', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.contains.copyrightSection6_b_i = true
+    doc.data.possibleIssues.copyrightLines6_i = [
+      'COPYRIGHT',
+      'COPYRIGHT'
+    ]
+
+    await expect(validateCopyrightSection(doc, { mode: MODES.NORMAL })).resolves.toContainError('COPYRIGHT_LINE_MORE_THAN_ONE', ValidationWarning)
+    await expect(validateCopyrightSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('COPYRIGHT_LINE_MORE_THAN_ONE', ValidationWarning)
+    await expect(validateCopyrightSection(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('COPYRIGHT_LINE_MORE_THAN_ONE', ValidationWarning)
+  })
+})
+
+describe('The copyright line is not present.', () => {
+  test('Copyright line is not present', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.contains.copyrightSection6_b_i = false
+    doc.data.possibleIssues.copyrightLines6_i = []
+
+    await expect(validateCopyrightSection(doc, { mode: MODES.NORMAL })).resolves.toContainError('COPYRIGHT_LINE_MISSING', ValidationError)
+    await expect(validateCopyrightSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('COPYRIGHT_LINE_MISSING', ValidationError)
+    await expect(validateCopyrightSection(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('COPYRIGHT_LINE_MISSING', ValidationError)
+  })
+  test('Copyright line is present', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.contains.copyrightSection6_b_i = true
+    doc.data.possibleIssues.copyrightLines6_i = []
+
+    await expect(validateCopyrightSection(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
+    await expect(validateCopyrightSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
+    await expect(validateCopyrightSection(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+  })
+})
+
+describe('Validate ID indicator', () => {
+  test('Should return error if ID indicator is missing in SUBMISSION mode', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+    const result = await validateIDIndicator(doc, { mode: MODES.SUBMISSION })
+    expect(result).toEqual([
+      new ValidationError(
+        'ID_INDICATOR_MISSING',
+        'Document does not contain an ID indication.',
+        { ref: 'https://authors.ietf.org/en/drafting-in-plaintext#checklist' }
+      )
+    ])
+  })
+
+  test('should return no warnings if document contains ID indication', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+    doc.data.contains.idIndication = true
+    const result = await validateIDIndicator(doc, { mode: MODES.NORMAL })
+    expect(result).toHaveLength(0)
+  })
+
+  test('should return a warning if document does not contain ID indication', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+    doc.data.contains.idIndication = false
+    const result = await validateIDIndicator(doc, { mode: MODES.NORMAL })
+    expect(result).toEqual([
+      new ValidationError(
+        'ID_INDICATOR_MISSING',
+        'Document does not contain an ID indication.',
+        { ref: 'https://authors.ietf.org/en/drafting-in-plaintext#checklist' }
+      )
+    ])
+  })
+
+  test('should handle missing idIndication property gracefully', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+    delete doc.data.contains.idIndication
+    const result = await validateIDIndicator(doc, { mode: MODES.NORMAL })
+    expect(result).toEqual([
+      new ValidationError(
+        'ID_INDICATOR_MISSING',
+        'Document does not contain an ID indication.',
+        { ref: 'https://authors.ietf.org/en/drafting-in-plaintext#checklist' }
       )
     ])
   })
