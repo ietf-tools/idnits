@@ -299,6 +299,12 @@ export const copyrightNoticeNumberedTXTBlock = `
    Copyright (c) 2023 IETF Trust and the persons identified as the
    document authors.  All rights reserved.
 `
+
+export const expiresLineFooterTXTBlock = `
+
+Zhang, et al.           Expires 7 March 2023                [Page 7]
+`
+
 export const metaWithoutIdIndicatorTXTBlock = `
 idr                                                            Z. Zhang
 Intended status: Standards Track                       Juniper Networks

@@ -26,6 +26,7 @@ import {
   abstractNumberedTXTBlock,
   metaObsoleteAndUpdatesHasCharactersTXTBlock,
   ianaConsiderationsTXTBlock,
+  expiresLineFooterTXTBlock,
   PageBreak
 } from './fixtures/txt-blocks/section-blocks.mjs'
 import { parse } from '../lib/parsers/txt.mjs'
@@ -1381,6 +1382,53 @@ describe('Copyright Notice section is numbered', () => {
 
     const result = await parse(txt, 'txt')
     expect(result.data.possibleIssues.isCopyrightNoticeNumbered).toBeTruthy()
+  })
+})
+
+describe('Parsing expires line', () => {
+  test('Parsing expires line', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractTXTBlock}
+      ${introductionTXTBlock}
+      ${copyrightNoticeNumberedTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.header.expires).toBeDefined()
+    expect(result.data.header.expires.toISODate()).toEqual('2023-09-08')
+    expect(result.data.extractedElements.lastPageExpiration).toBeNull()
+  })
+
+  test('No expires line', async () => {
+    const txt = `
+      ${metaTXTBlock.replace('Expires: 8 September 2023', '')}
+      ${tableOfContentsTXTBlock}
+      ${abstractTXTBlock}
+      ${introductionTXTBlock}
+      ${copyrightNoticeNumberedTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.header.expires).toBeNull()
+    expect(result.data.extractedElements.lastPageExpiration).toBeNull()
+  })
+
+  test('Expiration date on first and last page are present', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractTXTBlock}
+      ${introductionTXTBlock}
+      ${expiresLineFooterTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.header.expires).toBeDefined()
+    expect(result.data.header.expires.toISODate()).toEqual('2023-09-08')
+    expect(result.data.extractedElements.lastPageExpiration).toBeDefined()
+    expect(result.data.extractedElements.lastPageExpiration.toISODate()).toEqual('2023-03-07')
   })
 })
 

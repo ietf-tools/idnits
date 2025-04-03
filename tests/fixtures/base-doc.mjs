@@ -49,7 +49,8 @@ export const baseTXTDoc = {
       license6_b_ii: [],
       license6_b_i: [],
       bracketedRfcReferences: [],
-      bracketedRfcNonReferences: []
+      bracketedRfcNonReferences: [],
+      lastPageExpiration: null
     },
     possibleIssues: {
       linesWithSpaces: [],
