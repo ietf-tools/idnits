@@ -14,6 +14,7 @@ import {
   RFC2119BoilerplateTXTBlock,
   RFC8174BoilerplateTXTBlock,
   metaWithoutObsoleteAndUpdatesTXTBlock,
+  textAcceptableParagraphNotingThatDraftTXTBlock,
   metaWithoutIdIndicatorTXTBlock,
   copyrightNoticeTXTBlock,
   copyrightNoticeWithCurrentYearTXTBlock,
@@ -1625,5 +1626,28 @@ describe('doesn\'t say INTERNET DRAFT in the upper left of the first page', () =
     const result = await parse(txt, 'txt')
 
     expect(result.data.contains.idIndication).toBeTruthy()
+  })
+})
+
+describe('Missing acceptable paragraph noting that IDs are working documents', () => {
+  test('The acceptable paragraph noting that IDs are working documents is missing', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.contains.acceptableParagraphNotingThatDraft).toBeFalsy()
+  })
+
+  test('The acceptable paragraph noting that IDs are working documents is present', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${textAcceptableParagraphNotingThatDraftTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.contains.acceptableParagraphNotingThatDraft).toBeTruthy()
   })
 })

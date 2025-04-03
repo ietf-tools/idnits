@@ -24,6 +24,7 @@ export const baseTXTDoc = {
       ianaConsiderations: null
     },
     contains: {
+      acceptableParagraphNotingThatDraft: false,
       idIndication: false,
       copyrightSection6_b_i: null,
       copyrightLicenseValid: null,
