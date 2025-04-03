@@ -14,6 +14,8 @@ import {
   RFC2119BoilerplateTXTBlock,
   RFC8174BoilerplateTXTBlock,
   metaWithoutObsoleteAndUpdatesTXTBlock,
+  metaWithoutIdIndicatorTXTBlock,
+  copyrightNoticeNumberedTXTBlock,
   copyrightNoticeTXTBlock,
   copyrightNoticeWithCurrentYearTXTBlock,
   textLicense6biiTXTBlock,
@@ -1554,5 +1556,27 @@ describe('TLP-5 6.b.i copyright line is not present', () => {
     const result = await parse(txt, 'txt')
 
     expect(result.data.possibleIssues.copyrightLines6_i).toHaveLength(2)
+  })
+})
+
+describe('doesn\'t say INTERNET DRAFT in the upper left of the first page', () => {
+  test('doesn\'t say INTERNET DRAFT in the upper left of the first page', async () => {
+    const txt = `
+    ${metaWithoutIdIndicatorTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.contains.idIndication).toBeFalsy()
+  })
+
+  test('Say INTERNET DRAFT in the upper left of the first page', async () => {
+    const txt = `
+      ${metaTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.contains.idIndication).toBeTruthy()
   })
 })
