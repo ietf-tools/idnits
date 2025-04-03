@@ -1171,8 +1171,8 @@ describe('Parsing obsolete and update metadata with some characters', () => {
   })
 })
 
-describe('Parsing TLP 4.0 6.a text', () => {
-  test('No TLP 4.0 6.a text', async () => {
+describe('Parsing TLP 6.a text', () => {
+  test('No TLP 6.a text', async () => {
     const txt = `
     ${metaTXTBlock}
     ${tableOfContentsTXTBlock}
@@ -1185,7 +1185,7 @@ describe('Parsing TLP 4.0 6.a text', () => {
     expect(result.data.contains.submissionCompliance).toBeFalsy()
   })
 
-  test('TLP 4.0 6.a text appears', async () => {
+  test('TLP 6.a text appears', async () => {
     const txt = `
     ${metaTXTBlock}
     ${tableOfContentsTXTBlock}
@@ -1199,8 +1199,8 @@ describe('Parsing TLP 4.0 6.a text', () => {
   })
 })
 
-describe('Parsing TLP 4.0 6.a line page', () => {
-  test('Parsing TLP 4.5 6.a line page on the second page', async () => {
+describe('Parsing TLP 6.a line page', () => {
+  test('Parsing TLP 6.a line page on the second page', async () => {
     const txt = `
     ${metaTXTBlock}
     ${tableOfContentsTXTBlock}
@@ -1214,7 +1214,7 @@ describe('Parsing TLP 4.0 6.a line page', () => {
     expect(result.data.possibleIssues.submissionCompliancePage).toEqual(2)
   })
 
-  test('Should detect TLP 4.0 6.a on first page', async () => {
+  test('Should detect TLP 6.a on first page', async () => {
     const txt = `
     ${metaTXTBlock}
     ${tableOfContentsTXTBlock}
@@ -1231,7 +1231,7 @@ describe('Parsing TLP 4.0 6.a line page', () => {
 })
 
 describe('TLP-5 6.b.i copyright line is not present', () => {
-  test('TTLP-5 6.b.i copyright line is not present', async () => {
+  test('TLP-5 6.b.i copyright line is not present', async () => {
     const txt = `
       ${metaTXTBlock}
       ${tableOfContentsTXTBlock}
