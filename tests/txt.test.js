@@ -416,7 +416,7 @@ describe(`The document has more than ${PAGE_THRESHOLD_REQUIRING_TOC} pages and n
     await expect(validateTableOfContentsAndDocumentPages(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
     await expect(validateTableOfContentsAndDocumentPages(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
   })
-  test(`Table of Contents missing and pages more than current treshold (${PAGE_THRESHOLD_REQUIRING_TOC})`, async () => {
+  test(`Table of Contents missing and pages more than current threshold (${PAGE_THRESHOLD_REQUIRING_TOC})`, async () => {
     const doc = cloneDeep(baseTXTDoc)
 
     doc.data.possibleIssues.isTableOfContentsExists = false
