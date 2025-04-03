@@ -396,8 +396,8 @@ describe('validateCodeBlockLicenses', () => {
   })
 })
 
-describe('The document has more than 15 pages and not Table of Contents.', () => {
-  test('Table of Contents exists and pages less 15', async () => {
+describe(`The document has more than ${PAGE_THRESHOLD_REQUIRING_TOC} pages and not Table of Contents.`, () => {
+  test('Table of Contents exists and pages less than current treshold', async () => {
     const doc = cloneDeep(baseTXTDoc)
 
     doc.data.possibleIssues.isTableOfContentsExists = true
@@ -416,14 +416,14 @@ describe('The document has more than 15 pages and not Table of Contents.', () =>
     await expect(validateTableOfContentsAndDocumentPages(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
     await expect(validateTableOfContentsAndDocumentPages(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
   })
-  test('Table of Contents missing and pages more 15', async () => {
+  test(`Table of Contents missing and pages more than current treshold (${PAGE_THRESHOLD_REQUIRING_TOC})`, async () => {
     const doc = cloneDeep(baseTXTDoc)
 
     doc.data.possibleIssues.isTableOfContentsExists = false
     doc.data.pageCount = 17
 
-    await expect(validateTableOfContentsAndDocumentPages(doc, { mode: MODES.NORMAL })).resolves.toContainError('DOCUMENT_HAVE_MORE_15_PAGES_OR_MISS_TABLE_OF_CONTENTS', ValidationError)
-    await expect(validateTableOfContentsAndDocumentPages(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('DOCUMENT_HAVE_MORE_15_PAGES_OR_MISS_TABLE_OF_CONTENTS', ValidationError)
-    await expect(validateTableOfContentsAndDocumentPages(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('DOCUMENT_HAVE_MORE_15_PAGES_OR_MISS_TABLE_OF_CONTENTS', ValidationWarning)
+    await expect(validateTableOfContentsAndDocumentPages(doc, { mode: MODES.NORMAL })).resolves.toContainError(`DOCUMENT_HAVE_MORE_${PAGE_THRESHOLD_REQUIRING_TOC}_PAGES_OR_MISS_TABLE_OF_CONTENTS`, ValidationError)
+    await expect(validateTableOfContentsAndDocumentPages(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError(`DOCUMENT_HAVE_MORE_${PAGE_THRESHOLD_REQUIRING_TOC}_PAGES_OR_MISS_TABLE_OF_CONTENTS`, ValidationError)
+    await expect(validateTableOfContentsAndDocumentPages(doc, { mode: MODES.SUBMISSION })).resolves.toContainError(`DOCUMENT_HAVE_MORE_${PAGE_THRESHOLD_REQUIRING_TOC}_PAGES_OR_MISS_TABLE_OF_CONTENTS`, ValidationWarning)
   })
 })
