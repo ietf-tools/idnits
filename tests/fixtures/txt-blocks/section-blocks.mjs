@@ -325,3 +325,13 @@ Expires: 8 September 2023                                      K. Patel
                                                         21 January 2025
             Extended Communities Derived from Route Targets
 `
+
+export const metaWithoutIdIndicatorTXTBlock = `
+idr                                                            Z. Zhang
+Intended status: Standards Track                       Juniper Networks
+Expires: 8 September 2023                                      K. Patel
+                                                                Arrcus
+                                                        21 January 2025
+            Extended Communities Derived from Route Targets
+                 draft-ietf-idr-rt-derived-community-05
+`
