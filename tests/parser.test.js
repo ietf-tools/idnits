@@ -1298,8 +1298,8 @@ describe('Copyright Notice section is numbered', () => {
   })
 })
 
-describe('Missing acceptable paragraph pointing the list of current id', () => {
-  test('The acceptable paragraph pointing the list of current id is missing', async () => {
+describe('Missing acceptable paragraph pointing the list of current I-Ds', () => {
+  test('The acceptable paragraph pointing the list of current I-Ds is missing', async () => {
     const txt = `
       ${metaTXTBlock}
       ${tableOfContentsTXTBlock}
@@ -1307,10 +1307,10 @@ describe('Missing acceptable paragraph pointing the list of current id', () => {
     `
 
     const result = await parse(txt, 'txt')
-    expect(result.data.contains.draftParagraphPointingToTheListOfCurrentId).toBeFalsy()
+    expect(result.data.contains.draftParagraphPointingToTheListOfCurrentIds).toBeFalsy()
   })
 
-  test('The acceptable paragraph pointing the list of current id is present', async () => {
+  test('The acceptable paragraph pointing the list of current I-Ds is present', async () => {
     const txt = `
     ${metaTXTBlock}
     ${tableOfContentsTXTBlock}
@@ -1319,6 +1319,6 @@ describe('Missing acceptable paragraph pointing the list of current id', () => {
   `
 
     const result = await parse(txt, 'txt')
-    expect(result.data.contains.draftParagraphPointingToTheListOfCurrentId).toBeTruthy()
+    expect(result.data.contains.draftParagraphPointingToTheListOfCurrentIds).toBeTruthy()
   })
 })

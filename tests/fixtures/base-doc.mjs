@@ -23,7 +23,7 @@ export const baseTXTDoc = {
       ianaConsiderations: null
     },
     contains: {
-      draftParagraphPointingToTheListOfCurrentId: null
+      draftParagraphPointingToTheListOfCurrentIds: null
     },
     title: null,
     slug: 'draft-ietf-beep-boop-01',

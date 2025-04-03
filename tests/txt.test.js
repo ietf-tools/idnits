@@ -14,7 +14,7 @@ import {
   validateAbstractSectionIsNumbered,
   validateStatusOfThisMemoSectionIsNumbered,
   validateCopyrightNoticeSectionIsNumbered,
-  validateAcceptableParagraphPointingListId
+  validateParagraphLinkingToIdsList
 } from '../lib/modules/txt.mjs'
 import { baseTXTDoc } from './fixtures/base-doc.mjs'
 import { cloneDeep } from 'lodash-es'
@@ -126,25 +126,25 @@ describe('validateCodeComments', () => {
   })
 })
 
-describe('The Document have an acceptable paragraph pointing to the list of current id.', () => {
-  test('Document have acceptable paragraph pointing to the list of current id', async () => {
+describe('The Document have an acceptable paragraph pointing to the list of current I-Ds.', () => {
+  test('Document have acceptable paragraph pointing to the list of current I-Ds', async () => {
     const doc = cloneDeep(baseTXTDoc)
 
-    doc.data.contains.draftParagraphPointingToTheListOfCurrentId = true
+    doc.data.contains.draftParagraphPointingToTheListOfCurrentIds = true
 
-    await expect(validateAcceptableParagraphPointingListId(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
-    await expect(validateAcceptableParagraphPointingListId(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
-    await expect(validateAcceptableParagraphPointingListId(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+    await expect(validateParagraphLinkingToIdsList(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
+    await expect(validateParagraphLinkingToIdsList(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
+    await expect(validateParagraphLinkingToIdsList(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
   })
 
-  test('Document don`t acceptable paragraph pointing to the list of current id', async () => {
+  test('Document don`t acceptable paragraph pointing to the list of current I-Ds', async () => {
     const doc = cloneDeep(baseTXTDoc)
 
-    doc.data.contains.draftParagraphPointingToTheListOfCurrentId = false
+    doc.data.contains.draftParagraphPointingToTheListOfCurrentIds = false
 
-    await expect(validateAcceptableParagraphPointingListId(doc, { mode: MODES.NORMAL })).resolves.toContainError('ACCEPTABLE_PARAGRAPH_POINTING_LIST_ID_MISSING', ValidationError)
-    await expect(validateAcceptableParagraphPointingListId(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('ACCEPTABLE_PARAGRAPH_POINTING_LIST_ID_MISSING', ValidationError)
-    await expect(validateAcceptableParagraphPointingListId(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('ACCEPTABLE_PARAGRAPH_POINTING_LIST_ID_MISSING', ValidationError)
+    await expect(validateParagraphLinkingToIdsList(doc, { mode: MODES.NORMAL })).resolves.toContainError('ACCEPTABLE_PARAGRAPH_POINTING_LIST_ID_MISSING', ValidationError)
+    await expect(validateParagraphLinkingToIdsList(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('ACCEPTABLE_PARAGRAPH_POINTING_LIST_ID_MISSING', ValidationError)
+    await expect(validateParagraphLinkingToIdsList(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('ACCEPTABLE_PARAGRAPH_POINTING_LIST_ID_MISSING', ValidationError)
   })
 })
 
