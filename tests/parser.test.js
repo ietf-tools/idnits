@@ -21,7 +21,6 @@ import {
   textLicense6biiTXTBlock,
   textLicense6ciiTXTBlock,
   textLicense6ciTXTBlock,
-  copyrightNoticeNumberedTXTBlock,
   statusOfMemoTXTBlock,
   statusOfMemoNumberedTXTBlock,
   abstractNumberedTXTBlock,
