@@ -240,12 +240,6 @@ Zhang, et al.           Expires 8 September 2023               [Page 1]
 Internet-Draft               RT-derived ECs                  March 2023
 `
 
-export const PageBreak = `
-Zhang, et al.           Expires 8 September 2023               [Page 1]
-
-Internet-Draft               RT-derived ECs                  March 2023
-`
-
 export const copyrightNoticeWithCurrentYearTXTBlock = `
     Copyright Notice
 
