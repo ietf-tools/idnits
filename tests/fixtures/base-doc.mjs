@@ -57,6 +57,7 @@ export const baseTXTDoc = {
       lastPageExpiration: null
     },
     possibleIssues: {
+      unexpectedIndentation: [],
       isTableOfContentsExists: null,
       linesWithSpaces: [],
       inlineCode: [],

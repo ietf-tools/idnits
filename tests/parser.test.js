@@ -33,6 +33,7 @@ import {
   abstractNumberedTXTBlock,
   metaObsoleteAndUpdatesHasCharactersTXTBlock,
   ianaConsiderationsTXTBlock,
+  referencesTXTBlockShort,
   PageBlock,
   expiresLineFooterTXTBlock,
   PageBreak,
@@ -774,6 +775,7 @@ describe('Parsing references with categorization', () => {
       ${abstractWithReferencesTXTBlock}
       ${introductionTXTBlock}
       ${securityConsiderationsTXTBlock}
+      [RFC1234]
     `
 
     const result = await parse(txt, 'txt')
@@ -1392,7 +1394,7 @@ describe('Reference is declared, but not used in the document', () => {
 
     const result = await parse(txt, 'txt')
     expect(result.data.extractedElements.nonReferenceSectionDraftReferences).toContain('[1]')
-    expect(result.data.extractedElements.nonReferenceSectionRfc).toHaveLength(1)
+    expect(result.data.extractedElements.nonReferenceSectionDraftReferences).toHaveLength(1)
   })
 
   test('Parsing references in text (multiple references)', async () => {
@@ -1935,5 +1937,102 @@ describe('Missing acceptable paragraph pointing the list of current I-Ds', () =>
 
     const result = await parse(txt, 'txt')
     expect(result.data.possibleIssues.paragraphPointingToTheListOfCurrentId).toHaveLength(2)
+  })
+})
+
+describe('Parsing unexpected indentations', () => {
+  test('Correct text without unexpected indentations', async () => {
+    const txt = `${metaTXTBlock}
+${tableOfContentsTXTBlock}
+${abstractWithReferencesTXTBlock}
+${introductionTXTBlock}
+${securityConsiderationsTXTBlock}`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.unexpectedIndentation).toHaveLength(0)
+  })
+
+  test('Section title has unexpected indentation', async () => {
+    const txt = `${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${abstractWithReferencesTXTBlock}
+    ${introductionTXTBlock}
+    ${securityConsiderationsTXTBlock}
+   6. Some section title
+   Text of section
+   More text`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.unexpectedIndentation).toHaveLength(1)
+    expect(result.data.possibleIssues.unexpectedIndentation).toEqual(
+      expect.arrayContaining([expect.objectContaining({ pos: 0 })])
+    )
+  })
+
+  test('Section text has unexpected indentation', async () => {
+    const txt = `${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${abstractWithReferencesTXTBlock}
+    ${introductionTXTBlock}
+    ${securityConsiderationsTXTBlock}
+6. Some section title
+
+    Text of section with bad indentation
+  More text`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.unexpectedIndentation).toHaveLength(2)
+    expect(result.data.possibleIssues.unexpectedIndentation).toEqual(
+      expect.arrayContaining([expect.objectContaining({ pos: 0 }), expect.objectContaining({ pos: 0 })])
+    )
+  })
+
+  test('Section text has unexpected indentation', async () => {
+    const txt = `${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${abstractWithReferencesTXTBlock}
+    ${introductionTXTBlock}
+    ${securityConsiderationsTXTBlock}
+6. Some section title
+
+    Text of section with bad indentation
+  More text`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.unexpectedIndentation).toHaveLength(2)
+    expect(result.data.possibleIssues.unexpectedIndentation).toEqual(
+      expect.arrayContaining([expect.objectContaining({ pos: 0 }), expect.objectContaining({ pos: 0 })])
+    )
+  })
+
+  test('Should avoid marking as an error text with quote', async () => {
+    const txt = `${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${abstractWithReferencesTXTBlock}
+    ${introductionTXTBlock}
+    ${securityConsiderationsTXTBlock}
+   described, as quoted below:
+     "The translation of the IRTs is necessary in order to refrain from
+     importing "route-filter" VRF routes into VPN VRFs that would
+     import the same route-targets.  The translation of the IRTS is
+     done as follows.  For a given IRT, the equivalent translated RT
+     (TRT) is constructed by means of swapping the value of the high-
+     order octet of the Type field for the IRT (as defined in
+     [RFC4360])."`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.unexpectedIndentation).toHaveLength(0)
+  })
+
+  test('Should avoid marking as an error reference text', async () => {
+    const txt = `${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${abstractWithReferencesTXTBlock}
+    ${introductionTXTBlock}
+    ${securityConsiderationsTXTBlock}
+    ${referencesTXTBlockShort}`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.unexpectedIndentation).toHaveLength(0)
   })
 })
