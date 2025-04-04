@@ -1976,6 +1976,7 @@ ${securityConsiderationsTXTBlock}`
     ${introductionTXTBlock}
     ${securityConsiderationsTXTBlock}
 6. Some section title
+
     Text of section with bad indentation
   More text`
 
@@ -1993,6 +1994,7 @@ ${securityConsiderationsTXTBlock}`
     ${introductionTXTBlock}
     ${securityConsiderationsTXTBlock}
 6. Some section title
+
     Text of section with bad indentation
   More text`
 
