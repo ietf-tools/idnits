@@ -32,9 +32,9 @@
     "entities": "4.5.0",
     "fast-xml-parser": "4.3.4",
     "jschardet": "3.0.0",
+    "listr2": "8.2.5",
     "lodash-es": "4.17.21",
     "luxon": "3.2.1",
-    "ora": "6.3.0",
     "semver": "7.6.0",
     "yargs": "17.7.1"
   },
