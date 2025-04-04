@@ -1182,6 +1182,65 @@ describe('Parsing obsolete and update metadata with some characters', () => {
   })
 })
 
+describe('Parsing TLP 6.a text', () => {
+  test('No TLP 6.a text', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${abstractWithReferencesTXTBlock}
+    ${introductionTXTBlock}
+    ${securityConsiderationsTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.contains.submissionCompliance).toBeFalsy()
+  })
+
+  test('TLP 6.a text appears', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${abstractWithReferencesTXTBlock}
+    ${introductionTXTBlock}
+    ${trust28Dec2009Section6aTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.contains.submissionCompliance).toBeTruthy()
+  })
+})
+
+describe('Parsing TLP 6.a line page', () => {
+  test('Parsing TLP 6.a line page on the second page', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${abstractWithReferencesTXTBlock}
+    ${introductionTXTBlock}
+    ${PageBlock}
+    ${trust28Dec2009Section6aTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.submissionCompliancePage).toEqual(2)
+  })
+
+  test('Should detect TLP 6.a on first page', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${abstractWithReferencesTXTBlock}
+    ${introductionTXTBlock}
+    ${trust28Dec2009Section6aTXTBlock}
+    ${PageBlock}
+    ${securityConsiderationsTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.submissionCompliancePage).toEqual(1)
+  })
+})
+
 describe('Parsing TLP 4.0 6.a text', () => {
   test('No TLP 4.0 6.a text', async () => {
     const txt = `

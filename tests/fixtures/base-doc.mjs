@@ -67,7 +67,8 @@ export const baseTXTDoc = {
       isPKorBM: null,
       hyphenatedLines: [],
       updatesRfcWithLetter: [],
-      obsoletesWithLetter: []
+      obsoletesWithLetter: [],
+      submissionCompliancePage: null
     }
   }
 }
