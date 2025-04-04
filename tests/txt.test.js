@@ -14,6 +14,7 @@ import {
   validateAbstractSectionIsNumbered,
   validateStatusOfThisMemoSectionIsNumbered,
   validateCopyrightNoticeSectionIsNumbered,
+  validatePreviousCopyrightSection,
   validateTitleUnexpectedIndentation,
   validateSeparatedFormfeeds,
   validateFormFeedOnSeparateLine,
@@ -605,6 +606,28 @@ describe('validateCodeBlockLicenses', () => {
         }
       )
     ])
+  })
+})
+
+describe('Previous TLP 6.b.i copyright versions', () => {
+  test('Has previous TLP 6.b.i copyright versions', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.contains.previous6_b_i_copyright = true
+
+    await expect(validatePreviousCopyrightSection(doc, { mode: MODES.NORMAL })).resolves.toContainError('OBSELETE_COPYRIGHT_LINE', ValidationError)
+    await expect(validatePreviousCopyrightSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('OBSELETE_COPYRIGHT_LINE', ValidationError)
+    await expect(validatePreviousCopyrightSection(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('OBSELETE_COPYRIGHT_LINE', ValidationError)
+  })
+
+  test('Does not have previous TLP 6.b.i copyright versions', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.contains.previous6_b_i_copyright = false
+
+    await expect(validatePreviousCopyrightSection(doc, {
+      mode: MODES.NORMAL
+    })).resolves.toHaveLength(0)
   })
 })
 
