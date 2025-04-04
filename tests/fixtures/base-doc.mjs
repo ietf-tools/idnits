@@ -31,7 +31,8 @@ export const baseTXTDoc = {
       copyrightLicenseValid: null,
       license6_c_i: null,
       license6_c_ii: null,
-      revisedBsdLicense6_i: null
+      revisedBsdLicense6_i: null,
+      submissionCompliance: false
     },
     title: null,
     slug: 'draft-ietf-beep-boop-01',
