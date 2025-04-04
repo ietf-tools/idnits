@@ -31,7 +31,7 @@
     "chalk": "5.4.1",
     "entities": "6.0.0",
     "fast-xml-parser": "5.2.0",
-    "jschardet": "3.1.4",
+    "jschardet": "3.0.0",
     "listr2": "8.2.5",
     "lodash-es": "4.17.21",
     "luxon": "3.6.1",
