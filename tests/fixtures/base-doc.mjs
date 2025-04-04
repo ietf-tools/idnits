@@ -72,6 +72,7 @@ export const baseTXTDoc = {
       hyphenatedLines: [],
       updatesRfcWithLetter: [],
       obsoletesWithLetter: [],
+      missingPageNumbering: [],
       submissionCompliancePage: null
     }
   }

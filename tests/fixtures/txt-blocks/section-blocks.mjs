@@ -341,6 +341,18 @@ export const copyrightNoticeNumberedTXTBlock = `
    document authors.  All rights reserved.
 `
 
+export const textWithPageNumberedTXTBlock = `
+Zhang, et al.           Expires 8 September 2023                [Page 1]
+
+Internet-Draft               RT-derived ECs                   March 2023
+`
+
+export const textWithoutPageNumberedTXTBlock = `
+Zhang, et al.           Expires 8 September 2023                
+
+Internet-Draft               RT-derived ECs                   March 2023
+`
+
 export const textAcceptableParagraphNotingThatDraftTXTBlock = `
     Internet-Drafts are working documents of the Internet Engineering
     Task Force (IETF).

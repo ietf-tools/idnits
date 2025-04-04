@@ -33,6 +33,8 @@ import {
   abstractNumberedTXTBlock,
   metaObsoleteAndUpdatesHasCharactersTXTBlock,
   ianaConsiderationsTXTBlock,
+  textWithoutPageNumberedTXTBlock,
+  textWithPageNumberedTXTBlock,
   referencesTXTBlockShort,
   PageBlock,
   expiresLineFooterTXTBlock,
@@ -1480,6 +1482,32 @@ describe('Copyright Notice section is numbered', () => {
 
     const result = await parse(txt, 'txt')
     expect(result.data.possibleIssues.isCopyrightNoticeNumbered).toBeTruthy()
+  })
+})
+
+describe('Document pages numbered', () => {
+  test('Document pages numbered', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${textWithPageNumberedTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.missingPageNumbering).toHaveLength(0)
+  })
+
+  test('Document pages not numbered', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${textWithoutPageNumberedTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.missingPageNumbering).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ lines: 21, page: 1 })
+      ])
+    )
   })
 })
 

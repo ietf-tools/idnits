@@ -14,6 +14,7 @@ import {
   validateAbstractSectionIsNumbered,
   validateStatusOfThisMemoSectionIsNumbered,
   validateCopyrightNoticeSectionIsNumbered,
+  validatePageNumbering,
   validatePreviousCopyrightSection,
   validateTitleUnexpectedIndentation,
   validateSeparatedFormfeeds,
@@ -606,6 +607,28 @@ describe('validateCodeBlockLicenses', () => {
         }
       )
     ])
+  })
+})
+
+describe('Document have page numbering', () => {
+  test('Document have page numbering', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.possibleIssues.missingPageNumbering = []
+
+    await expect(validatePageNumbering(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
+    await expect(validatePageNumbering(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
+    await expect(validatePageNumbering(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+  })
+
+  test('Document don`t have page numbering', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.possibleIssues.missingPageNumbering = [{ page: 1, line: 2 }]
+
+    await expect(validatePageNumbering(doc, { mode: MODES.NORMAL })).resolves.toContainError('DOCUMENT_NOT_CONTAINS_PAGE_NUMBERING', ValidationComment)
+    await expect(validatePageNumbering(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('DOCUMENT_NOT_CONTAINS_PAGE_NUMBERING', ValidationComment)
+    await expect(validatePageNumbering(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('DOCUMENT_NOT_CONTAINS_PAGE_NUMBERING', ValidationComment)
   })
 })
 
