@@ -14,6 +14,7 @@ import {
   validateAbstractSectionIsNumbered,
   validateStatusOfThisMemoSectionIsNumbered,
   validateCopyrightNoticeSectionIsNumbered,
+  validateSeparatedFormfeeds,
   validateSubmissionComplianceLine,
   validateSubmissionComplianceLinePage,
   validateMultipleAcceptableParagraphPointingListId,
@@ -138,6 +139,29 @@ describe('validateCodeComments', () => {
         ref: 'https://datatracker.ietf.org/doc/rfc8879'
       })
     ])
+  })
+})
+
+describe('Validate pages are not separated by formfeeds.', () => {
+  test('pages are not separated by formfeeds.', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.contains.pagesFound = 3
+    doc.data.pageCount = 6
+
+    await expect(validateSeparatedFormfeeds(doc, { mode: MODES.NORMAL })).resolves.toContainError('PAGES_NOT_SEPARATED_BY_FORMFEEDS', ValidationWarning)
+    await expect(validateSeparatedFormfeeds(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('PAGES_NOT_SEPARATED_BY_FORMFEEDS', ValidationWarning)
+    await expect(validateSeparatedFormfeeds(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+  })
+  test('pages are contain separated by formfeeds.', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.contains.pagesFound = 4
+    doc.data.pageCount = 4
+
+    await expect(validateSeparatedFormfeeds(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
+    await expect(validateSeparatedFormfeeds(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
+    await expect(validateSeparatedFormfeeds(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
   })
 })
 

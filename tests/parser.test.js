@@ -14,6 +14,8 @@ import {
   RFC2119BoilerplateTXTBlock,
   RFC8174BoilerplateTXTBlock,
   metaWithoutObsoleteAndUpdatesTXTBlock,
+  textWithFormFeedTXTBlock,
+  textWithoutFormFeedTXTBlock,
   textAcceptableParagraphPointingTheListOfCurrentId,
   metaWithoutDocumentNameTXTBlock,
   textAcceptableParagraphCallingOutSixMonthValidity,
@@ -1475,6 +1477,28 @@ describe('Copyright Notice section is numbered', () => {
 
     const result = await parse(txt, 'txt')
     expect(result.data.possibleIssues.isCopyrightNoticeNumbered).toBeTruthy()
+  })
+})
+
+describe('Pages are not separated by formfeeds', () => {
+  test('Pages are not separated by formfeeds', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${textWithoutFormFeedTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.pageCount).toBe(1)
+  })
+
+  test('Pages are separated by formfeeds', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${textWithFormFeedTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.pageCount).toBe(2)
   })
 })
 
