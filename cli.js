@@ -165,7 +165,8 @@ try {
           {
             concurrent: valGroup.concurrent
           }
-        )
+        ),
+        skip: valGroup.condition ? (ctx) => !valGroup.condition(ctx) : undefined
       })),
       {
         ctx: {
