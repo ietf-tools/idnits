@@ -24,11 +24,13 @@ import {
   validatePages,
   validateCopyrightDate,
   validateLicenseDeclarations,
-  validateCopyrightSection
+  validateCopyrightSection,
+  validateTableOfContentsAndDocumentPages
 } from '../lib/modules/txt.mjs'
 import { baseTXTDoc } from './fixtures/base-doc.mjs'
 import { cloneDeep } from 'lodash-es'
 import { DateTime } from 'luxon'
+import { PAGE_THRESHOLD_REQUIRING_TOC } from '../lib/config/consts.mjs'
 
 expect.extend({
   toContainError
@@ -553,6 +555,38 @@ describe('validateCodeBlockLicenses', () => {
         }
       )
     ])
+  })
+})
+
+describe(`The document has more than ${PAGE_THRESHOLD_REQUIRING_TOC} pages and not Table of Contents.`, () => {
+  test('Table of Contents exists and pages less than current treshold', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.possibleIssues.isTableOfContentsExists = true
+    doc.data.pageCount = 14
+
+    await expect(validateTableOfContentsAndDocumentPages(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
+    await expect(validateTableOfContentsAndDocumentPages(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
+    await expect(validateTableOfContentsAndDocumentPages(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+  })
+  test('Table of Contents missing and pages are current threshold', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+    doc.data.possibleIssues.isTableOfContentsExists = false
+    doc.data.pageCount = PAGE_THRESHOLD_REQUIRING_TOC
+
+    await expect(validateTableOfContentsAndDocumentPages(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
+    await expect(validateTableOfContentsAndDocumentPages(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
+    await expect(validateTableOfContentsAndDocumentPages(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+  })
+  test(`Table of Contents missing and pages more than current threshold (${PAGE_THRESHOLD_REQUIRING_TOC})`, async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.possibleIssues.isTableOfContentsExists = false
+    doc.data.pageCount = 17
+
+    await expect(validateTableOfContentsAndDocumentPages(doc, { mode: MODES.NORMAL })).resolves.toContainError(`DOCUMENT_HAVE_MORE_${PAGE_THRESHOLD_REQUIRING_TOC}_PAGES_OR_MISS_TABLE_OF_CONTENTS`, ValidationError)
+    await expect(validateTableOfContentsAndDocumentPages(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError(`DOCUMENT_HAVE_MORE_${PAGE_THRESHOLD_REQUIRING_TOC}_PAGES_OR_MISS_TABLE_OF_CONTENTS`, ValidationError)
+    await expect(validateTableOfContentsAndDocumentPages(doc, { mode: MODES.SUBMISSION })).resolves.toContainError(`DOCUMENT_HAVE_MORE_${PAGE_THRESHOLD_REQUIRING_TOC}_PAGES_OR_MISS_TABLE_OF_CONTENTS`, ValidationWarning)
   })
 })
 

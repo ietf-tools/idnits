@@ -30,6 +30,7 @@ import {
   abstractNumberedTXTBlock,
   metaObsoleteAndUpdatesHasCharactersTXTBlock,
   ianaConsiderationsTXTBlock,
+  PageBlock,
   expiresLineFooterTXTBlock,
   PageBreak
 } from './fixtures/txt-blocks/section-blocks.mjs'
@@ -1386,6 +1387,68 @@ describe('Copyright Notice section is numbered', () => {
 
     const result = await parse(txt, 'txt')
     expect(result.data.possibleIssues.isCopyrightNoticeNumbered).toBeTruthy()
+  })
+})
+
+describe('Parsing pages (page count)', () => {
+  test('Document should have at least one page even without pagebreak', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.pageCount).toEqual(1)
+  })
+
+  test('Parsing page breaks', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+      ${PageBlock}
+      ${securityConsiderationsTXTBlock}
+      ${PageBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.pageCount).toEqual(3)
+  })
+
+  test('Parser should detect table of contents in the document', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${abstractWithReferencesTXTBlock}
+    ${introductionTXTBlock}
+    ${securityConsiderationsTXTBlock}
+    ${PageBlock}
+    ${securityConsiderationsTXTBlock}
+    ${PageBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.isTableOfContentsExists).toBeTruthy()
+  })
+
+  test('Parser should not detect table of contents if it doesn\'t exist', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${abstractWithReferencesTXTBlock}
+    ${introductionTXTBlock}
+    ${securityConsiderationsTXTBlock}
+    ${PageBlock}
+    ${securityConsiderationsTXTBlock}
+    ${PageBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.isTableOfContentsExists).toBeFalsy()
   })
 })
 

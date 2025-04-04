@@ -55,6 +55,7 @@ export const baseTXTDoc = {
       lastPageExpiration: null
     },
     possibleIssues: {
+      isTableOfContentsExists: null,
       linesWithSpaces: [],
       inlineCode: [],
       misspeled2119Keywords: [],
