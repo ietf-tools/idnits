@@ -288,6 +288,11 @@ Zhang, et al.           Expires 8 September 2023                [Page 1]
 Internet-Draft               RT-derived ECs                   March 2023
 `
 
+export const textWithFormFeedOnLineTXTBlock = `
+Zhang, et al.           Expires 8 September 2023                [Page 1]  
+Internet-Draft               RT-derived ECs                   March 2023
+`
+
 export const statusOfMemoTXTBlock = `
 Status of This Memo
 

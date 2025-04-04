@@ -61,6 +61,7 @@ export const baseTXTDoc = {
       linesWithSpaces: [],
       inlineCode: [],
       misspeled2119Keywords: [],
+      pageLineWithFormFeed: [],
       paragraphPointingToTheListOfCurrentId: [],
       copyrightLines6_i: [],
       isCopyrightNoticeNumbered: null,
