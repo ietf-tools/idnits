@@ -1,7 +1,8 @@
+/* eslint-disable no-irregular-whitespace */
 export const abstractTXTBlock = `
-    Abstract
-    This document specifies a way to derive an Extended Community from a
-    Route Target and describes some example use cases.
+Abstract
+   This document specifies a way to derive an Extended Community from a
+   Route Target and describes some example use cases.
 `
 
 export const abstractNumberedTXTBlock = `
@@ -11,14 +12,14 @@ export const abstractNumberedTXTBlock = `
 `
 
 export const abstractWithReferencesTXTBlock = `
-    Abstract
-    This document specifies a way to derive an Extended Community from a
-    Route Target and describes some example use cases.
-    See reference below [1]
+Abstract
+   This document specifies a way to derive an Extended Community from a
+   Route Target and describes some example use cases.
+   See reference below [1]
 `
 
 export const tableOfContentsTXTBlock = `
-    Table of Contents
+Table of Contents
     1. Introduction .................................................... 3
     2. Background ...................................................... 4
     3. Problem Statement ............................................... 5
@@ -29,9 +30,9 @@ export const tableOfContentsTXTBlock = `
 `
 
 export const introductionTXTBlock = `
-    1. Introduction
-    The purpose of this document is to define the structure and standards
-    for creating documents in accordance with current guidelines.
+1. Introduction
+   The purpose of this document is to define the structure and standards
+   for creating documents in accordance with current guidelines.
 `
 
 export const backgroundTXTBlock = `
@@ -53,9 +54,9 @@ export const proposedSolutionTXTBlock = `
 `
 
 export const securityConsiderationsTXTBlock = `
-    5. Security Considerations
-    Security implications must be considered when sharing documents, and
-    sensitive information should be appropriately protected [RFC1234].
+5. Security Considerations
+   Security implications must be considered when sharing documents, and
+   sensitive information should be appropriately protected.
 `
 
 export const ianaConsiderationsTXTBlock = `
@@ -64,10 +65,12 @@ export const ianaConsiderationsTXTBlock = `
 `
 
 export const referencesTXTBlockShort = `
-    7. References
-    [RFC2119] Bradner, S., "Key words for use in RFCs to Indicate
+7. References
+
+   [RFC2119] Bradner, S., "Key words for use in RFCs to Indicate
               Requirement Levels", BCP 14, RFC 2119, March 1997.
-    [RFC8174] Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC 2119
+
+   [RFC8174] Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC 2119
               Key Words", RFC 8174, May 2017.
 `
 export const metaTXTBlock = `
@@ -224,6 +227,73 @@ export const RFC8174BoilerplateTXTBlock = `
     document are to be interpreted as described in BCP 14 [RFC2119] [RFC8174] 
     when, and only when, they appear in all capitals, as shown here.
 `
+export const textAcceptableParagraphCallingOutSixMonthValidity = `
+    Internet-Drafts are draft documents valid for a maximum of six months
+    and may be updated, replaced, or obsoleted by other documents at any
+    time.  It is inappropriate to use Internet-Drafts as reference
+    material or to cite them other than as "work in progress."
+`
+
+export const PageBreak = `
+Zhang, et al.           Expires 8 September 2023               [Page 1]
+
+Internet-Draft               RT-derived ECs                  March 2023
+`
+
+export const copyrightNoticeWithCurrentYearTXTBlock = `
+    Copyright Notice
+
+    Copyright (c) ${new Date().getFullYear()} IETF Trust and the persons identified as the
+    document authors.  All rights reserved.
+`
+
+export const textLicense6biiTXTBlock = `
+    This document is subject to BCP 78 and the IETF Trust’s Legal Provisions Relating to IETF
+    Documents (http://trustee.ietf.org/license-info) in effect on the date of publication of this
+    document. Please review these documents carefully, as they describe your rights and restrictions
+    with respect to this document.
+`
+export const textLicense6ciiTXTBlock = `
+    This document may not be modified, and derivative works of it may not be created, and it may not
+    be published except as an Internet-Draft.
+`
+
+export const textLicense6ciTXTBlock = `
+    This document may not be modified, and derivative works of it may not be created, except to
+    format it for publication as an RFC or to translate it into languages other than English.
+`
+
+export const textAcceptableParagraphPointingTheListOfCurrentId = `
+    The list of current Internet-
+    Drafts is at https://datatracker.ietf.org/drafts/current/.
+`
+
+export const PageBlock = `
+Zhang, et al.           Expires 8 September 2023                [Page 1]
+
+Internet-Draft               RT-derived ECs                   March 2023
+`
+
+export const trust28Dec2009Section6aTXTBlock = `
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+`
+
+export const textWithFormFeedTXTBlock = `
+Zhang, et al.           Expires 8 September 2023                [Page 1]
+
+Internet-Draft               RT-derived ECs                   March 2023
+`
+
+export const textWithoutFormFeedTXTBlock = `
+Zhang, et al.           Expires 8 September 2023                [Page 1]
+Internet-Draft               RT-derived ECs                   March 2023
+`
+
+export const textWithFormFeedOnLineTXTBlock = `
+Zhang, et al.           Expires 8 September 2023                [Page 1]  
+Internet-Draft               RT-derived ECs                   March 2023
+`
 
 export const statusOfMemoTXTBlock = `
 Status of This Memo
@@ -270,6 +340,7 @@ export const copyrightNoticeNumberedTXTBlock = `
    Copyright (c) 2023 IETF Trust and the persons identified as the
    document authors.  All rights reserved.
 `
+
 export const textWithPageNumberedTXTBlock = `
 Zhang, et al.           Expires 8 September 2023                [Page 1]
 
@@ -280,4 +351,34 @@ export const textWithoutPageNumberedTXTBlock = `
 Zhang, et al.           Expires 8 September 2023                
 
 Internet-Draft               RT-derived ECs                   March 2023
+`
+
+export const textAcceptableParagraphNotingThatDraftTXTBlock = `
+    Internet-Drafts are working documents of the Internet Engineering
+    Task Force (IETF).
+`
+
+export const expiresLineFooterTXTBlock = `
+
+Zhang, et al.           Expires 7 March 2023                [Page 7]
+`
+
+export const metaWithoutDocumentNameTXTBlock = `
+idr                                                            Z. Zhang
+Internet-Draft                                                  J. Haas
+Intended status: Standards Track                       Juniper Networks
+Expires: 8 September 2023                                      K. Patel
+                                                                Arrcus
+                                                        21 January 2025
+            Extended Communities Derived from Route Targets
+`
+
+export const metaWithoutIdIndicatorTXTBlock = `
+idr                                                            Z. Zhang
+Intended status: Standards Track                       Juniper Networks
+Expires: 8 September 2023                                      K. Patel
+                                                                Arrcus
+                                                        21 January 2025
+            Extended Communities Derived from Route Targets
+                 draft-ietf-idr-rt-derived-community-05
 `

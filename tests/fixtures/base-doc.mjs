@@ -2,6 +2,7 @@ export const baseTXTDoc = {
   type: 'txt',
   filename: '',
   body: '',
+  slug: '',
   header: {
     category: null
   },
@@ -23,7 +24,17 @@ export const baseTXTDoc = {
       ianaConsiderations: null
     },
     contains: {
-      copyrightSection6_b_i: null
+      previous6_b_i_copyright: false,
+      pagesFound: 0,
+      draftParagraphOutSixMonthValidity: false,
+      acceptableParagraphNotingThatDraft: false,
+      idIndication: false,
+      copyrightSection6_b_i: null,
+      copyrightLicenseValid: null,
+      license6_c_i: null,
+      license6_c_ii: null,
+      revisedBsdLicense6_i: null,
+      submissionCompliance: false
     },
     title: null,
     slug: 'draft-ietf-beep-boop-01',
@@ -39,20 +50,30 @@ export const baseTXTDoc = {
       referenceSectionRfc: [],
       nonReferenceSectionDraftReferences: [],
       referenceSectionDraftReferences: [],
+      copyrightDates: [],
+      license6_b_ii: [],
+      license6_b_i: [],
       bracketedRfcReferences: [],
-      bracketedRfcNonReferences: []
+      bracketedRfcNonReferences: [],
+      lastPageExpiration: null
     },
     possibleIssues: {
+      unexpectedIndentation: [],
+      isTableOfContentsExists: null,
       linesWithSpaces: [],
       inlineCode: [],
       misspeled2119Keywords: [],
+      pageLineWithFormFeed: [],
+      paragraphPointingToTheListOfCurrentId: [],
+      copyrightLines6_i: [],
       isCopyrightNoticeNumbered: null,
       isAbstractNumbered: null,
       isPKorBM: null,
       hyphenatedLines: [],
       updatesRfcWithLetter: [],
       obsoletesWithLetter: [],
-      missingPageNumbering: []
+      missingPageNumbering: [],
+      submissionCompliancePage: null
     }
   }
 }
