@@ -260,6 +260,11 @@ export const textLicense6ciTXTBlock = `
     format it for publication as an RFC or to translate it into languages other than English.
 `
 
+export const textAcceptableParagraphPointingTheListOfCurrentId = `
+    The list of current Internet-
+    Drafts is at https://datatracker.ietf.org/drafts/current/.
+`
+
 export const statusOfMemoTXTBlock = `
 Status of This Memo
 

@@ -30,7 +30,8 @@ import {
   metaObsoleteAndUpdatesHasCharactersTXTBlock,
   ianaConsiderationsTXTBlock,
   expiresLineFooterTXTBlock,
-  PageBreak
+  PageBreak,
+  textAcceptableParagraphPointingTheListOfCurrentId
 } from './fixtures/txt-blocks/section-blocks.mjs'
 import { parse } from '../lib/parsers/txt.mjs'
 
@@ -1694,5 +1695,30 @@ describe('Missing acceptable paragraph noting that IDs are working documents', (
 
     const result = await parse(txt, 'txt')
     expect(result.data.contains.acceptableParagraphNotingThatDraft).toBeTruthy()
+  })
+})
+
+describe('Missing acceptable paragraph pointing the list of current I-Ds', () => {
+  test('The acceptable paragraph pointing the list of current I-Ds is missing', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${introductionTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.contains.draftParagraphPointingToTheListOfCurrentIds).toBeFalsy()
+  })
+
+  test('The acceptable paragraph pointing the list of current I-Ds is present', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${abstractTXTBlock}
+    ${textAcceptableParagraphPointingTheListOfCurrentId}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.contains.draftParagraphPointingToTheListOfCurrentIds).toBeTruthy()
   })
 })
