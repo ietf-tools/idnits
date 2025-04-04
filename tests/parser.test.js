@@ -31,8 +31,7 @@ import {
   metaObsoleteAndUpdatesHasCharactersTXTBlock,
   ianaConsiderationsTXTBlock,
   expiresLineFooterTXTBlock,
-  PageBreak,
-  textAcceptableParagraphPointingTheListOfCurrentId
+  PageBreak
 } from './fixtures/txt-blocks/section-blocks.mjs'
 import { parse } from '../lib/parsers/txt.mjs'
 
@@ -1699,8 +1698,8 @@ describe('Missing acceptable paragraph noting that IDs are working documents', (
   })
 })
 
-describe('Missing acceptable paragraph pointing the list of current id', () => {
-  test('The acceptable paragraph pointing the list of current id is missing', async () => {
+describe('Missing acceptable paragraph pointing the list of current I-Ds', () => {
+  test('The acceptable paragraph pointing the list of current I-Ds is missing', async () => {
     const txt = `
       ${metaTXTBlock}
       ${tableOfContentsTXTBlock}
@@ -1711,7 +1710,7 @@ describe('Missing acceptable paragraph pointing the list of current id', () => {
     expect(result.data.possibleIssues.paragraphPointingToTheListOfCurrentId).toHaveLength(0)
   })
 
-  test('The acceptable paragraph pointing the list of current id is present', async () => {
+  test('The acceptable paragraph pointing the list of current I-Ds is present', async () => {
     const txt = `
     ${metaTXTBlock}
     ${tableOfContentsTXTBlock}
@@ -1723,7 +1722,7 @@ describe('Missing acceptable paragraph pointing the list of current id', () => {
     expect(result.data.possibleIssues.paragraphPointingToTheListOfCurrentId).toHaveLength(1)
   })
 
-  test('The acceptable paragraph pointing the list of current id is present twice', async () => {
+  test('The acceptable paragraph pointing the list of current I-Ds is present twice', async () => {
     const txt = `
     ${metaTXTBlock}
     ${tableOfContentsTXTBlock}

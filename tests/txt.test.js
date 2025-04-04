@@ -137,28 +137,6 @@ describe('validateCodeComments', () => {
   })
 })
 
-describe('The Document have an acceptable paragraph pointing to the list of current id.', () => {
-  test('Document have acceptable paragraph pointing to the list of current id', async () => {
-    const doc = cloneDeep(baseTXTDoc)
-
-    doc.data.possibleIssues.paragraphPointingToTheListOfCurrentId = ['The list of current Internet-Drafts is at https://datatracker.ietf.org/drafts/current/.']
-
-    await expect(validateAcceptableParagraphPointingListId(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
-    await expect(validateAcceptableParagraphPointingListId(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
-    await expect(validateAcceptableParagraphPointingListId(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
-  })
-
-  test('Document don`t acceptable paragraph pointing to the list of current id', async () => {
-    const doc = cloneDeep(baseTXTDoc)
-
-    doc.data.possibleIssues.paragraphPointingToTheListOfCurrentId = []
-
-    await expect(validateAcceptableParagraphPointingListId(doc, { mode: MODES.NORMAL })).resolves.toContainError('ACCEPTABLE_PARAGRAPH_POINTING_LIST_ID_MISSING', ValidationError)
-    await expect(validateAcceptableParagraphPointingListId(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('ACCEPTABLE_PARAGRAPH_POINTING_LIST_ID_MISSING', ValidationError)
-    await expect(validateAcceptableParagraphPointingListId(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('ACCEPTABLE_PARAGRAPH_POINTING_LIST_ID_MISSING', ValidationError)
-  })
-})
-
 describe('The Document have an acceptable paragraph pointing to the list of current ids.', () => {
   test('Document have acceptable paragraph pointing to the list of current ids', async () => {
     const doc = cloneDeep(baseTXTDoc)
@@ -185,7 +163,7 @@ describe('The Document have an acceptable paragraph pointing to the list of curr
   test('Document have acceptable paragraph pointing to the list of current I-Ds', async () => {
     const doc = cloneDeep(baseTXTDoc)
 
-    doc.data.contains.draftParagraphPointingToTheListOfCurrentIds = true
+    doc.data.possibleIssues.paragraphPointingToTheListOfCurrentId = ['The list of current Internet-Drafts is at https://datatracker.ietf.org/drafts/current/.']
 
     await expect(validateParagraphLinkingToIdsList(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
     await expect(validateParagraphLinkingToIdsList(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
@@ -195,7 +173,7 @@ describe('The Document have an acceptable paragraph pointing to the list of curr
   test('Document don`t acceptable paragraph pointing to the list of current I-Ds', async () => {
     const doc = cloneDeep(baseTXTDoc)
 
-    doc.data.contains.draftParagraphPointingToTheListOfCurrentIds = false
+    doc.data.possibleIssues.paragraphPointingToTheListOfCurrentId = []
 
     await expect(validateParagraphLinkingToIdsList(doc, { mode: MODES.NORMAL })).resolves.toContainError('ACCEPTABLE_PARAGRAPH_POINTING_LIST_ID_MISSING', ValidationError)
     await expect(validateParagraphLinkingToIdsList(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('ACCEPTABLE_PARAGRAPH_POINTING_LIST_ID_MISSING', ValidationError)

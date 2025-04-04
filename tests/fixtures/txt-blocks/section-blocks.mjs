@@ -265,11 +265,6 @@ export const textAcceptableParagraphPointingTheListOfCurrentId = `
     Drafts is at https://datatracker.ietf.org/drafts/current/.
 `
 
-export const textAcceptableParagraphPointingTheListOfCurrentId = `
-    The list of current Internet-
-    Drafts is at https://datatracker.ietf.org/drafts/current/.
-`
-
 export const statusOfMemoTXTBlock = `
 Status of This Memo
 
