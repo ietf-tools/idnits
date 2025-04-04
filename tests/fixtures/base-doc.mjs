@@ -24,7 +24,6 @@ export const baseTXTDoc = {
       ianaConsiderations: null
     },
     contains: {
-      draftParagraphPointingToTheListOfCurrentIds: null,
       draftParagraphOutSixMonthValidity: false,
       acceptableParagraphNotingThatDraft: false,
       idIndication: false,
@@ -59,6 +58,7 @@ export const baseTXTDoc = {
       linesWithSpaces: [],
       inlineCode: [],
       misspeled2119Keywords: [],
+      paragraphPointingToTheListOfCurrentId: [],
       copyrightLines6_i: [],
       isCopyrightNoticeNumbered: null,
       isAbstractNumbered: null,

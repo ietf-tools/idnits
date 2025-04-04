@@ -14,6 +14,7 @@ import {
   RFC2119BoilerplateTXTBlock,
   RFC8174BoilerplateTXTBlock,
   metaWithoutObsoleteAndUpdatesTXTBlock,
+  textAcceptableParagraphPointingTheListOfCurrentId,
   metaWithoutDocumentNameTXTBlock,
   textAcceptableParagraphCallingOutSixMonthValidity,
   textAcceptableParagraphNotingThatDraftTXTBlock,
@@ -30,8 +31,7 @@ import {
   metaObsoleteAndUpdatesHasCharactersTXTBlock,
   ianaConsiderationsTXTBlock,
   expiresLineFooterTXTBlock,
-  PageBreak,
-  textAcceptableParagraphPointingTheListOfCurrentId
+  PageBreak
 } from './fixtures/txt-blocks/section-blocks.mjs'
 import { parse } from '../lib/parsers/txt.mjs'
 
@@ -1707,7 +1707,7 @@ describe('Missing acceptable paragraph pointing the list of current I-Ds', () =>
     `
 
     const result = await parse(txt, 'txt')
-    expect(result.data.contains.draftParagraphPointingToTheListOfCurrentIds).toBeFalsy()
+    expect(result.data.possibleIssues.paragraphPointingToTheListOfCurrentId).toHaveLength(0)
   })
 
   test('The acceptable paragraph pointing the list of current I-Ds is present', async () => {
@@ -1719,6 +1719,19 @@ describe('Missing acceptable paragraph pointing the list of current I-Ds', () =>
   `
 
     const result = await parse(txt, 'txt')
-    expect(result.data.contains.draftParagraphPointingToTheListOfCurrentIds).toBeTruthy()
+    expect(result.data.possibleIssues.paragraphPointingToTheListOfCurrentId).toHaveLength(1)
+  })
+
+  test('The acceptable paragraph pointing the list of current I-Ds is present twice', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${textAcceptableParagraphPointingTheListOfCurrentId}
+    ${abstractTXTBlock}
+    ${textAcceptableParagraphPointingTheListOfCurrentId}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.paragraphPointingToTheListOfCurrentId).toHaveLength(2)
   })
 })

@@ -14,6 +14,7 @@ import {
   validateAbstractSectionIsNumbered,
   validateStatusOfThisMemoSectionIsNumbered,
   validateCopyrightNoticeSectionIsNumbered,
+  validateMultipleAcceptableParagraphPointingListId,
   validateParagraphLinkingToIdsList,
   validateDocumentName,
   validateAcceptableParagraphCallingOutSixMonthValidity,
@@ -136,11 +137,33 @@ describe('validateCodeComments', () => {
   })
 })
 
+describe('The Document have an acceptable paragraph pointing to the list of current ids.', () => {
+  test('Document have acceptable paragraph pointing to the list of current ids', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.possibleIssues.paragraphPointingToTheListOfCurrentId = ['The list of current Internet-Drafts is at https://datatracker.ietf.org/drafts/current/.']
+
+    await expect(validateMultipleAcceptableParagraphPointingListId(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
+    await expect(validateMultipleAcceptableParagraphPointingListId(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
+    await expect(validateMultipleAcceptableParagraphPointingListId(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+  })
+
+  test('Document don`t acceptable paragraph pointing to the list of current ids', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.possibleIssues.paragraphPointingToTheListOfCurrentId = ['The list of current Internet-Drafts is at https://datatracker.ietf.org/drafts/current/.', 'The list of current Internet-Drafts is at https://datatracker.ietf.org/drafts/current/.']
+
+    await expect(validateMultipleAcceptableParagraphPointingListId(doc, { mode: MODES.NORMAL })).resolves.toContainError('ACCEPTABLE_PARAGRAPH_POINTING_LIST_ID_REPEATED_IN_THE_TEXT', ValidationError)
+    await expect(validateMultipleAcceptableParagraphPointingListId(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('ACCEPTABLE_PARAGRAPH_POINTING_LIST_ID_REPEATED_IN_THE_TEXT', ValidationError)
+    await expect(validateMultipleAcceptableParagraphPointingListId(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('ACCEPTABLE_PARAGRAPH_POINTING_LIST_ID_REPEATED_IN_THE_TEXT', ValidationError)
+  })
+})
+
 describe('The Document have an acceptable paragraph pointing to the list of current I-Ds.', () => {
   test('Document have acceptable paragraph pointing to the list of current I-Ds', async () => {
     const doc = cloneDeep(baseTXTDoc)
 
-    doc.data.contains.draftParagraphPointingToTheListOfCurrentIds = true
+    doc.data.possibleIssues.paragraphPointingToTheListOfCurrentId = ['The list of current Internet-Drafts is at https://datatracker.ietf.org/drafts/current/.']
 
     await expect(validateParagraphLinkingToIdsList(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
     await expect(validateParagraphLinkingToIdsList(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
@@ -150,7 +173,7 @@ describe('The Document have an acceptable paragraph pointing to the list of curr
   test('Document don`t acceptable paragraph pointing to the list of current I-Ds', async () => {
     const doc = cloneDeep(baseTXTDoc)
 
-    doc.data.contains.draftParagraphPointingToTheListOfCurrentIds = false
+    doc.data.possibleIssues.paragraphPointingToTheListOfCurrentId = []
 
     await expect(validateParagraphLinkingToIdsList(doc, { mode: MODES.NORMAL })).resolves.toContainError('ACCEPTABLE_PARAGRAPH_POINTING_LIST_ID_MISSING', ValidationError)
     await expect(validateParagraphLinkingToIdsList(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('ACCEPTABLE_PARAGRAPH_POINTING_LIST_ID_MISSING', ValidationError)
