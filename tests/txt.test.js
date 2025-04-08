@@ -14,13 +14,30 @@ import {
   validateAbstractSectionIsNumbered,
   validateStatusOfThisMemoSectionIsNumbered,
   validateCopyrightNoticeSectionIsNumbered,
+  validatePageNumbering,
+  validatePreviousCopyrightSection,
+  validateTitleUnexpectedIndentation,
+  validateSeparatedFormfeeds,
+  validateFormFeedOnSeparateLine,
+  validateSubmissionComplianceLine,
+  validateSubmissionComplianceLinePage,
+  validateMultipleAcceptableParagraphPointingListId,
+  validateParagraphLinkingToIdsList,
+  validateDocumentName,
+  validateAcceptableParagraphCallingOutSixMonthValidity,
+  validateSaysWorkingDocuments,
+  validateExpiresLine,
+  validateIDIndicator,
   validatePages,
   validateCopyrightDate,
   validateLicenseDeclarations,
-  validateCopyrightSection
+  validateCopyrightSection,
+  validateTableOfContentsAndDocumentPages
 } from '../lib/modules/txt.mjs'
 import { baseTXTDoc } from './fixtures/base-doc.mjs'
 import { cloneDeep } from 'lodash-es'
+import { DateTime } from 'luxon'
+import { PAGE_THRESHOLD_REQUIRING_TOC } from '../lib/config/consts.mjs'
 
 expect.extend({
   toContainError
@@ -126,6 +143,160 @@ describe('validateCodeComments', () => {
         ref: 'https://datatracker.ietf.org/doc/rfc8879'
       })
     ])
+  })
+})
+
+describe('Validate pages are not separated by formfeeds.', () => {
+  test('pages are not separated by formfeeds.', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.contains.pagesFound = 3
+    doc.data.pageCount = 6
+
+    await expect(validateSeparatedFormfeeds(doc, { mode: MODES.NORMAL })).resolves.toContainError('PAGES_NOT_SEPARATED_BY_FORMFEEDS', ValidationWarning)
+    await expect(validateSeparatedFormfeeds(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('PAGES_NOT_SEPARATED_BY_FORMFEEDS', ValidationWarning)
+    await expect(validateSeparatedFormfeeds(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+  })
+  test('pages are contain separated by formfeeds.', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.contains.pagesFound = 4
+    doc.data.pageCount = 4
+
+    await expect(validateSeparatedFormfeeds(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
+    await expect(validateSeparatedFormfeeds(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
+    await expect(validateSeparatedFormfeeds(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+  })
+})
+
+describe('FORMFEED and [Page occur on a line, possibly separated by spaces.', () => {
+  test('Document don`t have formfeed and page occur on a line', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.possibleIssues.pageLineWithFormFeed = []
+
+    await expect(validateFormFeedOnSeparateLine(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
+    await expect(validateFormFeedOnSeparateLine(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
+    await expect(validateFormFeedOnSeparateLine(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+  })
+
+  test('Document have formfeed and page occur on a line', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.possibleIssues.pageLineWithFormFeed = [{ page: 1, line: 2 }]
+
+    await expect(validateFormFeedOnSeparateLine(doc, { mode: MODES.NORMAL })).resolves.toContainError('DOCUMENT_CONTAINS_FORM_FEED_NOT_ON_SEPARATE_LINE', ValidationComment)
+    await expect(validateFormFeedOnSeparateLine(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('DOCUMENT_CONTAINS_FORM_FEED_NOT_ON_SEPARATE_LINE', ValidationComment)
+    await expect(validateFormFeedOnSeparateLine(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('DOCUMENT_CONTAINS_FORM_FEED_NOT_ON_SEPARATE_LINE', ValidationComment)
+  })
+})
+
+describe('The Document have an acceptable paragraph pointing to the list of current ids.', () => {
+  test('Document have acceptable paragraph pointing to the list of current ids', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.possibleIssues.paragraphPointingToTheListOfCurrentId = ['The list of current Internet-Drafts is at https://datatracker.ietf.org/drafts/current/.']
+
+    await expect(validateMultipleAcceptableParagraphPointingListId(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
+    await expect(validateMultipleAcceptableParagraphPointingListId(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
+    await expect(validateMultipleAcceptableParagraphPointingListId(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+  })
+
+  test('Document don`t acceptable paragraph pointing to the list of current ids', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.possibleIssues.paragraphPointingToTheListOfCurrentId = ['The list of current Internet-Drafts is at https://datatracker.ietf.org/drafts/current/.', 'The list of current Internet-Drafts is at https://datatracker.ietf.org/drafts/current/.']
+
+    await expect(validateMultipleAcceptableParagraphPointingListId(doc, { mode: MODES.NORMAL })).resolves.toContainError('ACCEPTABLE_PARAGRAPH_POINTING_LIST_ID_REPEATED_IN_THE_TEXT', ValidationError)
+    await expect(validateMultipleAcceptableParagraphPointingListId(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('ACCEPTABLE_PARAGRAPH_POINTING_LIST_ID_REPEATED_IN_THE_TEXT', ValidationError)
+    await expect(validateMultipleAcceptableParagraphPointingListId(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('ACCEPTABLE_PARAGRAPH_POINTING_LIST_ID_REPEATED_IN_THE_TEXT', ValidationError)
+  })
+})
+
+describe('The Document have an acceptable paragraph pointing to the list of current I-Ds.', () => {
+  test('Document have acceptable paragraph pointing to the list of current I-Ds', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.possibleIssues.paragraphPointingToTheListOfCurrentId = ['The list of current Internet-Drafts is at https://datatracker.ietf.org/drafts/current/.']
+
+    await expect(validateParagraphLinkingToIdsList(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
+    await expect(validateParagraphLinkingToIdsList(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
+    await expect(validateParagraphLinkingToIdsList(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+  })
+
+  test('Document don`t acceptable paragraph pointing to the list of current I-Ds', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.possibleIssues.paragraphPointingToTheListOfCurrentId = []
+
+    await expect(validateParagraphLinkingToIdsList(doc, { mode: MODES.NORMAL })).resolves.toContainError('ACCEPTABLE_PARAGRAPH_POINTING_LIST_ID_MISSING', ValidationError)
+    await expect(validateParagraphLinkingToIdsList(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('ACCEPTABLE_PARAGRAPH_POINTING_LIST_ID_MISSING', ValidationError)
+    await expect(validateParagraphLinkingToIdsList(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('ACCEPTABLE_PARAGRAPH_POINTING_LIST_ID_MISSING', ValidationError)
+  })
+})
+
+describe('Validate document name on first page.', () => {
+  test('Document name doesn`t on first page', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.slug = null
+
+    await expect(validateDocumentName(doc, { mode: MODES.NORMAL })).resolves.toContainError('DOCUMENT_NAME_MISSING', ValidationError)
+    await expect(validateDocumentName(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('DOCUMENT_NAME_MISSING', ValidationError)
+    await expect(validateDocumentName(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('DOCUMENT_NAME_MISSING', ValidationError)
+  })
+  test('Document name is present', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.slug = 'draft-'
+
+    await expect(validateDocumentName(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
+    await expect(validateDocumentName(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
+    await expect(validateDocumentName(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+  })
+})
+
+describe('The Document have acceptable paragraph calling out 6 month validity.', () => {
+  test('Document have acceptable paragraph calling out 6 month validity', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.contains.draftParagraphOutSixMonthValidity = true
+
+    await expect(validateAcceptableParagraphCallingOutSixMonthValidity(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
+    await expect(validateAcceptableParagraphCallingOutSixMonthValidity(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
+    await expect(validateAcceptableParagraphCallingOutSixMonthValidity(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+  })
+
+  test('Document don`t acceptable paragraph calling out 6 month validity', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.contains.draftParagraphOutSixMonthValidity = false
+
+    await expect(validateAcceptableParagraphCallingOutSixMonthValidity(doc, { mode: MODES.NORMAL })).resolves.toContainError('ACCEPTABLE_PARAGRAPH_PROVIDING_FOR_PERIOD_OF_VALIDITY_MISSING', ValidationError)
+    await expect(validateAcceptableParagraphCallingOutSixMonthValidity(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('ACCEPTABLE_PARAGRAPH_PROVIDING_FOR_PERIOD_OF_VALIDITY_MISSING', ValidationError)
+    await expect(validateAcceptableParagraphCallingOutSixMonthValidity(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('ACCEPTABLE_PARAGRAPH_PROVIDING_FOR_PERIOD_OF_VALIDITY_MISSING', ValidationError)
+  })
+})
+
+describe('The Document have acceptable paragraph noting that IDs are working documents.', () => {
+  test('Document have acceptable paragraph', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.contains.acceptableParagraphNotingThatDraft = true
+
+    await expect(validateSaysWorkingDocuments(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
+    await expect(validateSaysWorkingDocuments(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
+    await expect(validateSaysWorkingDocuments(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+  })
+
+  test('Document don`t acceptable paragraph', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.contains.acceptableParagraphNotingThatDraft = false
+
+    await expect(validateSaysWorkingDocuments(doc, { mode: MODES.NORMAL })).resolves.toContainError('ACCEPTABLE_PARAGRAPH_NOTING_THAT_DRAFT_MISSING', ValidationError)
+    await expect(validateSaysWorkingDocuments(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('ACCEPTABLE_PARAGRAPH_NOTING_THAT_DRAFT_MISSING', ValidationError)
+    await expect(validateSaysWorkingDocuments(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('ACCEPTABLE_PARAGRAPH_NOTING_THAT_DRAFT_MISSING', ValidationError)
   })
 })
 
@@ -439,6 +610,219 @@ describe('validateCodeBlockLicenses', () => {
   })
 })
 
+describe('Document have page numbering', () => {
+  test('Document have page numbering', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.possibleIssues.missingPageNumbering = []
+
+    await expect(validatePageNumbering(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
+    await expect(validatePageNumbering(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
+    await expect(validatePageNumbering(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+  })
+
+  test('Document don`t have page numbering', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.possibleIssues.missingPageNumbering = [{ page: 1, line: 2 }]
+
+    await expect(validatePageNumbering(doc, { mode: MODES.NORMAL })).resolves.toContainError('DOCUMENT_NOT_CONTAINS_PAGE_NUMBERING', ValidationComment)
+    await expect(validatePageNumbering(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('DOCUMENT_NOT_CONTAINS_PAGE_NUMBERING', ValidationComment)
+    await expect(validatePageNumbering(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('DOCUMENT_NOT_CONTAINS_PAGE_NUMBERING', ValidationComment)
+  })
+})
+
+describe('Previous TLP 6.b.i copyright versions', () => {
+  test('Has previous TLP 6.b.i copyright versions', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.contains.previous6_b_i_copyright = true
+
+    await expect(validatePreviousCopyrightSection(doc, { mode: MODES.NORMAL })).resolves.toContainError('OBSELETE_COPYRIGHT_LINE', ValidationError)
+    await expect(validatePreviousCopyrightSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('OBSELETE_COPYRIGHT_LINE', ValidationError)
+    await expect(validatePreviousCopyrightSection(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('OBSELETE_COPYRIGHT_LINE', ValidationError)
+  })
+
+  test('Does not have previous TLP 6.b.i copyright versions', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.contains.previous6_b_i_copyright = false
+
+    await expect(validatePreviousCopyrightSection(doc, {
+      mode: MODES.NORMAL
+    })).resolves.toHaveLength(0)
+  })
+})
+
+describe('Validate section title', () => {
+  test('Section title don`t have unexpected indentation', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.possibleIssues.unexpectedIndentation = []
+
+    await expect(validateTitleUnexpectedIndentation(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
+    await expect(validateTitleUnexpectedIndentation(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
+    await expect(validateTitleUnexpectedIndentation(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+  })
+
+  test('Section title have unexpected indentation', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.possibleIssues.unexpectedIndentation = [{ line: 1, pos: 12 }]
+
+    await expect(validateTitleUnexpectedIndentation(doc, { mode: MODES.NORMAL })).resolves.toContainError('SECTION_TITLE_HAS_UNEXPECTED_INDENTATION', ValidationWarning)
+    await expect(validateTitleUnexpectedIndentation(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('SECTION_TITLE_HAS_UNEXPECTED_INDENTATION', ValidationWarning)
+    await expect(validateTitleUnexpectedIndentation(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+  })
+})
+
+describe('The submission compliance line validate.', () => {
+  test('submission compliance line missing', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.contains.submissionCompliance = false
+
+    await expect(validateSubmissionComplianceLine(doc, { mode: MODES.NORMAL })).resolves.toContainError('SUBMISSION_COMPLIANCE_LINE_MISSING', ValidationError)
+    await expect(validateSubmissionComplianceLine(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('SUBMISSION_COMPLIANCE_LINE_MISSING', ValidationError)
+    await expect(validateSubmissionComplianceLine(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('SUBMISSION_COMPLIANCE_LINE_MISSING', ValidationError)
+  })
+  test('submission compliance line present', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.contains.submissionCompliance = true
+
+    await expect(validateSubmissionComplianceLine(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
+    await expect(validateSubmissionComplianceLine(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
+    await expect(validateSubmissionComplianceLine(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+  })
+})
+
+describe('The submission compliance page validate.', () => {
+  test('submission compliance page missing', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.possibleIssues.submissionCompliancePage = null
+
+    await expect(validateSubmissionComplianceLinePage(doc, { mode: MODES.NORMAL })).resolves.toContainError('SUBMISSION_COMPLIANCE_LINE_NOT_ON_THE_FIRST_PAGE', ValidationError)
+    await expect(validateSubmissionComplianceLinePage(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('SUBMISSION_COMPLIANCE_LINE_NOT_ON_THE_FIRST_PAGE', ValidationError)
+    await expect(validateSubmissionComplianceLinePage(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('SUBMISSION_COMPLIANCE_LINE_NOT_ON_THE_FIRST_PAGE', ValidationError)
+  })
+  test('submission compliance line on first page ', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.possibleIssues.submissionCompliancePage = 1
+
+    await expect(validateSubmissionComplianceLinePage(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
+    await expect(validateSubmissionComplianceLinePage(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
+    await expect(validateSubmissionComplianceLinePage(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+  })
+
+  test('submission compliance line on second page ', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.possibleIssues.submissionCompliancePage = 2
+
+    await expect(validateSubmissionComplianceLinePage(doc, { mode: MODES.NORMAL })).resolves.toContainError('SUBMISSION_COMPLIANCE_LINE_NOT_ON_THE_FIRST_PAGE', ValidationError)
+    await expect(validateSubmissionComplianceLinePage(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('SUBMISSION_COMPLIANCE_LINE_NOT_ON_THE_FIRST_PAGE', ValidationError)
+    await expect(validateSubmissionComplianceLinePage(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('SUBMISSION_COMPLIANCE_LINE_NOT_ON_THE_FIRST_PAGE', ValidationError)
+  })
+})
+
+describe(`The document has more than ${PAGE_THRESHOLD_REQUIRING_TOC} pages and not Table of Contents.`, () => {
+  test('Table of Contents exists and pages less than current treshold', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.possibleIssues.isTableOfContentsExists = true
+    doc.data.pageCount = 14
+
+    await expect(validateTableOfContentsAndDocumentPages(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
+    await expect(validateTableOfContentsAndDocumentPages(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
+    await expect(validateTableOfContentsAndDocumentPages(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+  })
+  test('Table of Contents missing and pages are current threshold', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+    doc.data.possibleIssues.isTableOfContentsExists = false
+    doc.data.pageCount = PAGE_THRESHOLD_REQUIRING_TOC
+
+    await expect(validateTableOfContentsAndDocumentPages(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
+    await expect(validateTableOfContentsAndDocumentPages(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
+    await expect(validateTableOfContentsAndDocumentPages(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+  })
+  test(`Table of Contents missing and pages more than current threshold (${PAGE_THRESHOLD_REQUIRING_TOC})`, async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.possibleIssues.isTableOfContentsExists = false
+    doc.data.pageCount = 17
+
+    await expect(validateTableOfContentsAndDocumentPages(doc, { mode: MODES.NORMAL })).resolves.toContainError(`DOCUMENT_HAVE_MORE_${PAGE_THRESHOLD_REQUIRING_TOC}_PAGES_OR_MISS_TABLE_OF_CONTENTS`, ValidationError)
+    await expect(validateTableOfContentsAndDocumentPages(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError(`DOCUMENT_HAVE_MORE_${PAGE_THRESHOLD_REQUIRING_TOC}_PAGES_OR_MISS_TABLE_OF_CONTENTS`, ValidationError)
+    await expect(validateTableOfContentsAndDocumentPages(doc, { mode: MODES.SUBMISSION })).resolves.toContainError(`DOCUMENT_HAVE_MORE_${PAGE_THRESHOLD_REQUIRING_TOC}_PAGES_OR_MISS_TABLE_OF_CONTENTS`, ValidationWarning)
+  })
+})
+
+describe('Validate Expires Line in the document', () => {
+  test('should return an error if the Expires lines are missing', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    await expect(validateExpiresLine(doc, { mode: MODES.NORMAL })).resolves.toEqual([
+      new ValidationError(
+        'EXPIRES_LINE_MISSING',
+        'Document does not have expiration date on first and last page or it is invalid.',
+        {
+          ref: 'https://authors.ietf.org/en/drafting-in-plaintext#checklist'
+        }
+      )
+    ])
+  })
+
+  test('should return no errors if the Expires lines are present and match', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+    doc.data.header.expires = DateTime.fromFormat('2023-09-08', 'yyyy-MM-dd')
+    doc.data.extractedElements.lastPageExpiration = DateTime.fromFormat('2023-09-08', 'yyyy-MM-dd')
+
+    await expect(validateExpiresLine(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
+  })
+
+  test('should return no errors if the Expires line is present in submission mode', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+    doc.data.header.expires = DateTime.fromFormat('2023-09-08', 'yyyy-MM-dd')
+    doc.data.extractedElements.lastPageExpiration = DateTime.fromFormat('2023-09-08', 'yyyy-MM-dd')
+
+    await expect(validateExpiresLine(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+  })
+
+  test('should return an error if the Expires line is invalid date', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+    doc.data.header.expires = null
+
+    await expect(validateExpiresLine(doc, { mode: MODES.SUBMISSION })).resolves.toEqual([
+      new ValidationError(
+        'EXPIRES_LINE_MISSING',
+        'Document does not have expiration date on first and last page or it is invalid.',
+        {
+          ref: 'https://authors.ietf.org/en/drafting-in-plaintext#checklist'
+        }
+      )
+    ])
+  })
+
+  test('should return an error if the Expires line is different', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+    doc.data.header.expires = DateTime.fromFormat('2023-09-08', 'yyyy-MM-dd')
+    doc.data.extractedElements.lastPageExpiration = DateTime.fromFormat('2023-09-09', 'yyyy-MM-dd')
+
+    await expect(validateExpiresLine(doc, { mode: MODES.NORMAL })).resolves.toEqual([
+      new ValidationError(
+        'EXPIRES_LINE_MISMATCH',
+        'Document has different expiration date on first and last page.',
+        {
+          ref: 'https://authors.ietf.org/en/drafting-in-plaintext#checklist'
+        }
+      )
+    ])
+  })
+})
+
 describe('validatePages', () => {
   test('should return no warnings if mode is SUBMISSION', async () => {
     const doc = {
@@ -605,5 +989,52 @@ describe('The copyright line is not present.', () => {
     await expect(validateCopyrightSection(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
     await expect(validateCopyrightSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
     await expect(validateCopyrightSection(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+  })
+})
+
+describe('Validate ID indicator', () => {
+  test('Should return error if ID indicator is missing in SUBMISSION mode', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+    const result = await validateIDIndicator(doc, { mode: MODES.SUBMISSION })
+    expect(result).toEqual([
+      new ValidationError(
+        'ID_INDICATOR_MISSING',
+        'Document does not contain an ID indication.',
+        { ref: 'https://authors.ietf.org/en/drafting-in-plaintext#checklist' }
+      )
+    ])
+  })
+
+  test('should return no warnings if document contains ID indication', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+    doc.data.contains.idIndication = true
+    const result = await validateIDIndicator(doc, { mode: MODES.NORMAL })
+    expect(result).toHaveLength(0)
+  })
+
+  test('should return a warning if document does not contain ID indication', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+    doc.data.contains.idIndication = false
+    const result = await validateIDIndicator(doc, { mode: MODES.NORMAL })
+    expect(result).toEqual([
+      new ValidationError(
+        'ID_INDICATOR_MISSING',
+        'Document does not contain an ID indication.',
+        { ref: 'https://authors.ietf.org/en/drafting-in-plaintext#checklist' }
+      )
+    ])
+  })
+
+  test('should handle missing idIndication property gracefully', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+    delete doc.data.contains.idIndication
+    const result = await validateIDIndicator(doc, { mode: MODES.NORMAL })
+    expect(result).toEqual([
+      new ValidationError(
+        'ID_INDICATOR_MISSING',
+        'Document does not contain an ID indication.',
+        { ref: 'https://authors.ietf.org/en/drafting-in-plaintext#checklist' }
+      )
+    ])
   })
 })

@@ -14,6 +14,14 @@ import {
   RFC2119BoilerplateTXTBlock,
   RFC8174BoilerplateTXTBlock,
   metaWithoutObsoleteAndUpdatesTXTBlock,
+  textWithFormFeedTXTBlock,
+  textWithoutFormFeedTXTBlock,
+  textWithFormFeedOnLineTXTBlock,
+  textAcceptableParagraphPointingTheListOfCurrentId,
+  metaWithoutDocumentNameTXTBlock,
+  textAcceptableParagraphCallingOutSixMonthValidity,
+  textAcceptableParagraphNotingThatDraftTXTBlock,
+  metaWithoutIdIndicatorTXTBlock,
   copyrightNoticeTXTBlock,
   copyrightNoticeWithCurrentYearTXTBlock,
   textLicense6biiTXTBlock,
@@ -25,7 +33,13 @@ import {
   abstractNumberedTXTBlock,
   metaObsoleteAndUpdatesHasCharactersTXTBlock,
   ianaConsiderationsTXTBlock,
-  PageBreak
+  textWithoutPageNumberedTXTBlock,
+  textWithPageNumberedTXTBlock,
+  referencesTXTBlockShort,
+  PageBlock,
+  expiresLineFooterTXTBlock,
+  PageBreak,
+  trust28Dec2009Section6aTXTBlock
 } from './fixtures/txt-blocks/section-blocks.mjs'
 import { parse } from '../lib/parsers/txt.mjs'
 
@@ -763,6 +777,7 @@ describe('Parsing references with categorization', () => {
       ${abstractWithReferencesTXTBlock}
       ${introductionTXTBlock}
       ${securityConsiderationsTXTBlock}
+      [RFC1234]
     `
 
     const result = await parse(txt, 'txt')
@@ -1174,6 +1189,93 @@ describe('Parsing obsolete and update metadata with some characters', () => {
   })
 })
 
+describe('Parsing TLP 6.a text', () => {
+  test('No TLP 6.a text', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${abstractWithReferencesTXTBlock}
+    ${introductionTXTBlock}
+    ${securityConsiderationsTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.contains.submissionCompliance).toBeFalsy()
+  })
+
+  test('TLP 6.a text appears', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${abstractWithReferencesTXTBlock}
+    ${introductionTXTBlock}
+    ${trust28Dec2009Section6aTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.contains.submissionCompliance).toBeTruthy()
+  })
+})
+
+describe('Parsing TLP 6.a line page', () => {
+  test('Parsing TLP 6.a line page on the second page', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${abstractWithReferencesTXTBlock}
+    ${introductionTXTBlock}
+    ${PageBlock}
+    ${trust28Dec2009Section6aTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.submissionCompliancePage).toEqual(2)
+  })
+
+  test('Should detect TLP 6.a on first page', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${abstractWithReferencesTXTBlock}
+    ${introductionTXTBlock}
+    ${trust28Dec2009Section6aTXTBlock}
+    ${PageBlock}
+    ${securityConsiderationsTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.submissionCompliancePage).toEqual(1)
+  })
+})
+
+describe('Parsing TLP 5.0 6.a text', () => {
+  test('No TLP 5.0 6.a text', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${abstractWithReferencesTXTBlock}
+    ${introductionTXTBlock}
+    ${securityConsiderationsTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.contains.submissionCompliance).toBeFalsy()
+  })
+
+  test('TLP 5.0 6.a text appears', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${abstractWithReferencesTXTBlock}
+    ${introductionTXTBlock}
+    ${trust28Dec2009Section6aTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.contains.submissionCompliance).toBeTruthy()
+  })
+})
+
 describe('Parsing over long pages', () => {
   test('No over long pages', async () => {
     const txt = `
@@ -1294,7 +1396,7 @@ describe('Reference is declared, but not used in the document', () => {
 
     const result = await parse(txt, 'txt')
     expect(result.data.extractedElements.nonReferenceSectionDraftReferences).toContain('[1]')
-    expect(result.data.extractedElements.nonReferenceSectionRfc).toHaveLength(1)
+    expect(result.data.extractedElements.nonReferenceSectionDraftReferences).toHaveLength(1)
   })
 
   test('Parsing references in text (multiple references)', async () => {
@@ -1380,6 +1482,232 @@ describe('Copyright Notice section is numbered', () => {
 
     const result = await parse(txt, 'txt')
     expect(result.data.possibleIssues.isCopyrightNoticeNumbered).toBeTruthy()
+  })
+})
+
+describe('Document pages numbered', () => {
+  test('Document pages numbered', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${textWithPageNumberedTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.missingPageNumbering).toHaveLength(0)
+  })
+
+  test('Document pages not numbered', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${textWithoutPageNumberedTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.missingPageNumbering).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ lines: 21, page: 1 })
+      ])
+    )
+  })
+})
+
+describe('Pages are not separated by formfeeds', () => {
+  test('Pages are not separated by formfeeds', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${textWithoutFormFeedTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.pageCount).toBe(1)
+  })
+
+  test('Pages are separated by formfeeds', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${textWithFormFeedTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.pageCount).toBe(2)
+  })
+})
+
+describe('Formfeed and Page occur on a line, possibly separated by spaces', () => {
+  test('Formfeed and Page not occur on a line', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${textWithFormFeedTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.pageLineWithFormFeed).toHaveLength(0)
+  })
+
+  test('Formfeed and Page occur on a line', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${textWithFormFeedOnLineTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.pageLineWithFormFeed).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ lines: 20, page: 1 })
+      ])
+    )
+  })
+})
+
+describe('Parsing pages (page count)', () => {
+  test('Document should have at least one page even without pagebreak', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.pageCount).toEqual(1)
+  })
+
+  test('Parsing page breaks', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+      ${PageBlock}
+      ${securityConsiderationsTXTBlock}
+      ${PageBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.pageCount).toEqual(3)
+  })
+
+  test('Parser should detect table of contents in the document', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${abstractWithReferencesTXTBlock}
+    ${introductionTXTBlock}
+    ${securityConsiderationsTXTBlock}
+    ${PageBlock}
+    ${securityConsiderationsTXTBlock}
+    ${PageBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.isTableOfContentsExists).toBeTruthy()
+  })
+
+  test('Parser should not detect table of contents if it doesn\'t exist', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${abstractWithReferencesTXTBlock}
+    ${introductionTXTBlock}
+    ${securityConsiderationsTXTBlock}
+    ${PageBlock}
+    ${securityConsiderationsTXTBlock}
+    ${PageBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.isTableOfContentsExists).toBeFalsy()
+  })
+})
+
+describe('Missing document name on first page', () => {
+  test('The document name on first page is missing', async () => {
+    const txt = `
+    ${metaWithoutDocumentNameTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.slug).toBeNull()
+  })
+
+  test('The document name on first page is present', async () => {
+    const txt = `
+      ${metaTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.slug).toBe('draft-ietf-idr-rt-derived-community-05')
+  })
+})
+
+describe('Missing acceptable paragraph calling out 6 month validity', () => {
+  test('The acceptable paragraph calling out 6 month validity is missing', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.contains.draftParagraphOutSixMonthValidity).toBeFalsy()
+  })
+
+  test('The acceptable paragraph calling out 6 month validity is present', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${textAcceptableParagraphCallingOutSixMonthValidity}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.contains.draftParagraphOutSixMonthValidity).toBeTruthy()
+  })
+})
+
+describe('Parsing expires line', () => {
+  test('Parsing expires line', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractTXTBlock}
+      ${introductionTXTBlock}
+      ${copyrightNoticeNumberedTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.header.expires).toBeDefined()
+    expect(result.data.header.expires.toISODate()).toEqual('2023-09-08')
+    expect(result.data.extractedElements.lastPageExpiration).toBeNull()
+  })
+
+  test('No expires line', async () => {
+    const txt = `
+      ${metaTXTBlock.replace('Expires: 8 September 2023', '')}
+      ${tableOfContentsTXTBlock}
+      ${abstractTXTBlock}
+      ${introductionTXTBlock}
+      ${copyrightNoticeNumberedTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.header.expires).toBeNull()
+    expect(result.data.extractedElements.lastPageExpiration).toBeNull()
+  })
+
+  test('Expiration date on first and last page are present', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractTXTBlock}
+      ${introductionTXTBlock}
+      ${expiresLineFooterTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.header.expires).toBeDefined()
+    expect(result.data.header.expires.toISODate()).toEqual('2023-09-08')
+    expect(result.data.extractedElements.lastPageExpiration).toBeDefined()
+    expect(result.data.extractedElements.lastPageExpiration.toISODate()).toEqual('2023-03-07')
   })
 })
 
@@ -1554,5 +1882,214 @@ describe('TLP-5 6.b.i copyright line is not present', () => {
     const result = await parse(txt, 'txt')
 
     expect(result.data.possibleIssues.copyrightLines6_i).toHaveLength(2)
+  })
+})
+
+describe('doesn\'t say INTERNET DRAFT in the upper left of the first page', () => {
+  test('doesn\'t say INTERNET DRAFT in the upper left of the first page', async () => {
+    const txt = `
+    ${metaWithoutIdIndicatorTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.contains.idIndication).toBeFalsy()
+  })
+
+  test('Say INTERNET DRAFT in the upper left of the first page', async () => {
+    const txt = `
+      ${metaTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.contains.idIndication).toBeTruthy()
+  })
+})
+
+describe('Missing acceptable paragraph noting that IDs are working documents', () => {
+  test('The acceptable paragraph noting that IDs are working documents is missing', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.contains.acceptableParagraphNotingThatDraft).toBeFalsy()
+  })
+
+  test('The acceptable paragraph noting that IDs are working documents is present', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${textAcceptableParagraphNotingThatDraftTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.contains.acceptableParagraphNotingThatDraft).toBeTruthy()
+  })
+})
+
+describe('Missing acceptable paragraph pointing the list of current I-Ds', () => {
+  test('The acceptable paragraph pointing the list of current I-Ds is missing', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${introductionTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.paragraphPointingToTheListOfCurrentId).toHaveLength(0)
+  })
+
+  test('The acceptable paragraph pointing the list of current I-Ds is present', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${abstractTXTBlock}
+    ${textAcceptableParagraphPointingTheListOfCurrentId}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.paragraphPointingToTheListOfCurrentId).toHaveLength(1)
+  })
+
+  test('The acceptable paragraph pointing the list of current I-Ds is present twice', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${textAcceptableParagraphPointingTheListOfCurrentId}
+    ${abstractTXTBlock}
+    ${textAcceptableParagraphPointingTheListOfCurrentId}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.paragraphPointingToTheListOfCurrentId).toHaveLength(2)
+  })
+})
+
+describe('Parsing unexpected indentations', () => {
+  test('Correct text without unexpected indentations', async () => {
+    const txt = `${metaTXTBlock}
+${tableOfContentsTXTBlock}
+${abstractWithReferencesTXTBlock}
+${introductionTXTBlock}
+${securityConsiderationsTXTBlock}`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.unexpectedIndentation).toHaveLength(0)
+  })
+
+  test('Section title has unexpected indentation', async () => {
+    const txt = `${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${abstractWithReferencesTXTBlock}
+    ${introductionTXTBlock}
+    ${securityConsiderationsTXTBlock}
+   6. Some section title
+   Text of section
+   More text`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.unexpectedIndentation).toHaveLength(1)
+    expect(result.data.possibleIssues.unexpectedIndentation).toEqual(
+      expect.arrayContaining([expect.objectContaining({ pos: 0 })])
+    )
+  })
+
+  test('Section text has unexpected indentation', async () => {
+    const txt = `${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${abstractWithReferencesTXTBlock}
+    ${introductionTXTBlock}
+    ${securityConsiderationsTXTBlock}
+6. Some section title
+
+    Text of section with bad indentation
+  More text`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.unexpectedIndentation).toHaveLength(2)
+    expect(result.data.possibleIssues.unexpectedIndentation).toEqual(
+      expect.arrayContaining([expect.objectContaining({ pos: 0 }), expect.objectContaining({ pos: 0 })])
+    )
+  })
+
+  test('Section text has unexpected indentation', async () => {
+    const txt = `${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${abstractWithReferencesTXTBlock}
+    ${introductionTXTBlock}
+    ${securityConsiderationsTXTBlock}
+6. Some section title
+
+    Text of section with bad indentation
+  More text`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.unexpectedIndentation).toHaveLength(2)
+    expect(result.data.possibleIssues.unexpectedIndentation).toEqual(
+      expect.arrayContaining([expect.objectContaining({ pos: 0 }), expect.objectContaining({ pos: 0 })])
+    )
+  })
+
+  test('Should avoid marking as an error text with quote', async () => {
+    const txt = `${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${abstractWithReferencesTXTBlock}
+    ${introductionTXTBlock}
+    ${securityConsiderationsTXTBlock}
+   described, as quoted below:
+     "The translation of the IRTs is necessary in order to refrain from
+     importing "route-filter" VRF routes into VPN VRFs that would
+     import the same route-targets.  The translation of the IRTS is
+     done as follows.  For a given IRT, the equivalent translated RT
+     (TRT) is constructed by means of swapping the value of the high-
+     order octet of the Type field for the IRT (as defined in
+     [RFC4360])."`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.unexpectedIndentation).toHaveLength(0)
+  })
+
+  test('Should avoid marking as an error reference text', async () => {
+    const txt = `${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${abstractWithReferencesTXTBlock}
+    ${introductionTXTBlock}
+    ${securityConsiderationsTXTBlock}
+    ${referencesTXTBlockShort}`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.unexpectedIndentation).toHaveLength(0)
+  })
+})
+
+describe('Document has obsolete TLP section', () => {
+  test('Document has obsolete TLP section', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${abstractTXTBlock}
+    Copyright (c) 2023 The Internet Society and the persons identified as the
+    document authors.  All rights reserved.
+    ${introductionTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.contains.previous6_b_i_copyright).toBeTruthy()
+    expect(result.data.contains.copyrightSection6_b_i).toBeFalsy()
+  })
+
+  test('Document does not have obsolete TLP section', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${abstractTXTBlock}
+    ${introductionTXTBlock}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.contains.previous6_b_i).toBeFalsy()
   })
 })
