@@ -1248,8 +1248,8 @@ describe('Parsing TLP 6.a line page', () => {
   })
 })
 
-describe('Parsing TLP 4.0 6.a text', () => {
-  test('No TLP 4.0 6.a text', async () => {
+describe('Parsing TLP 5.0 6.a text', () => {
+  test('No TLP 5.0 6.a text', async () => {
     const txt = `
     ${metaTXTBlock}
     ${tableOfContentsTXTBlock}
@@ -1262,7 +1262,7 @@ describe('Parsing TLP 4.0 6.a text', () => {
     expect(result.data.contains.submissionCompliance).toBeFalsy()
   })
 
-  test('TLP 4.0 6.a text appears', async () => {
+  test('TLP 5.0 6.a text appears', async () => {
     const txt = `
     ${metaTXTBlock}
     ${tableOfContentsTXTBlock}
