@@ -39,7 +39,9 @@ import {
   PageBlock,
   expiresLineFooterTXTBlock,
   PageBreak,
-  trust28Dec2009Section6aTXTBlock
+  trust28Dec2009Section6aTXTBlock,
+  normativeReferenceSectionTXTBlock,
+  informativeReferenceSectionTXTBlock
 } from './fixtures/txt-blocks/section-blocks.mjs'
 import { parse } from '../lib/parsers/txt.mjs'
 
@@ -200,6 +202,34 @@ describe('References (if any present) are not categorized as Normative or Inform
 
     const result = await parse(txt, 'txt')
     expect(result.data.content.references).toBeNull()
+  })
+
+  test('Parsing reference section named "Normative References', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+      ${normativeReferenceSectionTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.content.references).toEqual(expect.arrayContaining([expect.stringContaining('Normative References')]))
+  })
+
+  test('Parsing reference section named "Informative References', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+      ${informativeReferenceSectionTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.content.references).toEqual(expect.arrayContaining([expect.stringContaining('Informative References')]))
   })
 
   test('References are categorized', async () => {

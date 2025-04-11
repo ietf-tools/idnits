@@ -382,3 +382,45 @@ Expires: 8 September 2023                                      K. Patel
             Extended Communities Derived from Route Targets
                  draft-ietf-idr-rt-derived-community-05
 `
+
+export const normativeReferenceSectionTXTBlock = `
+7. Normative References
+
+    [RFC4360]  Sangli, S., Tappan, D., and Y. Rekhter, "BGP Extended
+              Communities Attribute", RFC 4360, DOI 10.17487/RFC4360,
+              February 2006, <https://www.rfc-editor.org/info/rfc4360>.
+
+   [RFC5701]  Rekhter, Y., "IPv6 Address Specific BGP ExtendedCommunity
+              Attribute", RFC 5701, DOI 10.17487/RFC5701,November 2009,
+              <https://www.rfc-editor.org/info/rfc5701>.
+
+   [RFC7153]  Rosen, E. and Y. Rekhter, "IANA Registries for BGP
+              Extended Communities", RFC 7153, DOI 10.17487/RFC7153,
+              March 2014, <https://www.rfc-editor.org/info/rfc7153>.
+
+   [RFC7432]  Sajassi, A., Ed., Aggarwal, R., Bitar, N., Isaac, A.,
+              Uttaro, J., Drake, J., and W. Henderickx, "BGP MPLS-Based
+              Ethernet VPN", RFC 7432, DOI 10.17487/RFC7432, February
+              2015, <https://www.rfc-editor.org/info/rfc7432>.
+`
+
+export const informativeReferenceSectionTXTBlock = `
+7. Informative References
+
+    [RFC4360]  Sangli, S., Tappan, D., and Y. Rekhter, "BGP Extended
+              Communities Attribute", RFC 4360, DOI 10.17487/RFC4360,
+              February 2006, <https://www.rfc-editor.org/info/rfc4360>.
+
+   [RFC5701]  Rekhter, Y., "IPv6 Address Specific BGP ExtendedCommunity
+              Attribute", RFC 5701, DOI 10.17487/RFC5701,November 2009,
+              <https://www.rfc-editor.org/info/rfc5701>.
+
+   [RFC7153]  Rosen, E. and Y. Rekhter, "IANA Registries for BGP
+              Extended Communities", RFC 7153, DOI 10.17487/RFC7153,
+              March 2014, <https://www.rfc-editor.org/info/rfc7153>.
+
+   [RFC7432]  Sajassi, A., Ed., Aggarwal, R., Bitar, N., Isaac, A.,
+              Uttaro, J., Drake, J., and W. Henderickx, "BGP MPLS-Based
+              Ethernet VPN", RFC 7432, DOI 10.17487/RFC7432, February
+              2015, <https://www.rfc-editor.org/info/rfc7432>.
+`
