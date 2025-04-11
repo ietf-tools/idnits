@@ -215,6 +215,40 @@ describe('References (if any present) are not categorized as Normative or Inform
     const result = await parse(txt, 'txt')
     expect(result.data.content.references).toEqual(expect.arrayContaining([expect.stringContaining('Normative References'), expect.stringContaining('Informative References')]))
   })
+
+  test('Author\'s section is present in format Author\'s Address', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+      ${referenceTXTBlock}
+      Author's Address
+
+      Billie Wilington, New York City, NY 10001, USA
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.markers.authorAddress.start).toBeTruthy()
+  })
+
+  test('Author\'s section is present in plural form', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${abstractTXTBlock}
+    ${introductionTXTBlock}
+    ${securityConsiderationsTXTBlock}
+    ${referenceTXTBlock}
+    Authors' Addresses
+
+    Billie Wilington, New York City, NY 10001, USA
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.markers.authorAddress.start).toBeTruthy()
+  })
 })
 
 describe('Abstract contains references', () => {
