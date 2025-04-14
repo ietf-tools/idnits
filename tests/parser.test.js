@@ -2044,6 +2044,21 @@ ${securityConsiderationsTXTBlock}`
     expect(result.data.possibleIssues.unexpectedIndentation).toHaveLength(0)
   })
 
+  test('Correct text without unexpected indentations in Author\'s Address section', async () => {
+    const txt = `${metaTXTBlock}
+${tableOfContentsTXTBlock}
+${abstractWithReferencesTXTBlock}
+${introductionTXTBlock}
+${securityConsiderationsTXTBlock}
+Author's Address
+
+   Robert Sparks
+   Email: rjsparks@nostrum.com`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.unexpectedIndentation).toHaveLength(0)
+  })
+
   test('Section title has unexpected indentation', async () => {
     const txt = `${metaTXTBlock}
     ${tableOfContentsTXTBlock}
