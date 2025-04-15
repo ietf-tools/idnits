@@ -39,7 +39,9 @@ import {
   PageBlock,
   expiresLineFooterTXTBlock,
   PageBreak,
-  trust28Dec2009Section6aTXTBlock
+  trust28Dec2009Section6aTXTBlock,
+  normativeReferenceSectionTXTBlock,
+  informativeReferenceSectionTXTBlock
 } from './fixtures/txt-blocks/section-blocks.mjs'
 import { parse } from '../lib/parsers/txt.mjs'
 
@@ -202,6 +204,34 @@ describe('References (if any present) are not categorized as Normative or Inform
     expect(result.data.content.references).toBeNull()
   })
 
+  test('Parsing reference section named "Normative References', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+      ${normativeReferenceSectionTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.content.references).toEqual(expect.arrayContaining([expect.stringContaining('Normative References')]))
+  })
+
+  test('Parsing reference section named "Informative References', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+      ${informativeReferenceSectionTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.content.references).toEqual(expect.arrayContaining([expect.stringContaining('Informative References')]))
+  })
+
   test('References are categorized', async () => {
     const txt = `
     ${metaTXTBlock}
@@ -214,6 +244,40 @@ describe('References (if any present) are not categorized as Normative or Inform
 
     const result = await parse(txt, 'txt')
     expect(result.data.content.references).toEqual(expect.arrayContaining([expect.stringContaining('Normative References'), expect.stringContaining('Informative References')]))
+  })
+
+  test('Author\'s section is present in format Author\'s Address', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+      ${referenceTXTBlock}
+      Author's Address
+
+      Billie Wilington, New York City, NY 10001, USA
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.markers.authorAddress.start).toBeTruthy()
+  })
+
+  test('Author\'s section is present in plural form', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${abstractTXTBlock}
+    ${introductionTXTBlock}
+    ${securityConsiderationsTXTBlock}
+    ${referenceTXTBlock}
+    Authors' Addresses
+
+    Billie Wilington, New York City, NY 10001, USA
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.markers.authorAddress.start).toBeTruthy()
   })
 })
 
@@ -1154,6 +1218,23 @@ describe('Document has hyphenated line-breaks', () => {
       ])
     )
   })
+
+  test('Document has hyphenated line-breaks within boilerplate (should not mark as possible problem)', async () => {
+    const txt = `
+${metaTXTBlock}
+${tableOfContentsTXTBlock}
+${abstractTXTBlock}
+${introductionTXTBlock}
+
+Internet-Drafts are working documents of the Internet Engineering
+Task Force (IETF). Note that other groups may also distribute
+working documents as Internet-Drafts.  The list of current Internet-
+Drafts is at https://datatracker.ietf.org/drafts/current/.
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.hyphenatedLines).toHaveLength(0)
+  })
 })
 
 describe('Parsing obsolete and update metadata with some characters', () => {
@@ -1980,6 +2061,21 @@ ${securityConsiderationsTXTBlock}`
     expect(result.data.possibleIssues.unexpectedIndentation).toHaveLength(0)
   })
 
+  test('Correct text without unexpected indentations in Author\'s Address section', async () => {
+    const txt = `${metaTXTBlock}
+${tableOfContentsTXTBlock}
+${abstractWithReferencesTXTBlock}
+${introductionTXTBlock}
+${securityConsiderationsTXTBlock}
+Author's Address
+
+   Robert Sparks
+   Email: rjsparks@nostrum.com`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.unexpectedIndentation).toHaveLength(0)
+  })
+
   test('Section title has unexpected indentation', async () => {
     const txt = `${metaTXTBlock}
     ${tableOfContentsTXTBlock}
@@ -2062,6 +2158,24 @@ ${securityConsiderationsTXTBlock}`
 
     const result = await parse(txt, 'txt')
     expect(result.data.possibleIssues.unexpectedIndentation).toHaveLength(0)
+  })
+
+  test('Should point unexpected indentation in references section', async () => {
+    const txt = `${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${abstractWithReferencesTXTBlock}
+    ${introductionTXTBlock}
+    ${securityConsiderationsTXTBlock}
+7. References
+
+    [RFC2119] Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119, March 1997.
+
+    [RFC8174] Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC 2119
+              Key Words", RFC 8174, May 2017.`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.unexpectedIndentation).toHaveLength(2)
   })
 })
 
