@@ -2159,6 +2159,24 @@ Author's Address
     const result = await parse(txt, 'txt')
     expect(result.data.possibleIssues.unexpectedIndentation).toHaveLength(0)
   })
+
+  test('Should point unexpected indentation in references section', async () => {
+    const txt = `${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${abstractWithReferencesTXTBlock}
+    ${introductionTXTBlock}
+    ${securityConsiderationsTXTBlock}
+7. References
+
+    [RFC2119] Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119, March 1997.
+
+    [RFC8174] Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC 2119
+              Key Words", RFC 8174, May 2017.`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.unexpectedIndentation).toHaveLength(2)
+  })
 })
 
 describe('Document has obsolete TLP section', () => {
