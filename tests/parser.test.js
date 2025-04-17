@@ -2082,10 +2082,8 @@ Author's Address
     ${abstractWithReferencesTXTBlock}
     ${introductionTXTBlock}
     ${securityConsiderationsTXTBlock}
-   6. Some section title
-   Text of section
-   More text`
-
+ 5. IANA Considerations
+`
     const result = await parse(txt, 'txt')
     expect(result.data.possibleIssues.unexpectedIndentation).toHaveLength(1)
     expect(result.data.possibleIssues.unexpectedIndentation).toEqual(
@@ -2093,59 +2091,27 @@ Author's Address
     )
   })
 
-  test('Section text has unexpected indentation', async () => {
+  test('Section text has unexpected indentation in Introduction and Reference sections', async () => {
     const txt = `${metaTXTBlock}
     ${tableOfContentsTXTBlock}
     ${abstractWithReferencesTXTBlock}
     ${introductionTXTBlock}
     ${securityConsiderationsTXTBlock}
-6. Some section title
+   6. Normative References
 
-    Text of section with bad indentation
-  More text`
+  Text of section with bad indentation
+  More text
+
+  1. Historical background
+
+  2. Background
+`
 
     const result = await parse(txt, 'txt')
-    expect(result.data.possibleIssues.unexpectedIndentation).toHaveLength(2)
+    expect(result.data.possibleIssues.unexpectedIndentation).toHaveLength(3)
     expect(result.data.possibleIssues.unexpectedIndentation).toEqual(
       expect.arrayContaining([expect.objectContaining({ pos: 0 }), expect.objectContaining({ pos: 0 })])
     )
-  })
-
-  test('Section text has unexpected indentation', async () => {
-    const txt = `${metaTXTBlock}
-    ${tableOfContentsTXTBlock}
-    ${abstractWithReferencesTXTBlock}
-    ${introductionTXTBlock}
-    ${securityConsiderationsTXTBlock}
-6. Some section title
-
-    Text of section with bad indentation
-  More text`
-
-    const result = await parse(txt, 'txt')
-    expect(result.data.possibleIssues.unexpectedIndentation).toHaveLength(2)
-    expect(result.data.possibleIssues.unexpectedIndentation).toEqual(
-      expect.arrayContaining([expect.objectContaining({ pos: 0 }), expect.objectContaining({ pos: 0 })])
-    )
-  })
-
-  test('Should avoid marking as an error text with quote', async () => {
-    const txt = `${metaTXTBlock}
-    ${tableOfContentsTXTBlock}
-    ${abstractWithReferencesTXTBlock}
-    ${introductionTXTBlock}
-    ${securityConsiderationsTXTBlock}
-   described, as quoted below:
-     "The translation of the IRTs is necessary in order to refrain from
-     importing "route-filter" VRF routes into VPN VRFs that would
-     import the same route-targets.  The translation of the IRTS is
-     done as follows.  For a given IRT, the equivalent translated RT
-     (TRT) is constructed by means of swapping the value of the high-
-     order octet of the Type field for the IRT (as defined in
-     [RFC4360])."`
-
-    const result = await parse(txt, 'txt')
-    expect(result.data.possibleIssues.unexpectedIndentation).toHaveLength(0)
   })
 
   test('Should avoid marking as an error reference text', async () => {
@@ -2160,22 +2126,40 @@ Author's Address
     expect(result.data.possibleIssues.unexpectedIndentation).toHaveLength(0)
   })
 
-  test('Should point unexpected indentation in references section', async () => {
+  test('Indented Status of This Memo should trigger unexpected indentation', async () => {
     const txt = `${metaTXTBlock}
-    ${tableOfContentsTXTBlock}
-    ${abstractWithReferencesTXTBlock}
-    ${introductionTXTBlock}
-    ${securityConsiderationsTXTBlock}
-7. References
-
-    [RFC2119] Bradner, S., "Key words for use in RFCs to Indicate
-              Requirement Levels", BCP 14, RFC 2119, March 1997.
-
-    [RFC8174] Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC 2119
-              Key Words", RFC 8174, May 2017.`
+     Status of This Memo`
 
     const result = await parse(txt, 'txt')
-    expect(result.data.possibleIssues.unexpectedIndentation).toHaveLength(2)
+    expect(result.data.possibleIssues.unexpectedIndentation).toHaveLength(1)
+    expect(result.data.possibleIssues.unexpectedIndentation[0].name).toMatch(/Status of This Memo/)
+  })
+
+  test('Indented Appendix section should trigger unexpected indentation', async () => {
+    const txt = `${metaTXTBlock}
+     Appendix A. Additional Information`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.unexpectedIndentation).toHaveLength(1)
+    expect(result.data.possibleIssues.unexpectedIndentation[0].name).toMatch(/Appendix/)
+  })
+
+  test('Indented Author’s Addresses (with editor) should trigger unexpected indentation', async () => {
+    const txt = `${metaTXTBlock}
+     Editor's Addresses`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.unexpectedIndentation).toHaveLength(1)
+    expect(result.data.possibleIssues.unexpectedIndentation[0].name).toMatch(/Author's Addresses/)
+  })
+
+  test('Indented Overview section with numeric prefix should trigger unexpected indentation', async () => {
+    const txt = `${metaTXTBlock}
+   1. Overview`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.unexpectedIndentation).toHaveLength(1)
+    expect(result.data.possibleIssues.unexpectedIndentation[0].name).toMatch(/Introduction/)
   })
 })
 
