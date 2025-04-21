@@ -814,6 +814,22 @@ describe('Parsing references with categorization', () => {
     )
   })
 
+  test('Shoul parse base reference secton', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+      References
+      [RFC1234] Example, E., "Example RFC", RFC 1234, January 2023.
+    `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.markers.references.start).toBeTruthy()
+  })
+
   test('Parses reference with square brackets', async () => {
     const txt = `
       ${metaTXTBlock}
