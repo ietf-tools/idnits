@@ -101,7 +101,7 @@ describe('Missing abstract section', () => {
     `
 
     const result = await parse(txt, 'txt')
-    expect(result.data.content.abstract).toBeNull()
+    expect(result.data.content.abstract).toHaveLength(0)
   })
 
   test('The abstract section is present', async () => {
@@ -129,7 +129,7 @@ describe('Missing introduction section', () => {
     `
 
     const result = await parse(txt, 'txt')
-    expect(result.data.content.introduction).toBeNull()
+    expect(result.data.content.introduction).toHaveLength(0)
   })
 
   test('The introduction section is present', async () => {
@@ -201,7 +201,7 @@ describe('References (if any present) are not categorized as Normative or Inform
     `
 
     const result = await parse(txt, 'txt')
-    expect(result.data.content.references).toBeNull()
+    expect(result.data.content.references).toHaveLength(0)
   })
 
   test('Parsing reference section named "Normative References', async () => {
@@ -278,6 +278,40 @@ describe('References (if any present) are not categorized as Normative or Inform
 
     const result = await parse(txt, 'txt')
     expect(result.data.markers.authorAddress.start).toBeTruthy()
+  })
+
+  test('Should include all reference section titles in content, even if there are multiple titles', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+      2. Informative References
+  
+      [RFC4360]  Sangli, S., Tappan, D., and Y. Rekhter, "BGP Extended
+                Communities Attribute", RFC 4360, DOI 10.17487/RFC4360,
+                February 2006, <https://www.rfc-editor.org/info/rfc4360>.
+  
+      [RFC5701]  Rekhter, Y., "IPv6 Address Specific BGP ExtendedCommunity
+                Attribute", RFC 5701, DOI 10.17487/RFC5701, November 2009,
+                <https://www.rfc-editor.org/info/rfc5701>.
+  
+      3. Normative References
+  
+      [RFC4360]  Sangli, S., Tappan, D., and Y. Rekhter, "BGP Extended
+                Communities Attribute", RFC 4360, DOI 10.17487/RFC4360,
+                February 2006, <https://www.rfc-editor.org/info/rfc4360>.
+  
+      [RFC5701]  Rekhter, Y., "IPv6 Address Specific BGP ExtendedCommunity
+                Attribute", RFC 5701, DOI 10.17487/RFC5701, November 2009,
+                <https://www.rfc-editor.org/info/rfc5701>.
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.content.references).toEqual(
+      expect.arrayContaining(['3. Normative References', '2. Informative References'])
+    )
   })
 })
 
@@ -1082,7 +1116,7 @@ describe('Parsing IANA considerations section', () => {
 
     const result = await parse(txt, 'txt')
 
-    expect(result.data.content.ianaConsiderations).toBe(null)
+    expect(result.data.content.ianaConsiderations).toHaveLength(0)
   })
 })
 
