@@ -814,7 +814,7 @@ describe('Parsing references with categorization', () => {
     )
   })
 
-  test('Shoul parse base reference secton', async () => {
+  test('Should parse bare reference section', async () => {
     const txt = `
       ${metaTXTBlock}
       ${tableOfContentsTXTBlock}
