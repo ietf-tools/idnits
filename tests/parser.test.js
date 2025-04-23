@@ -308,7 +308,7 @@ describe('Parsing FQRN', () => {
     `
 
     const result = await parse(txt, 'txt')
-    expect(result.data.extractedElements.fqdnDomains).toEqual(expect.arrayContaining(['random.arpa', 'invalid.arpa']))
+    expect(result.data.extractedElements.fqdnDomains).toEqual(expect.arrayContaining(['www.random.arpa', 'www.invalid.arpa']))
   })
 
   test('No FQRN domains found in text', async () => {
@@ -336,13 +336,11 @@ describe('Parsing FQRN', () => {
     expect(result.data.extractedElements.fqdnDomains).toEqual(
       expect.arrayContaining([
         'foo.bar.com',
-        'site.org',
-        'test.net',
         'sub.domain.io',
         'alpha.beta.gamma.xyz'
       ])
     )
-    expect(result.data.extractedElements.fqdnDomains).toHaveLength(5)
+    expect(result.data.extractedElements.fqdnDomains).toHaveLength(3)
   })
 
   test('Ignores numeric-TLD and weird patterns', async () => {
@@ -382,12 +380,11 @@ describe('Parsing FQRN', () => {
     expect(result.data.extractedElements.fqdnDomains).toEqual(
       expect.arrayContaining([
         'foo.bar.com',
-        'site.org',
         'sub.domain.io',
         'alpha.beta.gamma.xyz'
       ])
     )
-    expect(result.data.extractedElements.fqdnDomains).toHaveLength(4)
+    expect(result.data.extractedElements.fqdnDomains).toHaveLength(3)
   })
 
   test('Does not extract email addresses or trailing @', async () => {

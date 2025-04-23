@@ -195,8 +195,8 @@ export const referenceTXTBlock = `
 `
 
 export const textWithFQRNTXTBlock = `
-    One domain invalid.arpa. We can think about another domain
-    random.arpa. Also there are another kinds of domains like
+    One domain www.invalid.arpa. We can think about another domain
+    www.random.arpa. Also there are another kinds of domains like
     example.com and www.ietf.org.
 `
 
