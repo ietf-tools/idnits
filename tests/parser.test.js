@@ -1480,6 +1480,24 @@ describe('Reference is declared, but not used in the document', () => {
     expect(result.data.extractedElements.nonReferenceSectionDraftReferences).toHaveLength(1)
   })
 
+  test('Should not treat “[0]” in code as a draft reference', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock.replace('[1]', '')}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+  
+          // some code example
+          function pickBest() {
+              return bestVia[0];
+          }
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.nonReferenceSectionDraftReferences).toHaveLength(0)
+  })
+
   test('Parsing references in text (multiple references)', async () => {
     const txt = `
       ${metaTXTBlock}
