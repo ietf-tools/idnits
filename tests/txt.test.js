@@ -60,6 +60,20 @@ describe('Text document should not contain over-long lines', () => {
     await expect(validateLineLength(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('LINE_TOO_LONG', ValidationWarning)
     await expect(validateLineLength(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('LINE_TOO_LONG', ValidationWarning)
   })
+
+  test('ignores lines containing non-ASCII characters even if over 72 chars', async () => {
+    const doc = { ...baseTXTDoc }
+    // 80 ASCII chars plus one non-ASCII at the end
+    doc.body = 'x'.repeat(80) + 'é\n'
+    await expect(validateLineLength(doc)).resolves.toHaveLength(0)
+  })
+
+  test('measures trimmed length, not raw length', async () => {
+    const doc = { ...baseTXTDoc }
+    // raw length is 100 but trimmed length is only 10
+    doc.body = ' '.repeat(90) + 'abcdefghij\n'
+    await expect(validateLineLength(doc)).resolves.toHaveLength(0)
+  })
 })
 
 describe('The document should not contain more than 50 lines with intra-line extra spacing.', () => {
