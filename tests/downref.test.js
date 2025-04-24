@@ -429,6 +429,25 @@ describe('Validating published as a RFC draft references', () => {
       ])
     })
 
+    test('should strip leading I-D. prefix before validation (TXT)', async () => {
+      const doc = cloneDeep(baseTXTDoc)
+      // simulate a two-part reference with an I-D. prefix
+      set(doc, 'data.extractedElements.referenceSectionDraftReferences', [
+        { value: 'I-D.draft-ietf-rtgwg-segment-routing-ti-lfa' }
+      ])
+
+      fetchMock.mockResponseOnce(JSON.stringify({}))
+
+      const result = await validatePublishedDraftReferences(doc, { mode: MODES.NORMAL })
+      expect(result).toEqual([
+        new ValidationWarning(
+          'UNDEFINED_STATE',
+          'The draft reference draft-ietf-rtgwg-segment-routing-ti-lfa does not have a defined state or could not be fetched.',
+          { ref: 'https://datatracker.ietf.org/doc/draft-ietf-rtgwg-segment-routing-ti-lfa' }
+        )
+      ])
+    })
+
     test('should return warning for drafts published as RFCs', async () => {
       const doc = cloneDeep(baseTXTDoc)
       set(doc, 'data.extractedElements.referenceSectionDraftReferences', [
@@ -489,6 +508,25 @@ describe('Validating published as a RFC draft references', () => {
           'UNDEFINED_STATE',
           'The draft reference draft-ietf-undefined-state does not have a defined state or could not be fetched.',
           { ref: 'https://datatracker.ietf.org/doc/draft-ietf-undefined-state' }
+        )
+      ])
+    })
+
+    test('should strip leading I-D. prefix before validation (XML)', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      // simulate a reference that starts with "I-D."
+      set(doc, 'data.rfc.back.references.references', [
+        { reference: [{ _attr: { anchor: 'I-D.draft-ietf-rtgwg-segment-routing-ti-lfa' } }] }
+      ])
+
+      fetchMock.mockResponseOnce(JSON.stringify({}))
+
+      const result = await validatePublishedDraftReferences(doc, { mode: MODES.NORMAL })
+      expect(result).toEqual([
+        new ValidationWarning(
+          'UNDEFINED_STATE',
+          'The draft reference draft-ietf-rtgwg-segment-routing-ti-lfa does not have a defined state or could not be fetched.',
+          { ref: 'https://datatracker.ietf.org/doc/draft-ietf-rtgwg-segment-routing-ti-lfa' }
         )
       ])
     })
