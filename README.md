@@ -10,7 +10,7 @@
     
 </div>
 
-> ⚠️ *This branch is for the new JS-based idnits3. For the older shell-based idnits2, [view the v2 branch](https://github.com/ietf-tools/idnits/tree/v2) isntead.*
+> ⚠️ *This branch is for the new JS-based idnits3. For the older shell-based idnits2, [view the v2 branch](https://github.com/ietf-tools/idnits/tree/v2) instead.*
 
 - [Installation](#installation)
 - [Usage](#usage)
