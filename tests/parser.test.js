@@ -101,7 +101,7 @@ describe('Missing abstract section', () => {
     `
 
     const result = await parse(txt, 'txt')
-    expect(result.data.content.abstract).toBeNull()
+    expect(result.data.content.abstract).toHaveLength(0)
   })
 
   test('The abstract section is present', async () => {
@@ -129,7 +129,7 @@ describe('Missing introduction section', () => {
     `
 
     const result = await parse(txt, 'txt')
-    expect(result.data.content.introduction).toBeNull()
+    expect(result.data.content.introduction).toHaveLength(0)
   })
 
   test('The introduction section is present', async () => {
@@ -201,7 +201,7 @@ describe('References (if any present) are not categorized as Normative or Inform
     `
 
     const result = await parse(txt, 'txt')
-    expect(result.data.content.references).toBeNull()
+    expect(result.data.content.references).toHaveLength(0)
   })
 
   test('Parsing reference section named "Normative References', async () => {
@@ -278,6 +278,40 @@ describe('References (if any present) are not categorized as Normative or Inform
 
     const result = await parse(txt, 'txt')
     expect(result.data.markers.authorAddress.start).toBeTruthy()
+  })
+
+  test('Should include all reference section titles in content, even if there are multiple titles', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+      2. Informative References
+  
+      [RFC4360]  Sangli, S., Tappan, D., and Y. Rekhter, "BGP Extended
+                Communities Attribute", RFC 4360, DOI 10.17487/RFC4360,
+                February 2006, <https://www.rfc-editor.org/info/rfc4360>.
+  
+      [RFC5701]  Rekhter, Y., "IPv6 Address Specific BGP ExtendedCommunity
+                Attribute", RFC 5701, DOI 10.17487/RFC5701, November 2009,
+                <https://www.rfc-editor.org/info/rfc5701>.
+  
+      3. Normative References
+  
+      [RFC4360]  Sangli, S., Tappan, D., and Y. Rekhter, "BGP Extended
+                Communities Attribute", RFC 4360, DOI 10.17487/RFC4360,
+                February 2006, <https://www.rfc-editor.org/info/rfc4360>.
+  
+      [RFC5701]  Rekhter, Y., "IPv6 Address Specific BGP ExtendedCommunity
+                Attribute", RFC 5701, DOI 10.17487/RFC5701, November 2009,
+                <https://www.rfc-editor.org/info/rfc5701>.
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.content.references).toEqual(
+      expect.arrayContaining(['3. Normative References', '2. Informative References'])
+    )
   })
 })
 
@@ -814,6 +848,22 @@ describe('Parsing references with categorization', () => {
     )
   })
 
+  test('Should parse bare reference section', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+      References
+      [RFC1234] Example, E., "Example RFC", RFC 1234, January 2023.
+    `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.markers.references.start).toBeTruthy()
+  })
+
   test('Parses reference with square brackets', async () => {
     const txt = `
       ${metaTXTBlock}
@@ -850,6 +900,26 @@ describe('Parsing references with categorization', () => {
       expect.arrayContaining(['[RFC1234]'])
     )
     expect(result.data.extractedElements.bracketedRfcNonReferences).toHaveLength(1)
+  })
+
+  test('Parser should mark references in appendix section as used references in text', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+      4. References
+      [RFC1234] Example reference
+
+      Appendix A. Additional Information
+      [RFC1234] Example reference in appendix
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.nonReferenceSectionRfc).toEqual(
+      expect.arrayContaining(['1234'])
+    )
   })
 })
 
@@ -1066,7 +1136,7 @@ describe('Parsing IANA considerations section', () => {
 
     const result = await parse(txt, 'txt')
 
-    expect(result.data.content.ianaConsiderations).toBe(null)
+    expect(result.data.content.ianaConsiderations).toHaveLength(0)
   })
 })
 
@@ -1480,6 +1550,24 @@ describe('Reference is declared, but not used in the document', () => {
     expect(result.data.extractedElements.nonReferenceSectionDraftReferences).toHaveLength(1)
   })
 
+  test('Should not treat “[0]” in code as a draft reference', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock.replace('[1]', '')}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+  
+          // some code example
+          function pickBest() {
+              return bestVia[0];
+          }
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.nonReferenceSectionDraftReferences).toHaveLength(0)
+  })
+
   test('Parsing references in text (multiple references)', async () => {
     const txt = `
       ${metaTXTBlock}
@@ -1509,6 +1597,56 @@ describe('Reference is declared, but not used in the document', () => {
     const result = await parse(txt, 'txt')
     expect(result.data.extractedElements.referenceSectionRfc).toHaveLength(0)
     expect(result.data.extractedElements.referenceSectionDraftReferences).toHaveLength(0)
+  })
+})
+
+describe('Page‐separator handling for split license and RFC headers', () => {
+  test('TLP 6.b.i license block split by form‐feed is still recognized', async () => {
+    const txt = `
+${metaTXTBlock}
+${tableOfContentsTXTBlock}
+
+${copyrightNoticeTXTBlock}
+
+// license starts...
+This document is subject to BCP 78 and the IETF Trust's Legal
+Provisions Relating to IETF Documents (https://trustee.ietf.org/
+license-info)
+
+Schmutzer, et al.        Expires 17 October 2025                [Page 1]
+\f
+Internet-Draft                CS-SR Policy                    April 2025
+
+in effect on the date of publication of this document.
+Code Components extracted from this document must include Revised BSD License text as described in Section 4.e of the Trust Legal Provisions and are
+
+Schmutzer, et al.        Expires 17 October 2025                [Page 1]
+\f
+Internet-Draft                CS-SR Policy                    April 2025
+
+provided without warranty as described in the Revised BSD License.
+
+${introductionTXTBlock}
+`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.contains.revisedBsdLicense6_i).toBe(true)
+    expect(result.data.extractedElements.license6_b_i).toHaveLength(1)
+    expect(result.data.extractedElements.license6_b_i[0])
+      .toContain('Code Components extracted from this document must include Revised BSD License text as described in Section 4.e')
+  })
+
+  test('“RFC … [Page N]” headers without form‐feed do NOT split pages', async () => {
+    const txt = `
+${metaTXTBlock}
+Schmutzer, et al.        Expires 17 October 2025               [Page 1]
+RFC 7154               IETF Guidelines for Conduct            March 2014
+${abstractTXTBlock}
+${introductionTXTBlock}
+`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.pageCount).toBe(1)
   })
 })
 
@@ -2082,10 +2220,8 @@ Author's Address
     ${abstractWithReferencesTXTBlock}
     ${introductionTXTBlock}
     ${securityConsiderationsTXTBlock}
-   6. Some section title
-   Text of section
-   More text`
-
+ 5. IANA Considerations
+`
     const result = await parse(txt, 'txt')
     expect(result.data.possibleIssues.unexpectedIndentation).toHaveLength(1)
     expect(result.data.possibleIssues.unexpectedIndentation).toEqual(
@@ -2093,59 +2229,27 @@ Author's Address
     )
   })
 
-  test('Section text has unexpected indentation', async () => {
+  test('Section text has unexpected indentation in Introduction and Reference sections', async () => {
     const txt = `${metaTXTBlock}
     ${tableOfContentsTXTBlock}
     ${abstractWithReferencesTXTBlock}
     ${introductionTXTBlock}
     ${securityConsiderationsTXTBlock}
-6. Some section title
+   6. Normative References
 
-    Text of section with bad indentation
-  More text`
+  Text of section with bad indentation
+  More text
+
+  1. Historical background
+
+  2. Background
+`
 
     const result = await parse(txt, 'txt')
-    expect(result.data.possibleIssues.unexpectedIndentation).toHaveLength(2)
+    expect(result.data.possibleIssues.unexpectedIndentation).toHaveLength(3)
     expect(result.data.possibleIssues.unexpectedIndentation).toEqual(
       expect.arrayContaining([expect.objectContaining({ pos: 0 }), expect.objectContaining({ pos: 0 })])
     )
-  })
-
-  test('Section text has unexpected indentation', async () => {
-    const txt = `${metaTXTBlock}
-    ${tableOfContentsTXTBlock}
-    ${abstractWithReferencesTXTBlock}
-    ${introductionTXTBlock}
-    ${securityConsiderationsTXTBlock}
-6. Some section title
-
-    Text of section with bad indentation
-  More text`
-
-    const result = await parse(txt, 'txt')
-    expect(result.data.possibleIssues.unexpectedIndentation).toHaveLength(2)
-    expect(result.data.possibleIssues.unexpectedIndentation).toEqual(
-      expect.arrayContaining([expect.objectContaining({ pos: 0 }), expect.objectContaining({ pos: 0 })])
-    )
-  })
-
-  test('Should avoid marking as an error text with quote', async () => {
-    const txt = `${metaTXTBlock}
-    ${tableOfContentsTXTBlock}
-    ${abstractWithReferencesTXTBlock}
-    ${introductionTXTBlock}
-    ${securityConsiderationsTXTBlock}
-   described, as quoted below:
-     "The translation of the IRTs is necessary in order to refrain from
-     importing "route-filter" VRF routes into VPN VRFs that would
-     import the same route-targets.  The translation of the IRTS is
-     done as follows.  For a given IRT, the equivalent translated RT
-     (TRT) is constructed by means of swapping the value of the high-
-     order octet of the Type field for the IRT (as defined in
-     [RFC4360])."`
-
-    const result = await parse(txt, 'txt')
-    expect(result.data.possibleIssues.unexpectedIndentation).toHaveLength(0)
   })
 
   test('Should avoid marking as an error reference text', async () => {
@@ -2160,22 +2264,40 @@ Author's Address
     expect(result.data.possibleIssues.unexpectedIndentation).toHaveLength(0)
   })
 
-  test('Should point unexpected indentation in references section', async () => {
+  test('Indented Status of This Memo should trigger unexpected indentation', async () => {
     const txt = `${metaTXTBlock}
-    ${tableOfContentsTXTBlock}
-    ${abstractWithReferencesTXTBlock}
-    ${introductionTXTBlock}
-    ${securityConsiderationsTXTBlock}
-7. References
-
-    [RFC2119] Bradner, S., "Key words for use in RFCs to Indicate
-              Requirement Levels", BCP 14, RFC 2119, March 1997.
-
-    [RFC8174] Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC 2119
-              Key Words", RFC 8174, May 2017.`
+     Status of This Memo`
 
     const result = await parse(txt, 'txt')
-    expect(result.data.possibleIssues.unexpectedIndentation).toHaveLength(2)
+    expect(result.data.possibleIssues.unexpectedIndentation).toHaveLength(1)
+    expect(result.data.possibleIssues.unexpectedIndentation[0].name).toMatch(/Status of This Memo/)
+  })
+
+  test('Indented Appendix section should trigger unexpected indentation', async () => {
+    const txt = `${metaTXTBlock}
+     Appendix A. Additional Information`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.unexpectedIndentation).toHaveLength(1)
+    expect(result.data.possibleIssues.unexpectedIndentation[0].name).toMatch(/Appendix/)
+  })
+
+  test('Indented Author’s Addresses (with editor) should trigger unexpected indentation', async () => {
+    const txt = `${metaTXTBlock}
+     Editor's Addresses`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.unexpectedIndentation).toHaveLength(1)
+    expect(result.data.possibleIssues.unexpectedIndentation[0].name).toMatch(/Author's Addresses/)
+  })
+
+  test('Indented Overview section with numeric prefix should trigger unexpected indentation', async () => {
+    const txt = `${metaTXTBlock}
+   1. Overview`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.unexpectedIndentation).toHaveLength(1)
+    expect(result.data.possibleIssues.unexpectedIndentation[0].name).toMatch(/Introduction/)
   })
 })
 

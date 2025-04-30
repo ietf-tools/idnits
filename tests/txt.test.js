@@ -60,6 +60,20 @@ describe('Text document should not contain over-long lines', () => {
     await expect(validateLineLength(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('LINE_TOO_LONG', ValidationWarning)
     await expect(validateLineLength(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('LINE_TOO_LONG', ValidationWarning)
   })
+
+  test('ignores lines containing non-ASCII characters even if over 72 chars', async () => {
+    const doc = { ...baseTXTDoc }
+    // 80 ASCII chars plus one non-ASCII at the end
+    doc.body = 'x'.repeat(80) + 'é\n'
+    await expect(validateLineLength(doc)).resolves.toHaveLength(0)
+  })
+
+  test('measures trimmed length, not raw length', async () => {
+    const doc = { ...baseTXTDoc }
+    // raw length is 100 but trimmed length is only 10
+    doc.body = ' '.repeat(90) + 'abcdefghij\n'
+    await expect(validateLineLength(doc)).resolves.toHaveLength(0)
+  })
 })
 
 describe('The document should not contain more than 50 lines with intra-line extra spacing.', () => {
@@ -326,18 +340,18 @@ describe('The copyright date is not valid.', () => {
 
     doc.data.extractedElements.copyrightDates = [2023]
 
-    await expect(validateCopyrightDate(doc, { mode: MODES.NORMAL })).resolves.toContainError('COPYRIGHT_DATE_NOT_VALID', ValidationWarning)
-    await expect(validateCopyrightDate(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('COPYRIGHT_DATE_NOT_VALID', ValidationWarning)
-    await expect(validateCopyrightDate(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('COPYRIGHT_DATE_NOT_VALID', ValidationWarning)
+    await expect(validateCopyrightDate(doc, { mode: MODES.NORMAL })).resolves.toContainError('COPYRIGHT_YEAR_MISMATCH', ValidationWarning)
+    await expect(validateCopyrightDate(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('COPYRIGHT_YEAR_MISMATCH', ValidationWarning)
+    await expect(validateCopyrightDate(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('COPYRIGHT_YEAR_MISMATCH', ValidationWarning)
   })
   test('Copyright console date not valid', async () => {
     const doc = cloneDeep(baseTXTDoc)
 
     doc.data.extractedElements.copyrightDates = [2034]
 
-    await expect(validateCopyrightDate(doc, { mode: MODES.NORMAL, year: 2024 })).resolves.toContainError('COPYRIGHT_DATE_NOT_VALID', ValidationWarning)
-    await expect(validateCopyrightDate(doc, { mode: MODES.FORGIVE_CHECKLIST, year: 2024 })).resolves.toContainError('COPYRIGHT_DATE_NOT_VALID', ValidationWarning)
-    await expect(validateCopyrightDate(doc, { mode: MODES.SUBMISSION, year: 2024 })).resolves.toContainError('COPYRIGHT_DATE_NOT_VALID', ValidationWarning)
+    await expect(validateCopyrightDate(doc, { mode: MODES.NORMAL, year: 2024 })).resolves.toContainError('COPYRIGHT_YEAR_MISMATCH', ValidationWarning)
+    await expect(validateCopyrightDate(doc, { mode: MODES.FORGIVE_CHECKLIST, year: 2024 })).resolves.toContainError('COPYRIGHT_YEAR_MISMATCH', ValidationWarning)
+    await expect(validateCopyrightDate(doc, { mode: MODES.SUBMISSION, year: 2024 })).resolves.toContainError('COPYRIGHT_YEAR_MISMATCH', ValidationWarning)
   })
 })
 
@@ -668,7 +682,7 @@ describe('Validate section title', () => {
   test('Section title have unexpected indentation', async () => {
     const doc = cloneDeep(baseTXTDoc)
 
-    doc.data.possibleIssues.unexpectedIndentation = [{ line: 1, pos: 12 }]
+    doc.data.possibleIssues.unexpectedIndentation = [{ line: 1, pos: 12, name: 'Introduction' }]
 
     await expect(validateTitleUnexpectedIndentation(doc, { mode: MODES.NORMAL })).resolves.toContainError('SECTION_TITLE_HAS_UNEXPECTED_INDENTATION', ValidationWarning)
     await expect(validateTitleUnexpectedIndentation(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('SECTION_TITLE_HAS_UNEXPECTED_INDENTATION', ValidationWarning)
