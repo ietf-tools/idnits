@@ -823,6 +823,56 @@ describe('document should have valid references sections', () => {
         ValidationWarning
       )
     })
+
+    test('Should throw an error on bare reference section with no classified subsection', async () => {
+      const doc = {
+        type: 'txt',
+        data: {
+          markers: { references: { start: 100 } },
+          content: {
+            references: [
+              'References',
+              '[RFC4360] Sangli, S., "BGP Extended Communities Attribute", RFC 4360, February 2006.'
+            ]
+          }
+        },
+        body: `
+        7. References
+        [RFC4360] Sangli, S., "BGP Extended Communities Attribute", RFC 4360, February 2006.
+        `
+      }
+      await expect(validateReferencesSection(doc, { mode: MODES.NORMAL })).resolves.toContainError(
+        'MISSING_REFERENCES_SUBSECTIONS',
+        ValidationError
+      )
+    })
+
+    test('Should throw an error when reference content has two or more section titles', async () => {
+      const doc = {
+        type: 'txt',
+        data: {
+          markers: { references: { start: 100 } },
+          content: {
+            references: [
+              '2. Normative References',
+              '[RFC4360] Sangli, S., "BGP Extended Communities Attribute", RFC 4360, February 2006.',
+              '3. Informative References',
+              '[RFC4360] Sangli, S., "BGP Extended Communities Attribute", RFC 4360, February 2006.'
+            ]
+          }
+        },
+        body: `
+        7. References
+        [RFC4360] Sangli, S., "BGP Extended Communities Attribute", RFC 4360, February 2006.
+        3. Informative References
+        [RFC4360] Sangli, S., "BGP Extended Communities Attribute", RFC 4360, February 2006.
+        `
+      }
+      await expect(validateReferencesSection(doc, { mode: MODES.NORMAL })).resolves.toContainError(
+        'MULTIPLE_REFERENCES_SECTION_TITLES',
+        ValidationError
+      )
+    })
   })
 
   describe('XML Document Type', () => {
