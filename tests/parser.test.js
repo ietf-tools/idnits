@@ -851,6 +851,26 @@ describe('Parsing references with categorization', () => {
     )
     expect(result.data.extractedElements.bracketedRfcNonReferences).toHaveLength(1)
   })
+
+  test('Parser should mark references in appendix section as used references in text', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+      4. References
+      [RFC1234] Example reference
+
+      Appendix A. Additional Information
+      [RFC1234] Example reference in appendix
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.nonReferenceSectionRfc).toEqual(
+      expect.arrayContaining(['1234'])
+    )
+  })
 })
 
 describe('License validation for documents containing code blocks', () => {

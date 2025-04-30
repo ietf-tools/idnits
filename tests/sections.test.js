@@ -988,6 +988,17 @@ describe('validateReferencesInText', () => {
 
       expect(result).toEqual([])
     })
+
+    test('should filter appendix references and don\'t return warnings for them', async () => {
+      const doc = cloneDeep(baseTXTDoc)
+      doc.data.extractedElements.referenceSectionRfc = [
+        { value: '2119', subsection: 'appendix' },
+        { value: '8174', subsection: 'appendix' } // This should be ignored
+      ]
+
+      const result = await validateReferencesInText(doc)
+      expect(result).toEqual([])
+    })
   })
 
   describe('XML documents', () => {
