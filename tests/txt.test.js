@@ -668,7 +668,7 @@ describe('Validate section title', () => {
   test('Section title have unexpected indentation', async () => {
     const doc = cloneDeep(baseTXTDoc)
 
-    doc.data.possibleIssues.unexpectedIndentation = [{ line: 1, pos: 12 }]
+    doc.data.possibleIssues.unexpectedIndentation = [{ line: 1, pos: 12, name: 'Introduction' }]
 
     await expect(validateTitleUnexpectedIndentation(doc, { mode: MODES.NORMAL })).resolves.toContainError('SECTION_TITLE_HAS_UNEXPECTED_INDENTATION', ValidationWarning)
     await expect(validateTitleUnexpectedIndentation(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('SECTION_TITLE_HAS_UNEXPECTED_INDENTATION', ValidationWarning)
