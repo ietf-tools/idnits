@@ -1550,6 +1550,56 @@ describe('Reference is declared, but not used in the document', () => {
   })
 })
 
+describe('Page‐separator handling for split license and RFC headers', () => {
+  test('TLP 6.b.i license block split by form‐feed is still recognized', async () => {
+    const txt = `
+${metaTXTBlock}
+${tableOfContentsTXTBlock}
+
+${copyrightNoticeTXTBlock}
+
+// license starts...
+This document is subject to BCP 78 and the IETF Trust's Legal
+Provisions Relating to IETF Documents (https://trustee.ietf.org/
+license-info)
+
+Schmutzer, et al.        Expires 17 October 2025                [Page 1]
+\f
+Internet-Draft                CS-SR Policy                    April 2025
+
+in effect on the date of publication of this document.
+Code Components extracted from this document must include Revised BSD License text as described in Section 4.e of the Trust Legal Provisions and are
+
+Schmutzer, et al.        Expires 17 October 2025                [Page 1]
+\f
+Internet-Draft                CS-SR Policy                    April 2025
+
+provided without warranty as described in the Revised BSD License.
+
+${introductionTXTBlock}
+`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.contains.revisedBsdLicense6_i).toBe(true)
+    expect(result.data.extractedElements.license6_b_i).toHaveLength(1)
+    expect(result.data.extractedElements.license6_b_i[0])
+      .toContain('Code Components extracted from this document must include Revised BSD License text as described in Section 4.e')
+  })
+
+  test('“RFC … [Page N]” headers without form‐feed do NOT split pages', async () => {
+    const txt = `
+${metaTXTBlock}
+Schmutzer, et al.        Expires 17 October 2025               [Page 1]
+RFC 7154               IETF Guidelines for Conduct            March 2014
+${abstractTXTBlock}
+${introductionTXTBlock}
+`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.pageCount).toBe(1)
+  })
+})
+
 describe('Status of this memo section is numbered', () => {
   test('The Status of this memo section is not numbered', async () => {
     const txt = `
