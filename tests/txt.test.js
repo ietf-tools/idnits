@@ -326,18 +326,18 @@ describe('The copyright date is not valid.', () => {
 
     doc.data.extractedElements.copyrightDates = [2023]
 
-    await expect(validateCopyrightDate(doc, { mode: MODES.NORMAL })).resolves.toContainError('COPYRIGHT_DATE_NOT_VALID', ValidationWarning)
-    await expect(validateCopyrightDate(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('COPYRIGHT_DATE_NOT_VALID', ValidationWarning)
-    await expect(validateCopyrightDate(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('COPYRIGHT_DATE_NOT_VALID', ValidationWarning)
+    await expect(validateCopyrightDate(doc, { mode: MODES.NORMAL })).resolves.toContainError('COPYRIGHT_YEAR_MISMATCH', ValidationWarning)
+    await expect(validateCopyrightDate(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('COPYRIGHT_YEAR_MISMATCH', ValidationWarning)
+    await expect(validateCopyrightDate(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('COPYRIGHT_YEAR_MISMATCH', ValidationWarning)
   })
   test('Copyright console date not valid', async () => {
     const doc = cloneDeep(baseTXTDoc)
 
     doc.data.extractedElements.copyrightDates = [2034]
 
-    await expect(validateCopyrightDate(doc, { mode: MODES.NORMAL, year: 2024 })).resolves.toContainError('COPYRIGHT_DATE_NOT_VALID', ValidationWarning)
-    await expect(validateCopyrightDate(doc, { mode: MODES.FORGIVE_CHECKLIST, year: 2024 })).resolves.toContainError('COPYRIGHT_DATE_NOT_VALID', ValidationWarning)
-    await expect(validateCopyrightDate(doc, { mode: MODES.SUBMISSION, year: 2024 })).resolves.toContainError('COPYRIGHT_DATE_NOT_VALID', ValidationWarning)
+    await expect(validateCopyrightDate(doc, { mode: MODES.NORMAL, year: 2024 })).resolves.toContainError('COPYRIGHT_YEAR_MISMATCH', ValidationWarning)
+    await expect(validateCopyrightDate(doc, { mode: MODES.FORGIVE_CHECKLIST, year: 2024 })).resolves.toContainError('COPYRIGHT_YEAR_MISMATCH', ValidationWarning)
+    await expect(validateCopyrightDate(doc, { mode: MODES.SUBMISSION, year: 2024 })).resolves.toContainError('COPYRIGHT_YEAR_MISMATCH', ValidationWarning)
   })
 })
 
