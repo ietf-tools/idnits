@@ -25,10 +25,11 @@ const pkgInfo = JSON.parse(await readFile(path.join(cliDir, 'package.json'), 'ut
 // Define CLI arguments config
 const argv = yargs(process.argv.slice(2))
   .scriptName('idnits')
-  .usage('$0 [args] <file-path>')
+  .usage('$0 [args] <file-path|http-url>')
   .example([
     ['$0 draft-ietf-abcd-01.xml', ''],
-    [`$0 -m submission -y ${DateTime.now().year} draft-ietf-abcd-01.xml`, '']
+    [`$0 -m submission -y ${DateTime.now().year} draft-ietf-abcd-01.xml`, ''],
+    ['$0 https://www.rfc-editor.org/rfc/rfc2549', '']
   ])
   .option('filter', {
     alias: 'f',
@@ -91,8 +92,7 @@ const argv = yargs(process.argv.slice(2))
   .command('* <file>', 'parse and validate document', (y) => {
     y.positional('file', {
       type: 'string',
-      describe: 'Path of the document to validate',
-      normalize: true
+      describe: 'Path / URL of the document to validate'
     })
   })
   .strict()
@@ -111,17 +111,36 @@ if (argv.output === 'pretty') {
 }
 
 // Read document
-const docPath = path.resolve(process.cwd(), argv.file)
-const docPathObj = path.parse(docPath)
-if (argv.output === 'pretty') {
-  console.log(chalk.bgWhite.black(' Path ') + ` ${docPath}`)
-}
 let docRaw = ''
-try {
-  docRaw = await readFile(docPath)
-} catch (err) {
-  console.error(chalk.redBright(`Failed to read document: ${err.message}`))
-  process.exit(1)
+let docPath = ''
+let docPathObj = null
+if (argv.file.startsWith('http://') || argv.file.startsWith('https://')) {
+  // -> Remote
+  docPath = argv.file.trim()
+  const docPathUrl = new URL(docPath)
+  docPathObj = path.parse(docPathUrl.pathname)
+  if (argv.output === 'pretty') {
+    console.log(chalk.bgWhite.black(' Url ') + ` ${docPath}`)
+  }
+  try {
+    docRaw = Buffer.from(await (await fetch(docPath)).arrayBuffer())
+  } catch (err) {
+    console.error(chalk.redBright(`Failed to fetch remote document: ${err.message}`))
+    process.exit(1)
+  }
+} else {
+  // -> Local
+  docPath = path.resolve(process.cwd(), argv.file)
+  docPathObj = path.parse(docPath)
+  if (argv.output === 'pretty') {
+    console.log(chalk.bgWhite.black(' Path ') + ` ${docPath}`)
+  }
+  try {
+    docRaw = await readFile(docPath)
+  } catch (err) {
+    console.error(chalk.redBright(`Failed to read document: ${err.message}`))
+    process.exit(1)
+  }
 }
 
 // Get Mode
@@ -317,13 +336,8 @@ try {
       throw new Error('Invalid Output Mode')
     }
   }
-
-  // Exit with code 1 if validation failed
-  if (result.length > 0) {
-    process.exit(1)
-  }
 } catch (err) {
   console.debug(err)
-  console.error(chalk.redBright(`Validation failed:\n- ${err.message}`))
+  console.error(chalk.redBright(`Validation did not complete. Error:\n- ${err.message}`))
   process.exit(1)
 }
