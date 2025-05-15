@@ -39,7 +39,7 @@ npm install -g @ietf-tools/idnits
 #### As a CLI
 
 ```sh
-idnits [args] <file path>
+idnits [args] <file path|url>
 ```
 
 | Arguments | Alias | Description | Default |
@@ -78,7 +78,7 @@ Code coverage is expected to reach 100%. Ensure this is still the case when maki
 
 1. Clone the project
 2. Run `npm install`
-3. Run the CLI: *(replacing `<args>` and `<file path>` with the desired flags + file path)*
+3. Run the CLI: *(replacing `<args>` and `<file path|url>` with the desired flags + file path)*
     ```
-    node cli.js <args> <file path>
+    node cli.js <args> <file path|url>
     ```
