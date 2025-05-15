@@ -6,7 +6,7 @@
 [![node-current](https://img.shields.io/node/v/@ietf-tools/idnits)](https://github.com/ietf-tools/idnits)
 [![License](https://img.shields.io/github/license/ietf-tools/idnits)](https://github.com/ietf-tools/idnits/blob/v3/LICENSE)
     
-##### Library / CLI to inspect Internet-Draft documents for a variety of conditions to conform with IETF policies.
+##### CLI / Library to inspect Internet-Draft documents for a variety of conditions to conform with IETF policies.
     
 </div>
 
@@ -66,7 +66,7 @@ idnits [args] <file path|url>
 | `--help` | `-h` | Print the help text and exit |  |
 | `--version` |  | Print the version and exit |  |
 
-### As a library
+### Library Usage
 
 > [!NOTE]
 > The library documentation is a work in progress.
