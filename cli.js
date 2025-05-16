@@ -25,10 +25,11 @@ const pkgInfo = JSON.parse(await readFile(path.join(cliDir, 'package.json'), 'ut
 // Define CLI arguments config
 const argv = yargs(process.argv.slice(2))
   .scriptName('idnits')
-  .usage('$0 [args] <file-path>')
+  .usage('$0 [args] <file-path|http-url>')
   .example([
     ['$0 draft-ietf-abcd-01.xml', ''],
-    [`$0 -m submission -y ${DateTime.now().year} draft-ietf-abcd-01.xml`, '']
+    [`$0 -m submission -y ${DateTime.now().year} draft-ietf-abcd-01.xml`, ''],
+    ['$0 https://www.rfc-editor.org/rfc/rfc2549', '']
   ])
   .option('filter', {
     alias: 'f',
@@ -91,8 +92,7 @@ const argv = yargs(process.argv.slice(2))
   .command('* <file>', 'parse and validate document', (y) => {
     y.positional('file', {
       type: 'string',
-      describe: 'Path of the document to validate',
-      normalize: true
+      describe: 'Path / URL of the document to validate'
     })
   })
   .strict()
@@ -111,17 +111,36 @@ if (argv.output === 'pretty') {
 }
 
 // Read document
-const docPath = path.resolve(process.cwd(), argv.file)
-const docPathObj = path.parse(docPath)
-if (argv.output === 'pretty') {
-  console.log(chalk.bgWhite.black(' Path ') + ` ${docPath}`)
-}
 let docRaw = ''
-try {
-  docRaw = await readFile(docPath)
-} catch (err) {
-  console.error(chalk.redBright(`Failed to read document: ${err.message}`))
-  process.exit(1)
+let docPath = ''
+let docPathObj = null
+if (argv.file.startsWith('http://') || argv.file.startsWith('https://')) {
+  // -> Remote
+  docPath = argv.file.trim()
+  const docPathUrl = new URL(docPath)
+  docPathObj = path.parse(docPathUrl.pathname)
+  if (argv.output === 'pretty') {
+    console.log(chalk.bgWhite.black(' Url ') + ` ${docPath}`)
+  }
+  try {
+    docRaw = Buffer.from(await (await fetch(docPath)).arrayBuffer())
+  } catch (err) {
+    console.error(chalk.redBright(`Failed to fetch remote document: ${err.message}`))
+    process.exit(1)
+  }
+} else {
+  // -> Local
+  docPath = path.resolve(process.cwd(), argv.file)
+  docPathObj = path.parse(docPath)
+  if (argv.output === 'pretty') {
+    console.log(chalk.bgWhite.black(' Path ') + ` ${docPath}`)
+  }
+  try {
+    docRaw = await readFile(docPath)
+  } catch (err) {
+    console.error(chalk.redBright(`Failed to read document: ${err.message}`))
+    process.exit(1)
+  }
 }
 
 // Get Mode
@@ -144,6 +163,7 @@ function chalkAdapted (color) {
 // Validate document
 try {
   let result = []
+  const docSizeBytes = Buffer.byteLength(docRaw)
 
   // Validate document using task processor
   if (argv.output === 'pretty' && argv.progress) {
@@ -218,6 +238,29 @@ try {
     })
   }
 
+  // Stats by severity
+  const nitsBySeverity = {
+    error: 0,
+    warning: 0,
+    comment: 0
+  }
+  for (const res of result) {
+    switch (res.constructor.name) {
+      case 'ValidationError': {
+        nitsBySeverity.error++
+        break
+      }
+      case 'ValidationWarning': {
+        nitsBySeverity.warning++
+        break
+      }
+      case 'ValidationComment': {
+        nitsBySeverity.comment++
+        break
+      }
+    }
+  }
+
   // Output results
   switch (argv.output) {
     // COUNT | Only return number of nits
@@ -231,23 +274,27 @@ try {
         result: result.length > 0 ? 'fail' : 'pass',
         file: {
           path: docPath,
-          size: 0
+          size: docSizeBytes
         },
+        nitsBySeverity,
         nits: result.map(r => ({
+          severity: r.constructor.name,
           code: r.name,
           desc: r.message,
+          ...r.text && { text: r.text },
           ...r.refUrl && { ref: r.refUrl },
+          ...r.path && { path: r.path },
           ...r.lines && { line: r.lines }
         }))
-      }))
+      }, null, 2))
       break
     }
     // SIMPLE | Results as a simple list
     case 'simple': {
       if (result.length === 0) {
-        console.log(`PASS - Document ${docPath} is VALID. (mode: ${argv.mode})\n`)
+        console.log(`PASS - Document ${docPath} is nit-free. (mode: ${argv.mode})\n`)
       } else {
-        console.error(`FAIL - Document ${docPath} is INVALID. (mode: ${argv.mode})\n`)
+        console.error(`FAIL - Document ${docPath} has nits. (mode: ${argv.mode})\n`)
         let entryIdx = 1
         const validationSeverity = {
           ValidationError: 'Error',
@@ -264,51 +311,99 @@ try {
     // PRETTY | Human-readable result view
     case 'pretty': {
       if (result.length === 0) {
-        console.log(chalk.bgGreen.whiteBright(' PASS ') + chalk.greenBright(' Document is VALID. 🎉\n'))
+        console.log(chalk.bgGreen.whiteBright(' PASS ') + chalk.greenBright(' No nit found for this document. 🎉\n'))
       } else {
-        console.error(chalk.bgRed.whiteBright(' FAIL ') + chalk.redBright(' Document is INVALID. ❌\n'))
+        let resultIcon = ''
+        const resultSeverities = []
+        if (nitsBySeverity.comment > 0) {
+          resultIcon = 'ℹ️'
+          resultSeverities.push(nitsBySeverity.comment + (nitsBySeverity.comment > 1 ? chalk.cyanBright(' comments') : chalk.cyanBright(' comment')))
+        }
+        if (nitsBySeverity.warning > 0) {
+          resultIcon = '⚠️'
+          resultSeverities.unshift(nitsBySeverity.warning + (nitsBySeverity.warning > 1 ? chalk.yellowBright(' warnings') : chalk.yellowBright(' warning')))
+        }
+        if (nitsBySeverity.error > 0) {
+          resultIcon = '❌'
+          resultSeverities.unshift(nitsBySeverity.error + (nitsBySeverity.error > 1 ? chalk.redBright(' errors') : chalk.redBright(' error')))
+        }
+        console.log(resultIcon + ' Review the ' + resultSeverities.join(', ') + ' listed below.\n')
+
         // Format errors
         let entryIdx = 1
-        for (const entry of result) {
-          switch (entry.constructor.name) {
+        for (const sev of ['ValidationError', 'ValidationWarning', 'ValidationComment']) {
+          switch (sev) {
             case 'ValidationError': {
-              console.log(chalk.bgRed.whiteBright(` ${entryIdx} `) + chalk.redBright(' Error'))
-              console.log(chalk.grey(' └- ') + chalkAdapted('white')('Code') + chalk.grey(' - ') + chalk.redBright(entry.name))
+              if (nitsBySeverity.error > 0) {
+                console.log(chalk.red('▀'.repeat(64)))
+                console.log(chalk.bgRed.whiteBright(' ERROR ') + ` ${nitsBySeverity.error} nit(s) of error severity`)
+                console.log(chalk.red('▄'.repeat(64)) + '\n')
+              }
               break
             }
             case 'ValidationWarning': {
-              console.log(chalk.bgYellow.whiteBright(` ${entryIdx} `) + chalk.yellowBright(' Warning'))
-              console.log(chalk.grey(' └- ') + chalkAdapted('white')('Code') + chalk.grey(' - ') + chalk.yellowBright(entry.name))
+              if (nitsBySeverity.warning > 0) {
+                console.log(chalk.yellow('▀'.repeat(64)))
+                console.log(chalk.bgYellow.whiteBright(' WARNING ') + ` ${nitsBySeverity.warning} nit(s) of warning severity`)
+                console.log(chalk.yellow('▄'.repeat(64)) + '\n')
+              }
               break
             }
             case 'ValidationComment': {
-              console.log(chalk.bgCyan.whiteBright(` ${entryIdx} `) + ' Comment')
-              console.log(chalk.grey(' └- ') + chalkAdapted('white')('Code') + chalk.grey(' - ') + chalk.cyanBright(entry.name))
+              if (nitsBySeverity.comment > 0) {
+                console.log(chalk.cyan('▀'.repeat(64)))
+                console.log(chalk.bgCyan.whiteBright(' COMMENT ') + ` ${nitsBySeverity.comment} nit(s) of comment severity`)
+                console.log(chalk.cyan('▄'.repeat(64)) + '\n')
+              }
               break
             }
-            default: {
-              console.log(chalk.bgRed.whiteBright(` ${entryIdx} `) + ' Unexpected Error')
+          }
+          for (const entry of result.filter(r => r.constructor.name === sev)) {
+            switch (entry.constructor.name) {
+              case 'ValidationError': {
+                console.log(chalk.bgRed.whiteBright(` ${entryIdx} `) + chalk.redBright(' Error'))
+                console.log(chalk.grey(' └- ') + chalkAdapted('white')('Code') + chalk.grey(' - ') + chalk.redBright(entry.name))
+                break
+              }
+              case 'ValidationWarning': {
+                console.log(chalk.bgYellow.whiteBright(` ${entryIdx} `) + chalk.yellowBright(' Warning'))
+                console.log(chalk.grey(' └- ') + chalkAdapted('white')('Code') + chalk.grey(' - ') + chalk.yellowBright(entry.name))
+                break
+              }
+              case 'ValidationComment': {
+                console.log(chalk.bgCyan.whiteBright(` ${entryIdx} `) + ' Comment')
+                console.log(chalk.grey(' └- ') + chalkAdapted('white')('Code') + chalk.grey(' - ') + chalk.cyanBright(entry.name))
+                break
+              }
+              default: {
+                console.log(chalk.bgRed.whiteBright(` ${entryIdx} `) + ' Unexpected Error')
+              }
             }
-          }
-          console.log(chalk.grey(' └- ') + chalkAdapted('white')('Desc') + chalk.grey(' - ') + chalkAdapted('whiteBright')(entry.message))
-          if (entry.text) {
-            console.log(chalk.grey(' └- ') + chalkAdapted('white')('Text') + chalk.grey(' - ') + chalkAdapted('white')(entry.text))
-          }
-          if (entry.refUrl) {
-            console.log(chalk.grey(' └- ') + chalkAdapted('white')('Ref ') + chalk.grey(' - ') + chalk.cyan(entry.refUrl))
-          }
-          if (entry.path) {
-            console.log(chalk.grey(' └- ') + chalkAdapted('white')('Path') + chalk.grey(' - ') + chalkAdapted('white')(entry.path))
-          }
-          if (entry.lines) {
-            const lines = []
-            for (const line of entry.lines) {
-              lines.push(`Ln ${line.line} Col ${line.pos}`)
+            console.log(chalk.grey(' └- ') + chalkAdapted('white')('Desc') + chalk.grey(' - ') + chalkAdapted('whiteBright')(entry.message))
+            if (entry.text) {
+              console.log(chalk.grey(' └- ') + chalkAdapted('white')('Text') + chalk.grey(' - ') + chalkAdapted('white')(entry.text))
             }
-            console.log(chalk.grey(' └- ') + chalkAdapted('white')('Line') + chalk.grey(' - ') + chalkAdapted('white')(lines.join(', ')))
+            if (entry.refUrl) {
+              console.log(chalk.grey(' └- ') + chalkAdapted('white')('Ref ') + chalk.grey(' - ') + chalk.cyan(entry.refUrl))
+            }
+            if (entry.path) {
+              console.log(chalk.grey(' └- ') + chalkAdapted('white')('Path') + chalk.grey(' - ') + chalkAdapted('white')(entry.path))
+            }
+            if (entry.lines) {
+              const lines = []
+              for (const line of entry.lines) {
+                lines.push(`Ln ${line.line} Col ${line.pos}`)
+              }
+              console.log(chalk.grey(' └- ') + chalkAdapted('white')('Line') + chalk.grey(' - ') + chalkAdapted('white')(lines.join(', ')))
+            }
+            console.log() // Empty line between entries
+            entryIdx++
           }
-          console.log() // Empty line between entries
-          entryIdx++
+        }
+
+        if (result.length >= 5) {
+          console.log('-'.repeat(64) + '\n')
+          console.log(resultIcon + ' Review the ' + resultSeverities.join(', ') + ' listed above.\n')
         }
       }
       break
@@ -317,13 +412,8 @@ try {
       throw new Error('Invalid Output Mode')
     }
   }
-
-  // Exit with code 1 if validation failed
-  if (result.length > 0) {
-    process.exit(1)
-  }
 } catch (err) {
   console.debug(err)
-  console.error(chalk.redBright(`Validation failed:\n- ${err.message}`))
+  console.error(chalk.redBright(`Validation did not complete. Error:\n- ${err.message}`))
   process.exit(1)
 }
