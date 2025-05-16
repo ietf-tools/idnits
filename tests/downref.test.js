@@ -50,6 +50,16 @@ describe('validateDownrefs', () => {
       const result = await validateDownrefs(doc, { mode: MODES.FORGIVE_CHECKLIST })
       expect(result).toHaveLength(0)
     })
+
+    test('FORGIVE_CHECKLIST mode returns warning on non RFC non draft reference', async () => {
+      const doc = cloneDeep(baseTXTDoc)
+      set(doc, 'data.extractedElements.referenceSectionRfc', [{ value: '1094', subsection: 'normative_references' }])
+      set(doc, 'data.extractedElements.referenceSectionDraftReferences', [{ value: 'ISO10589', subsection: 'normative_references' }])
+
+      const result = await validateDownrefs(doc, { mode: MODES.FORGIVE_CHECKLIST })
+      expect(result).toHaveLength(1)
+      expect(result).toContainError('POSSIBLE_DOWNREF', ValidationWarning)
+    })
   })
 
   describe('XML Document Type', () => {
@@ -97,7 +107,7 @@ describe('validateDownrefs', () => {
       ])
 
       const result = await validateDownrefs(doc, { mode: MODES.FORGIVE_CHECKLIST })
-      expect(result).toContainError('DOWNREF_TO_LOWER_STATUS', ValidationWarning)
+      expect(result).toContainError('POSSIBLE_DOWNREF', ValidationWarning)
     })
 
     test('valid XML references without downrefs (multiple references in a section)', async () => {
