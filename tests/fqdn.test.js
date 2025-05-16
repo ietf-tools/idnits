@@ -18,13 +18,7 @@ describe('document should have valid FQDN mentions', () => {
         type: 'txt',
         data: {
           extractedElements: {
-            fqdnDomains: [
-              'example.com',
-              'example.org',
-              'example.net',
-              'localhost',
-              'test.localhost'
-            ]
+            fqdnDomains: []
           }
         }
       }
@@ -90,9 +84,7 @@ describe('document should have valid FQDN mentions', () => {
         type: 'txt',
         data: {
           extractedElements: {
-            fqdnDomains: [
-              'www.ietf.org'
-            ]
+            fqdnDomains: []
           }
         }
       }
@@ -107,10 +99,8 @@ describe('document should have valid FQDN mentions', () => {
         data: {
           extractedElements: {
             fqdnDomains: [
-              'example.com',
               'random.arpa',
-              'invalid.example.invalidtld',
-              'www.ietf.org'
+              'invalid.example.invalidtld'
             ]
           }
         }
@@ -138,14 +128,14 @@ describe('document should have valid FQDN mentions', () => {
     })
     test('invalid TLD', async () => {
       const doc = cloneDeep(baseXMLDoc)
-      set(doc, 'data.rfc.middle.t', 'Lorem ipsum something.invalidtld lorem ipsum.')
+      set(doc, 'data.rfc.middle.t', 'Lorem ipsum www.something.invalidtld lorem ipsum.')
       await expect(validateFQDNs(doc)).resolves.toContainError('INVALID_DOMAIN_TLD', ValidationWarning)
       await expect(validateFQDNs(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('INVALID_DOMAIN_TLD', ValidationWarning)
       await expect(validateFQDNs(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
     test('invalid ARPA domain', async () => {
       const doc = cloneDeep(baseXMLDoc)
-      set(doc, 'data.rfc.middle.t', 'Lorem ipsum invalid123.arpa lorem ipsum.')
+      set(doc, 'data.rfc.middle.t', 'Lorem ipsum www.invalid123.arpa lorem ipsum.')
       await expect(validateFQDNs(doc)).resolves.toContainError('INVALID_ARPA_DOMAIN', ValidationWarning)
       await expect(validateFQDNs(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('INVALID_ARPA_DOMAIN', ValidationWarning)
       await expect(validateFQDNs(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)

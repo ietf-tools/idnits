@@ -342,7 +342,7 @@ describe('Parsing FQRN', () => {
     `
 
     const result = await parse(txt, 'txt')
-    expect(result.data.extractedElements.fqdnDomains).toEqual(expect.arrayContaining(['www.ietf.org', 'example.com', 'random.arpa', 'invalid.arpa']))
+    expect(result.data.extractedElements.fqdnDomains).toEqual(expect.arrayContaining(['www.random.arpa', 'www.invalid.arpa']))
   })
 
   test('No FQRN domains found in text', async () => {
@@ -354,6 +354,79 @@ describe('Parsing FQRN', () => {
       ${securityConsiderationsTXTBlock}
     `
 
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.fqdnDomains).toEqual([])
+  })
+
+  test('Extracts only valid domains with letter-only TLD', async () => {
+    const txt = `
+      foo.bar.com
+      site.org
+      TEST.NET
+      sub.domain.io
+      alpha.beta.gamma.xyz
+    `
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.fqdnDomains).toEqual(
+      expect.arrayContaining([
+        'foo.bar.com',
+        'sub.domain.io',
+        'alpha.beta.gamma.xyz'
+      ])
+    )
+    expect(result.data.extractedElements.fqdnDomains).toHaveLength(3)
+  })
+
+  test('Ignores numeric-TLD and weird patterns', async () => {
+    const txt = `
+      bad.123
+      fine.1a
+      no-tld.
+      weird.TLD1
+      Q.850
+    `
+    const result = await parse(txt, 'txt')
+    // Никакой из этих не должен попасть
+    expect(result.data.extractedElements.fqdnDomains).toEqual([])
+  })
+
+  test('Filters out reserved domains per idnits2 rules', async () => {
+    const txt = `
+      example.com
+      foo.example.org
+      test.example.net
+      urn.arpa
+      my.urn.arpa
+      in-addr.arpa
+      server.in-addr.arpa
+      www.ietf.org
+    `
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.fqdnDomains).toEqual([])
+  })
+
+  test('Handles domains', async () => {
+    const txt = `
+      Please visit foo.bar.com, or contact us at site.org.
+      Also sub.domain.io; and alpha.beta.gamma.xyz.
+    `
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.fqdnDomains).toEqual(
+      expect.arrayContaining([
+        'foo.bar.com',
+        'sub.domain.io',
+        'alpha.beta.gamma.xyz'
+      ])
+    )
+    expect(result.data.extractedElements.fqdnDomains).toHaveLength(3)
+  })
+
+  test('Does not extract email addresses or trailing @', async () => {
+    const txt = `
+      some text with user@example.com
+      another text someone@host.org
+      third text just@ 
+    `
     const result = await parse(txt, 'txt')
     expect(result.data.extractedElements.fqdnDomains).toEqual([])
   })
