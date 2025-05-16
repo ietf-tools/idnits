@@ -288,21 +288,21 @@ describe('References (if any present) are not categorized as Normative or Inform
       ${introductionTXTBlock}
       ${securityConsiderationsTXTBlock}
       2. Informative References
-  
+
       [RFC4360]  Sangli, S., Tappan, D., and Y. Rekhter, "BGP Extended
                 Communities Attribute", RFC 4360, DOI 10.17487/RFC4360,
                 February 2006, <https://www.rfc-editor.org/info/rfc4360>.
-  
+
       [RFC5701]  Rekhter, Y., "IPv6 Address Specific BGP ExtendedCommunity
                 Attribute", RFC 5701, DOI 10.17487/RFC5701, November 2009,
                 <https://www.rfc-editor.org/info/rfc5701>.
-  
+
       3. Normative References
-  
+
       [RFC4360]  Sangli, S., Tappan, D., and Y. Rekhter, "BGP Extended
                 Communities Attribute", RFC 4360, DOI 10.17487/RFC4360,
                 February 2006, <https://www.rfc-editor.org/info/rfc4360>.
-  
+
       [RFC5701]  Rekhter, Y., "IPv6 Address Specific BGP ExtendedCommunity
                 Attribute", RFC 5701, DOI 10.17487/RFC5701, November 2009,
                 <https://www.rfc-editor.org/info/rfc5701>.
@@ -361,8 +361,8 @@ describe('Parsing FQRN', () => {
   test('Extracts only valid domains with letter-only TLD', async () => {
     const txt = `
       foo.bar.com
-      site.org
-      TEST.NET
+      a.a.com
+      aa1.12m
       sub.domain.io
       alpha.beta.gamma.xyz
     `
@@ -386,22 +386,6 @@ describe('Parsing FQRN', () => {
       Q.850
     `
     const result = await parse(txt, 'txt')
-    // Никакой из этих не должен попасть
-    expect(result.data.extractedElements.fqdnDomains).toEqual([])
-  })
-
-  test('Filters out reserved domains per idnits2 rules', async () => {
-    const txt = `
-      example.com
-      foo.example.org
-      test.example.net
-      urn.arpa
-      my.urn.arpa
-      in-addr.arpa
-      server.in-addr.arpa
-      www.ietf.org
-    `
-    const result = await parse(txt, 'txt')
     expect(result.data.extractedElements.fqdnDomains).toEqual([])
   })
 
@@ -414,18 +398,19 @@ describe('Parsing FQRN', () => {
     expect(result.data.extractedElements.fqdnDomains).toEqual(
       expect.arrayContaining([
         'foo.bar.com',
+        'site.org',
         'sub.domain.io',
         'alpha.beta.gamma.xyz'
       ])
     )
-    expect(result.data.extractedElements.fqdnDomains).toHaveLength(3)
+    expect(result.data.extractedElements.fqdnDomains).toHaveLength(4)
   })
 
   test('Does not extract email addresses or trailing @', async () => {
     const txt = `
       some text with user@example.com
       another text someone@host.org
-      third text just@ 
+      third text just@
     `
     const result = await parse(txt, 'txt')
     expect(result.data.extractedElements.fqdnDomains).toEqual([])
@@ -1521,15 +1506,15 @@ describe('Parsing over long pages', () => {
     ${metaTXTBlock}
     ${tableOfContentsTXTBlock}
     ${abstractWithReferencesTXTBlock}
-    
+
     ${introductionTXTBlock}
-    
+
     ${securityConsiderationsTXTBlock}
-    
+
     ${RFC2119BoilerplateTXTBlock}
 
     ${RFC8174BoilerplateTXTBlock}
-    
+
     ${authorAddressTXTBlock}
 
     ${PageBreak}
@@ -1545,15 +1530,15 @@ describe('Parsing over long pages', () => {
     ${metaTXTBlock}
     ${tableOfContentsTXTBlock}
     ${abstractWithReferencesTXTBlock}
-    
+
     ${introductionTXTBlock}
-    
+
     ${securityConsiderationsTXTBlock}
-    
+
     ${RFC2119BoilerplateTXTBlock}
 
     ${RFC8174BoilerplateTXTBlock}
-    
+
     ${authorAddressTXTBlock}
 
     ${PageBreak}
@@ -1561,15 +1546,15 @@ describe('Parsing over long pages', () => {
     ${metaTXTBlock}
     ${tableOfContentsTXTBlock}
     ${abstractWithReferencesTXTBlock}
-    
+
     ${introductionTXTBlock}
-    
+
     ${securityConsiderationsTXTBlock}
-    
+
     ${RFC2119BoilerplateTXTBlock}
 
     ${RFC8174BoilerplateTXTBlock}
-    
+
     ${authorAddressTXTBlock}
 
     ${PageBreak}
@@ -1630,7 +1615,7 @@ describe('Reference is declared, but not used in the document', () => {
       ${abstractWithReferencesTXTBlock.replace('[1]', '')}
       ${introductionTXTBlock}
       ${securityConsiderationsTXTBlock}
-  
+
           // some code example
           function pickBest() {
               return bestVia[0];

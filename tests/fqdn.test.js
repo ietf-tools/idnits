@@ -42,13 +42,13 @@ describe('document should have valid FQDN mentions', () => {
 
       const result = await validateFQDNs(doc, { mode: MODES.NORMAL, offline: false })
       expect(result).toEqual([
-        new ValidationWarning('INVALID_DOMAIN_TLD', 'Domain "invalid.example.invalidtld" has an invalid TLD.', {
-          ref: 'https://www.iana.org/domains/root/db',
-          domain: 'invalid.example.invalidtld'
+        new ValidationWarning('INVALID_DOMAIN_TLD', 'Domain "invalid.example.invalidtld" is not an allowed reserved domain. Consider using ".example.(com|org|net)" instead.', {
+          ref: 'https://www.rfc-editor.org/rfc/rfc6761',
+          text: 'invalid.example.invalidtld'
         }),
-        new ValidationWarning('INVALID_DOMAIN_TLD', 'Domain "another.invalidtld" has an invalid TLD.', {
-          ref: 'https://www.iana.org/domains/root/db',
-          domain: 'another.invalidtld'
+        new ValidationWarning('INVALID_DOMAIN_TLD', 'Domain "another.invalidtld" is not an allowed reserved domain. Consider using ".example.(com|org|net)" instead.', {
+          ref: 'https://www.rfc-editor.org/rfc/rfc6761',
+          text: 'another.invalidtld'
         })
       ])
     })
@@ -70,11 +70,11 @@ describe('document should have valid FQDN mentions', () => {
       expect(result).toEqual([
         new ValidationWarning('INVALID_ARPA_DOMAIN', 'ARPA domain "random.arpa" usage is invalid.', {
           ref: 'https://www.iana.org/domains/arpa',
-          domain: 'random.arpa'
+          text: 'random.arpa'
         }),
         new ValidationWarning('INVALID_ARPA_DOMAIN', 'ARPA domain "invalid.arpa" usage is invalid.', {
           ref: 'https://www.iana.org/domains/arpa',
-          domain: 'invalid.arpa'
+          text: 'invalid.arpa'
         })
       ])
     })
@@ -110,11 +110,11 @@ describe('document should have valid FQDN mentions', () => {
       expect(result).toEqual([
         new ValidationWarning('INVALID_ARPA_DOMAIN', 'ARPA domain "random.arpa" usage is invalid.', {
           ref: 'https://www.iana.org/domains/arpa',
-          domain: 'random.arpa'
+          text: 'random.arpa'
         }),
-        new ValidationWarning('INVALID_DOMAIN_TLD', 'Domain "invalid.example.invalidtld" has an invalid TLD.', {
-          ref: 'https://www.iana.org/domains/root/db',
-          domain: 'invalid.example.invalidtld'
+        new ValidationWarning('INVALID_DOMAIN_TLD', 'Domain "invalid.example.invalidtld" is not an allowed reserved domain. Consider using ".example.(com|org|net)" instead.', {
+          ref: 'https://www.rfc-editor.org/rfc/rfc6761',
+          text: 'invalid.example.invalidtld'
         })
       ])
     })
