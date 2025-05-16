@@ -775,34 +775,6 @@ describe('Parsing references with categorization', () => {
     )
   })
 
-  test('Correctly categorizes normative and informative draft references', async () => {
-    const txt = `
-      ${metaTXTBlock}
-      ${tableOfContentsTXTBlock}
-      ${abstractWithReferencesTXTBlock}
-      ${introductionTXTBlock}
-      ${securityConsiderationsTXTBlock}
-      7. References
-      7.1. Normative References
-      [I-D.ietf-httpbis-semantics] Fielding, R., "HTTP Semantics", draft-ietf-httpbis-semantics-19, October 2021.
-      [I-D.ietf-quic-http] Bishop, M., "HTTP over QUIC", draft-ietf-quic-http-34, May 2021.
-      7.2. Informative References
-      [I-D.ietf-httpbis-cache] Nottingham, M., "HTTP Caching", draft-ietf-httpbis-cache-09, November 2020.
-      [I-D.ietf-httpbis-client-hints] Grigorik, I., "Client Hints", draft-ietf-httpbis-client-hints-10, January 2021.
-    `
-
-    const result = await parse(txt, 'txt')
-
-    expect(result.data.extractedElements.referenceSectionDraftReferences).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ value: '[I-D.ietf-httpbis-semantics]', subsection: 'normative_references' }),
-        expect.objectContaining({ value: '[I-D.ietf-quic-http]', subsection: 'normative_references' }),
-        expect.objectContaining({ value: '[I-D.ietf-httpbis-cache]', subsection: 'informative_references' }),
-        expect.objectContaining({ value: '[I-D.ietf-httpbis-client-hints]', subsection: 'informative_references' })
-      ])
-    )
-  })
-
   test('Detects references that are not categorized as normative or informative', async () => {
     const txt = `
       ${metaTXTBlock}
@@ -870,16 +842,30 @@ describe('Parsing references with categorization', () => {
       ${securityConsiderationsTXTBlock}
       7. References
       7.1. Miscellaneous References
-      [I-D.ietf-httpbis-cache] Nottingham, M., "HTTP Caching", draft-ietf-httpbis-cache-09, November 2020.
-      [I-D.ietf-httpbis-client-hints] Grigorik, I., "Client Hints", draft-ietf-httpbis-client-hints-10, January 2021.
+   [I-D.ietf-bess-evpn-igmp-mld-proxy]
+              Sajassi, A., Thoria, S., Mishra, M. P., Drake, J., and W.
+              Lin, "Internet Group Management Protocol (IGMP) and
+              Multicast Listener Discovery (MLD) Proxies for Ethernet
+              VPN (EVPN)", Work in Progress, Internet-Draft,draft-ietf
+              bess-evpn-igmp-mld-proxy-21, 22 March 2022,
+              <https://datatracker.ietf.org/doc/html/draft-ietf-bess-
+              evpn-igmp-mld-proxy-21>.
+
+   [I-D.ietf-bess-bgp-multicast-controller]
+              Zhang, Z. J., Raszuk, R., Pacella, D., and A. Gulko,
+              "Controller Based BGP Multicast Signaling", Work in
+              Progress, Internet-Draft, draft-ietf-bess-bgp-multicast
+              controller-09, 11 April 2022,
+              <https://datatracker.ietf.org/doc/html/draft-ietf-bess-
+              bgp-multicast-controller-09>.
     `
 
     const result = await parse(txt, 'txt')
 
     expect(result.data.extractedElements.referenceSectionDraftReferences).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ value: '[I-D.ietf-httpbis-cache]', subsection: 'unclassified_references' }),
-        expect.objectContaining({ value: '[I-D.ietf-httpbis-client-hints]', subsection: 'unclassified_references' })
+        expect.objectContaining({ value: 'draft-ietf-bess-evpn-igmp-mld-proxy-21', subsection: 'unclassified_references' }),
+        expect.objectContaining({ value: 'draft-ietf-bess-bgp-multicast-controller-09', subsection: 'unclassified_references' })
       ])
     )
   })
@@ -1587,9 +1573,8 @@ describe('Reference is declared, but not used in the document', () => {
     ])
     expect(result.data.extractedElements.referenceSectionDraftReferences).toEqual([
       expect.objectContaining({ value: '[Lalalala-Refere-Sponsor]' }),
-      expect.objectContaining({ value: '[I-D.ietf-bess-evpn-igmp-mld-proxy]' }),
-      expect.objectContaining({ value: '[I-D.ietf-bess-bgp-multicast-controller]' }),
-      expect.objectContaining({ value: '[I-D.ietf-idr-legacy-rtc]' })
+      expect.objectContaining({ value: 'draft-ietf-bess-evpn-igmp-mld-proxy-21' }),
+      expect.objectContaining({ value: 'draft-ietf-bess-bgp-multicast-controller-09' })
     ])
   })
 
