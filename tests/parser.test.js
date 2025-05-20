@@ -862,7 +862,7 @@ describe('Parsing references with categorization', () => {
 
     const result = await parse(txt, 'txt')
 
-    expect(result.data.extractedElements.referenceSectionDraftReferences).toEqual(
+    expect(result.data.extractedElements.draftStatusReferences).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ value: 'draft-ietf-bess-evpn-igmp-mld-proxy-21', subsection: 'unclassified_references' }),
         expect.objectContaining({ value: 'draft-ietf-bess-bgp-multicast-controller-09', subsection: 'unclassified_references' })
@@ -1573,6 +1573,8 @@ describe('Reference is declared, but not used in the document', () => {
     ])
     expect(result.data.extractedElements.referenceSectionDraftReferences).toEqual([
       expect.objectContaining({ value: '[Lalalala-Refere-Sponsor]' }),
+    ])
+        expect(result.data.extractedElements.draftStatusReferences).toEqual([
       expect.objectContaining({ value: 'draft-ietf-bess-evpn-igmp-mld-proxy-21' }),
       expect.objectContaining({ value: 'draft-ietf-bess-bgp-multicast-controller-09' })
     ])

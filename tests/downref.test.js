@@ -27,7 +27,7 @@ describe('validateDownrefs', () => {
     test('valid references with no downrefs', async () => {
       const doc = cloneDeep(baseTXTDoc)
       set(doc, 'data.extractedElements.referenceSectionRfc', [{ value: '4086' }, { value: '8141' }])
-      set(doc, 'data.extractedElements.referenceSectionDraftReferences', [{ value: 'draft-ietf-quic-http-34' }])
+      set(doc, 'data.extractedElements.draftStatusReferences', [{ value: 'draft-ietf-quic-http-34' }])
 
       const result = await validateDownrefs(doc, { mode: MODES.NORMAL })
       expect(result).toHaveLength(0)
@@ -45,7 +45,7 @@ describe('validateDownrefs', () => {
     test('FORGIVE_CHECKLIST mode returns zero warnings', async () => {
       const doc = cloneDeep(baseTXTDoc)
       set(doc, 'data.extractedElements.referenceSectionRfc', [{ value: '1094' }])
-      set(doc, 'data.extractedElements.referenceSectionDraftReferences', [{ value: 'draft-ietf-quic-http-34' }])
+      set(doc, 'data.extractedElements.draftStatusReferences', [{ value: 'draft-ietf-quic-http-34' }])
 
       const result = await validateDownrefs(doc, { mode: MODES.FORGIVE_CHECKLIST })
       expect(result).toHaveLength(0)
@@ -54,7 +54,7 @@ describe('validateDownrefs', () => {
     test('FORGIVE_CHECKLIST mode returns warning on non RFC non draft reference', async () => {
       const doc = cloneDeep(baseTXTDoc)
       set(doc, 'data.extractedElements.referenceSectionRfc', [{ value: '1094', subsection: 'normative_references' }])
-      set(doc, 'data.extractedElements.referenceSectionDraftReferences', [{ value: 'ISO10589', subsection: 'normative_references' }])
+      set(doc, 'data.extractedElements.draftStatusReferences', [{ value: 'ISO10589', subsection: 'normative_references' }])
 
       const result = await validateDownrefs(doc, { mode: MODES.FORGIVE_CHECKLIST })
       expect(result).toHaveLength(1)
