@@ -69,8 +69,18 @@ describe('validateDownrefs', () => {
         {
           name: 'Normative References',
           reference: [
-            { _attr: { anchor: 'RFC8141' } },
-            { _attr: { anchor: 'RFC9114' } }
+            {
+              _attr: { anchor: 'RFC8141' },
+              seriesInfo: [
+                { _attr: { name: 'RFC', value: '8141' } }
+              ]
+            },
+            {
+              _attr: { anchor: 'RFC9114' },
+              seriesInfo: [
+                { _attr: { name: 'RFC', value: '9114' } }
+              ]
+            }
           ]
         }
       ])
@@ -85,7 +95,12 @@ describe('validateDownrefs', () => {
         {
           name: 'Normative References',
           reference: [
-            { _attr: { anchor: 'draft-ietf-emu-aka-pfs-34' } }
+            {
+              _attr: { anchor: 'draft-ietf-emu-aka-pfs-34' },
+              seriesInfo: [
+                { _attr: { name: 'Internet-Draft', value: 'draft-ietf-emu-aka-pfs-34' } }
+              ]
+            }
           ]
         }
       ])
@@ -100,8 +115,18 @@ describe('validateDownrefs', () => {
         {
           name: 'Normative References',
           reference: [
-            { _attr: { anchor: 'draft-ietf-quic-http-34' } },
-            { _attr: { anchor: 'RFC7322' } }
+            {
+              _attr: { anchor: 'draft-ietf-quic-http-34' },
+              seriesInfo: [
+                { _attr: { name: 'Internet-Draft', value: 'draft-ietf-quic-http-34' } }
+              ]
+            },
+            {
+              _attr: { anchor: 'RFC7322' },
+              seriesInfo: [
+                { _attr: { name: 'RFC', value: '7322' } }
+              ]
+            }
           ]
         }
       ])
@@ -116,9 +141,18 @@ describe('validateDownrefs', () => {
         {
           name: 'Normative References',
           reference: [
-            { _attr: { anchor: 'RFC9114' } },
-            { _attr: { anchor: 'RFC8888' } },
-            { _attr: { anchor: 'RFC7655' } }
+            {
+              _attr: { anchor: 'RFC9114' },
+              seriesInfo: [{ _attr: { name: 'RFC', value: '9114' } }]
+            },
+            {
+              _attr: { anchor: 'RFC8888' },
+              seriesInfo: [{ _attr: { name: 'RFC', value: '8888' } }]
+            },
+            {
+              _attr: { anchor: 'RFC7655' },
+              seriesInfo: [{ _attr: { name: 'RFC', value: '7655' } }]
+            }
           ]
         }
       ])
@@ -133,15 +167,23 @@ describe('validateDownrefs', () => {
         {
           name: 'Normative References',
           reference: [
-            { _attr: { anchor: 'RFC2119' } },
-            { _attr: { anchor: 'RFC8174' } },
-            { _attr: { anchor: 'RFC4187' } } // This is a downref
+            {
+              _attr: { anchor: 'RFC2119' },
+              seriesInfo: [{ _attr: { name: 'RFC', value: '2119' } }]
+            },
+            {
+              _attr: { anchor: 'RFC8174' },
+              seriesInfo: [{ _attr: { name: 'RFC', value: '8174' } }]
+            },
+            {
+              _attr: { anchor: 'RFC4187' }, // This is a downref
+              seriesInfo: [{ _attr: { name: 'RFC', value: '4187' } }]
+            }
           ]
         }
       ])
 
       const result = await validateDownrefs(doc, { mode: MODES.NORMAL })
-
       expect(result).toContainError('DOWNREF_TO_LOWER_STATUS_IN_REGISTRY', ValidationError)
     })
 
@@ -151,8 +193,42 @@ describe('validateDownrefs', () => {
         {
           name: 'Normative References',
           reference: [
-            { _attr: { anchor: 'RFC4187' } },
-            { _attr: { anchor: 'draft-ietf-quic-http-34' } }
+            {
+              _attr: { anchor: 'RFC4187' },
+              seriesInfo: [{ _attr: { name: 'RFC', value: '4187' } }]
+            },
+            {
+              _attr: { anchor: 'draft-ietf-quic-http-34' },
+              seriesInfo: [
+                { _attr: { name: 'Internet-Draft', value: 'draft-ietf-quic-http-34' } }
+              ]
+            }
+          ]
+        }
+      ])
+
+      const result = await validateDownrefs(doc, { mode: MODES.FORGIVE_CHECKLIST })
+      expect(result).toContainError('DOWNREF_TO_LOWER_STATUS_IN_REGISTRY', ValidationWarning)
+    })
+
+    test('FORGIVE_CHECKLIST mode returns warnings when multiple references exist', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      set(doc, 'data.rfc.back.references.references', [
+        {
+          name: 'Normative References',
+          reference: [
+            {
+              _attr: { anchor: 'RFC4187' },
+              seriesInfo: [
+                { _attr: { name: 'RFC',           value: '4187' } }
+              ]
+            },
+            {
+              _attr: { anchor: 'draft-ietf-quic-http-34' },
+              seriesInfo: [
+                { _attr: { name: 'Internet-Draft', value: 'draft-ietf-quic-http-34' } }
+              ]
+            }
           ]
         }
       ])
