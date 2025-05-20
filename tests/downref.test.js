@@ -407,7 +407,7 @@ describe('Validating published as a RFC draft references', () => {
   describe('TXT Document Type', () => {
     test('should return no warnings for valid drafts with defined states', async () => {
       const doc = cloneDeep(baseTXTDoc)
-      set(doc, 'data.extractedElements.referenceSectionDraftReferences', [
+      set(doc, 'data.extractedElements.draftStatusReferences', [
         { value: 'draft-ietf-example-01' },
         { value: 'draft-ietf-example-02' }
       ])
@@ -423,7 +423,7 @@ describe('Validating published as a RFC draft references', () => {
 
     test('should return warning for drafts with undefined states', async () => {
       const doc = cloneDeep(baseTXTDoc)
-      set(doc, 'data.extractedElements.referenceSectionDraftReferences', [
+      set(doc, 'data.extractedElements.draftStatusReferences', [
         { value: 'draft-ietf-undefined-state' }
       ])
 
@@ -442,7 +442,7 @@ describe('Validating published as a RFC draft references', () => {
     test('should strip leading I-D. prefix before validation (TXT)', async () => {
       const doc = cloneDeep(baseTXTDoc)
       // simulate a two-part reference with an I-D. prefix
-      set(doc, 'data.extractedElements.referenceSectionDraftReferences', [
+      set(doc, 'data.extractedElements.draftStatusReferences', [
         { value: 'I-D.draft-ietf-rtgwg-segment-routing-ti-lfa' }
       ])
 
@@ -460,7 +460,7 @@ describe('Validating published as a RFC draft references', () => {
 
     test('should return warning for drafts published as RFCs', async () => {
       const doc = cloneDeep(baseTXTDoc)
-      set(doc, 'data.extractedElements.referenceSectionDraftReferences', [
+      set(doc, 'data.extractedElements.draftStatusReferences', [
         { value: 'draft-ietf-published-as-rfc' }
       ])
 
@@ -478,7 +478,7 @@ describe('Validating published as a RFC draft references', () => {
 
     test('should return no warnings in SUBMISSION mode', async () => {
       const doc = cloneDeep(baseTXTDoc)
-      set(doc, 'data.extractedElements.referenceSectionDraftReferences', [
+      set(doc, 'data.extractedElements.draftStatusReferences', [
         { value: 'draft-ietf-example-01' }
       ])
 
