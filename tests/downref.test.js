@@ -333,11 +333,11 @@ describe('validateNormativeReferences', () => {
     test('valid normative references', async () => {
       const doc = cloneDeep(baseXMLDoc)
       set(doc, 'data.rfc.back.references.references', [
-        { reference: [{ _attr: { anchor: 'RFC4086' } }] },
-        { reference: [{ _attr: { anchor: 'RFC8141' } }] }
+        { name: 'Normative references', reference: [{ _attr: { anchor: 'RFC4086' }, seriesInfo: [{ _attr: { name: 'RFC', value: '4086' } }] }] },
+        { name: 'Informative references', reference: [{ _attr: { anchor: 'RFC8141' }, seriesInfo: [{ _attr: { name: 'RFC', value: '8141' } }] }] }
       ])
 
-      fetchMock.mockResponse(JSON.stringify({ status: 'Proposed Standard' }))
+      fetchMock.mockResponse(JSON.stringify({ status: 'Proposed Standard', obsoleted_by: [] }))
 
       const result = await validateNormativeReferences(doc, { mode: MODES.NORMAL })
       expect(result).toHaveLength(0)
@@ -346,7 +346,7 @@ describe('validateNormativeReferences', () => {
     test('normative reference with undefined status', async () => {
       const doc = cloneDeep(baseXMLDoc)
       set(doc, 'data.rfc.back.references.references', [
-        { name: 'Normative references', reference: [{ _attr: { anchor: 'RFC4086' } }] }
+        { name: 'Normative references', reference: [{ _attr: { anchor: 'RFC4086' }, seriesInfo: [{ _attr: { name: 'RFC', value: '4086' } }] }] }
       ])
 
       fetchMock.mockResponse(JSON.stringify({}))
@@ -364,7 +364,7 @@ describe('validateNormativeReferences', () => {
     test('normative reference with unknown status', async () => {
       const doc = cloneDeep(baseXMLDoc)
       set(doc, 'data.rfc.back.references.references', [
-        { name: 'Normative references', reference: [{ _attr: { anchor: 'RFC8141' } }] }
+        { name: 'Normative references', reference: [{ _attr: { anchor: 'RFC8141' }, seriesInfo: [{ _attr: { name: 'RFC', value: '8141' } }] }] }
       ])
 
       fetchMock.mockResponse(JSON.stringify({ status: 'Unknown Status', obsoleted_by: [] }))
