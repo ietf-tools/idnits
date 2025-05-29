@@ -69,7 +69,6 @@ export const baseTXTDoc = {
       isCopyrightNoticeNumbered: null,
       isAbstractNumbered: null,
       isPKorBM: null,
-      hyphenatedLines: [],
       updatesRfcWithLetter: [],
       obsoletesWithLetter: [],
       missingPageNumbering: [],

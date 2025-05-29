@@ -8,7 +8,6 @@ import {
   validateCodeBlockLicenses,
   validateLineExtraSpacing,
   validateUpdatesAndObsoletesLines,
-  validateHyphenatedLineBreaks,
   validateReferenceStyle,
   validateLinksInText,
   validateAbstractSectionIsNumbered,
@@ -486,22 +485,6 @@ describe('The document Document starts with PK or BM.', () => {
     await expect(validatePKorBM(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
     await expect(validatePKorBM(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
     await expect(validatePKorBM(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
-  })
-})
-
-describe('Document hyphenated line-breaks', () => {
-  test('Text document should not contain hyphenated line-breaks', async () => {
-    const doc = { ...baseTXTDoc }
-
-    await expect(validateHyphenatedLineBreaks(doc)).resolves.toHaveLength(0)
-  })
-  test('ext document contain hyphenated line-breaks', async () => {
-    const doc = { ...baseTXTDoc }
-
-    doc.data.possibleIssues.hyphenatedLines = [{ line: 1, pos: 20 }]
-    await expect(validateHyphenatedLineBreaks(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
-    await expect(validateHyphenatedLineBreaks(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('HYPHENATED_LINE_BREAKS', ValidationWarning)
-    await expect(validateHyphenatedLineBreaks(doc, { mode: MODES.NORMAL })).resolves.toContainError('HYPHENATED_LINE_BREAKS', ValidationWarning)
   })
 })
 
