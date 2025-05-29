@@ -1,14 +1,16 @@
-name: Publish to NPM
+name: Publish
 
 on:
   workflow_dispatch:
 
 jobs:
-  build:
+  npm:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       id-token: write
+    outputs:
+      next_version: ${{ steps.buildvars.outputs.next_version }}
 
     steps:
       - uses: actions/checkout@v4
@@ -16,8 +18,10 @@ jobs:
           fetch-depth: 0
 
       - name: Set Build Variables
+        id: buildvars
         run: |
-          echo "NEXT_VERSION=3.0.0-alpha.${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
+          echo "next_version=3.0.0-alpha.${GITHUB_RUN_NUMBER}" >> $GITHUB_OUTPUT
+          
       - name: Setup Node.js environment
         uses: actions/setup-node@v4
         with:
@@ -25,9 +29,9 @@ jobs:
           registry-url: https://registry.npmjs.org/
 
       - name: Set package.json version
-        uses: HarmvZ/set-package-json-version-action@v0.2.5
+        uses: KageKirin/set-node-package-version@v1.0.0
         with:
-          version: ${{ env.NEXT_VERSION }}
+          version: ${{ steps.buildvars.outputs.next_version }}
 
       - name: Install NPM Dependencies
         run: npm ci
@@ -36,6 +40,38 @@ jobs:
         run: npm test
 
       - name: Publish to NPM
-        run: npm publish --access public --provenance
         env:
-          NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public --provenance
+
+  website:
+    runs-on: ubuntu-latest
+    needs: [npm]
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout idnits-www repo
+        uses: actions/checkout@v4
+        with:
+          repository: ietf-tools/idnits-www
+          ref: main
+          token: ${{ secrets.GH_COMMON_TOKEN }}
+          fetch-depth: 1
+
+      - name: Setup Node.js environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          registry-url: https://registry.npmjs.org/
+
+      - name: Bump idnits package version
+        run: npm install && npm install @ietf-tools/idnits@${{needs.npm.outputs.next_version}}
+
+      - name: Commit updated package.json
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          branch: main
+          commit_message: 'chore: update idnits dependency to ${{needs.npm.outputs.next_version}}'
+          file_pattern: package.json package-lock.json
