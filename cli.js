@@ -123,7 +123,14 @@ if (argv.file.startsWith('http://') || argv.file.startsWith('https://')) {
     console.log(chalk.bgWhite.black(' Url ') + ` ${docPath}`)
   }
   try {
-    docRaw = Buffer.from(await (await fetch(docPath)).arrayBuffer())
+    const resp = await fetch(docPath)
+    if (!resp.ok) {
+      throw new Error(resp.statusText)
+    }
+    docRaw = Buffer.from(await resp.arrayBuffer())
+    if (docRaw.length < 5) {
+      throw new Error('Document is empty!')
+    }
   } catch (err) {
     console.error(chalk.redBright(`Failed to fetch remote document: ${err.message}`))
     process.exit(1)
@@ -137,6 +144,9 @@ if (argv.file.startsWith('http://') || argv.file.startsWith('https://')) {
   }
   try {
     docRaw = await readFile(docPath)
+    if (docRaw.length < 5) {
+      throw new Error('Document is empty!')
+    }
   } catch (err) {
     console.error(chalk.redBright(`Failed to read document: ${err.message}`))
     process.exit(1)
