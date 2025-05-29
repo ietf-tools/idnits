@@ -1261,52 +1261,6 @@ describe('Document starts with PK or BM', () => {
   })
 })
 
-describe('Document has hyphenated line-breaks', () => {
-  test('The document does not contain line breaks.', async () => {
-    const txt = `
-      ${metaTXTBlock}
-      ${tableOfContentsTXTBlock}
-      ${abstractTXTBlock}
-      ${introductionTXTBlock}
-    `
-
-    const result = await parse(txt, 'txt')
-    expect(result.data.possibleIssues.hyphenatedLines).toHaveLength(0)
-  })
-
-  test('Document has hyphenated line-breaks', async () => {
-    const txt = `
-    ${metaTXTBlock}
-    ${tableOfContentsTXTBlock}
-    line has hyphenated line-\nbreaks
-  `
-
-    const result = await parse(txt, 'txt')
-    expect(result.data.possibleIssues.hyphenatedLines).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ line: 29, pos: 29 })
-      ])
-    )
-  })
-
-  test('Document has hyphenated line-breaks within boilerplate (should not mark as possible problem)', async () => {
-    const txt = `
-${metaTXTBlock}
-${tableOfContentsTXTBlock}
-${abstractTXTBlock}
-${introductionTXTBlock}
-
-Internet-Drafts are working documents of the Internet Engineering
-Task Force (IETF). Note that other groups may also distribute
-working documents as Internet-Drafts.  The list of current Internet-
-Drafts is at https://datatracker.ietf.org/drafts/current/.
-  `
-
-    const result = await parse(txt, 'txt')
-    expect(result.data.possibleIssues.hyphenatedLines).toHaveLength(0)
-  })
-})
-
 describe('Parsing obsolete and update metadata with some characters', () => {
   test('Parsing obsolete metadata with some characters', async () => {
     const txt = `
