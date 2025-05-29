@@ -55,7 +55,8 @@ export const baseTXTDoc = {
       license6_b_i: [],
       bracketedRfcReferences: [],
       bracketedRfcNonReferences: [],
-      lastPageExpiration: null
+      lastPageExpiration: null,
+      draftStatusReferences: []
     },
     possibleIssues: {
       unexpectedIndentation: [],

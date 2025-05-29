@@ -27,7 +27,7 @@ describe('validateDownrefs', () => {
     test('valid references with no downrefs', async () => {
       const doc = cloneDeep(baseTXTDoc)
       set(doc, 'data.extractedElements.referenceSectionRfc', [{ value: '4086' }, { value: '8141' }])
-      set(doc, 'data.extractedElements.referenceSectionDraftReferences', [{ value: 'draft-ietf-quic-http-34' }])
+      set(doc, 'data.extractedElements.draftStatusReferences', [{ value: 'draft-ietf-quic-http-34' }])
 
       const result = await validateDownrefs(doc, { mode: MODES.NORMAL })
       expect(result).toHaveLength(0)
@@ -45,7 +45,7 @@ describe('validateDownrefs', () => {
     test('FORGIVE_CHECKLIST mode returns zero warnings', async () => {
       const doc = cloneDeep(baseTXTDoc)
       set(doc, 'data.extractedElements.referenceSectionRfc', [{ value: '1094' }])
-      set(doc, 'data.extractedElements.referenceSectionDraftReferences', [{ value: 'draft-ietf-quic-http-34' }])
+      set(doc, 'data.extractedElements.draftStatusReferences', [{ value: 'draft-ietf-quic-http-34' }])
 
       const result = await validateDownrefs(doc, { mode: MODES.FORGIVE_CHECKLIST })
       expect(result).toHaveLength(0)
@@ -54,7 +54,7 @@ describe('validateDownrefs', () => {
     test('FORGIVE_CHECKLIST mode returns warning on non RFC non draft reference', async () => {
       const doc = cloneDeep(baseTXTDoc)
       set(doc, 'data.extractedElements.referenceSectionRfc', [{ value: '1094', subsection: 'normative_references' }])
-      set(doc, 'data.extractedElements.referenceSectionDraftReferences', [{ value: 'ISO10589', subsection: 'normative_references' }])
+      set(doc, 'data.extractedElements.draftStatusReferences', [{ value: 'ISO10589', subsection: 'normative_references' }])
 
       const result = await validateDownrefs(doc, { mode: MODES.FORGIVE_CHECKLIST })
       expect(result).toHaveLength(1)
@@ -69,8 +69,18 @@ describe('validateDownrefs', () => {
         {
           name: 'Normative References',
           reference: [
-            { _attr: { anchor: 'RFC8141' } },
-            { _attr: { anchor: 'RFC9114' } }
+            {
+              _attr: { anchor: 'RFC8141' },
+              seriesInfo: [
+                { _attr: { name: 'RFC', value: '8141' } }
+              ]
+            },
+            {
+              _attr: { anchor: 'RFC9114' },
+              seriesInfo: [
+                { _attr: { name: 'RFC', value: '9114' } }
+              ]
+            }
           ]
         }
       ])
@@ -85,7 +95,12 @@ describe('validateDownrefs', () => {
         {
           name: 'Normative References',
           reference: [
-            { _attr: { anchor: 'draft-ietf-emu-aka-pfs-34' } }
+            {
+              _attr: { anchor: 'draft-ietf-emu-aka-pfs-34' },
+              seriesInfo: [
+                { _attr: { name: 'Internet-Draft', value: 'draft-ietf-emu-aka-pfs-34' } }
+              ]
+            }
           ]
         }
       ])
@@ -100,8 +115,18 @@ describe('validateDownrefs', () => {
         {
           name: 'Normative References',
           reference: [
-            { _attr: { anchor: 'draft-ietf-quic-http-34' } },
-            { _attr: { anchor: 'RFC7322' } }
+            {
+              _attr: { anchor: 'draft-ietf-quic-http-34' },
+              seriesInfo: [
+                { _attr: { name: 'Internet-Draft', value: 'draft-ietf-quic-http-34' } }
+              ]
+            },
+            {
+              _attr: { anchor: 'RFC7322' },
+              seriesInfo: [
+                { _attr: { name: 'RFC', value: '7322' } }
+              ]
+            }
           ]
         }
       ])
@@ -116,9 +141,18 @@ describe('validateDownrefs', () => {
         {
           name: 'Normative References',
           reference: [
-            { _attr: { anchor: 'RFC9114' } },
-            { _attr: { anchor: 'RFC8888' } },
-            { _attr: { anchor: 'RFC7655' } }
+            {
+              _attr: { anchor: 'RFC9114' },
+              seriesInfo: [{ _attr: { name: 'RFC', value: '9114' } }]
+            },
+            {
+              _attr: { anchor: 'RFC8888' },
+              seriesInfo: [{ _attr: { name: 'RFC', value: '8888' } }]
+            },
+            {
+              _attr: { anchor: 'RFC7655' },
+              seriesInfo: [{ _attr: { name: 'RFC', value: '7655' } }]
+            }
           ]
         }
       ])
@@ -133,15 +167,23 @@ describe('validateDownrefs', () => {
         {
           name: 'Normative References',
           reference: [
-            { _attr: { anchor: 'RFC2119' } },
-            { _attr: { anchor: 'RFC8174' } },
-            { _attr: { anchor: 'RFC4187' } } // This is a downref
+            {
+              _attr: { anchor: 'RFC2119' },
+              seriesInfo: [{ _attr: { name: 'RFC', value: '2119' } }]
+            },
+            {
+              _attr: { anchor: 'RFC8174' },
+              seriesInfo: [{ _attr: { name: 'RFC', value: '8174' } }]
+            },
+            {
+              _attr: { anchor: 'RFC4187' }, // This is a downref
+              seriesInfo: [{ _attr: { name: 'RFC', value: '4187' } }]
+            }
           ]
         }
       ])
 
       const result = await validateDownrefs(doc, { mode: MODES.NORMAL })
-
       expect(result).toContainError('DOWNREF_TO_LOWER_STATUS_IN_REGISTRY', ValidationError)
     })
 
@@ -151,8 +193,42 @@ describe('validateDownrefs', () => {
         {
           name: 'Normative References',
           reference: [
-            { _attr: { anchor: 'RFC4187' } },
-            { _attr: { anchor: 'draft-ietf-quic-http-34' } }
+            {
+              _attr: { anchor: 'RFC4187' },
+              seriesInfo: [{ _attr: { name: 'RFC', value: '4187' } }]
+            },
+            {
+              _attr: { anchor: 'draft-ietf-quic-http-34' },
+              seriesInfo: [
+                { _attr: { name: 'Internet-Draft', value: 'draft-ietf-quic-http-34' } }
+              ]
+            }
+          ]
+        }
+      ])
+
+      const result = await validateDownrefs(doc, { mode: MODES.FORGIVE_CHECKLIST })
+      expect(result).toContainError('DOWNREF_TO_LOWER_STATUS_IN_REGISTRY', ValidationWarning)
+    })
+
+    test('FORGIVE_CHECKLIST mode returns warnings when multiple references exist', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      set(doc, 'data.rfc.back.references.references', [
+        {
+          name: 'Normative References',
+          reference: [
+            {
+              _attr: { anchor: 'RFC4187' },
+              seriesInfo: [
+                { _attr: { name: 'RFC',           value: '4187' } }
+              ]
+            },
+            {
+              _attr: { anchor: 'draft-ietf-quic-http-34' },
+              seriesInfo: [
+                { _attr: { name: 'Internet-Draft', value: 'draft-ietf-quic-http-34' } }
+              ]
+            }
           ]
         }
       ])
@@ -257,11 +333,11 @@ describe('validateNormativeReferences', () => {
     test('valid normative references', async () => {
       const doc = cloneDeep(baseXMLDoc)
       set(doc, 'data.rfc.back.references.references', [
-        { reference: [{ _attr: { anchor: 'RFC4086' } }] },
-        { reference: [{ _attr: { anchor: 'RFC8141' } }] }
+        { name: 'Normative references', reference: [{ _attr: { anchor: 'RFC4086' }, seriesInfo: [{ _attr: { name: 'RFC', value: '4086' } }] }] },
+        { name: 'Informative references', reference: [{ _attr: { anchor: 'RFC8141' }, seriesInfo: [{ _attr: { name: 'RFC', value: '8141' } }] }] }
       ])
 
-      fetchMock.mockResponse(JSON.stringify({ status: 'Proposed Standard' }))
+      fetchMock.mockResponse(JSON.stringify({ status: 'Proposed Standard', obsoleted_by: [] }))
 
       const result = await validateNormativeReferences(doc, { mode: MODES.NORMAL })
       expect(result).toHaveLength(0)
@@ -270,7 +346,7 @@ describe('validateNormativeReferences', () => {
     test('normative reference with undefined status', async () => {
       const doc = cloneDeep(baseXMLDoc)
       set(doc, 'data.rfc.back.references.references', [
-        { name: 'Normative references', reference: [{ _attr: { anchor: 'RFC4086' } }] }
+        { name: 'Normative references', reference: [{ _attr: { anchor: 'RFC4086' }, seriesInfo: [{ _attr: { name: 'RFC', value: '4086' } }] }] }
       ])
 
       fetchMock.mockResponse(JSON.stringify({}))
@@ -288,7 +364,7 @@ describe('validateNormativeReferences', () => {
     test('normative reference with unknown status', async () => {
       const doc = cloneDeep(baseXMLDoc)
       set(doc, 'data.rfc.back.references.references', [
-        { name: 'Normative references', reference: [{ _attr: { anchor: 'RFC8141' } }] }
+        { name: 'Normative references', reference: [{ _attr: { anchor: 'RFC8141' }, seriesInfo: [{ _attr: { name: 'RFC', value: '8141' } }] }] }
       ])
 
       fetchMock.mockResponse(JSON.stringify({ status: 'Unknown Status', obsoleted_by: [] }))
@@ -407,7 +483,7 @@ describe('Validating published as a RFC draft references', () => {
   describe('TXT Document Type', () => {
     test('should return no warnings for valid drafts with defined states', async () => {
       const doc = cloneDeep(baseTXTDoc)
-      set(doc, 'data.extractedElements.referenceSectionDraftReferences', [
+      set(doc, 'data.extractedElements.draftStatusReferences', [
         { value: 'draft-ietf-example-01' },
         { value: 'draft-ietf-example-02' }
       ])
@@ -423,7 +499,7 @@ describe('Validating published as a RFC draft references', () => {
 
     test('should return warning for drafts with undefined states', async () => {
       const doc = cloneDeep(baseTXTDoc)
-      set(doc, 'data.extractedElements.referenceSectionDraftReferences', [
+      set(doc, 'data.extractedElements.draftStatusReferences', [
         { value: 'draft-ietf-undefined-state' }
       ])
 
@@ -439,9 +515,28 @@ describe('Validating published as a RFC draft references', () => {
       ])
     })
 
+    test('should strip leading I-D. prefix before validation (TXT)', async () => {
+      const doc = cloneDeep(baseTXTDoc)
+      // simulate a two-part reference with an I-D. prefix
+      set(doc, 'data.extractedElements.draftStatusReferences', [
+        { value: 'I-D.draft-ietf-rtgwg-segment-routing-ti-lfa' }
+      ])
+
+      fetchMock.mockResponseOnce(JSON.stringify({}))
+
+      const result = await validatePublishedDraftReferences(doc, { mode: MODES.NORMAL })
+      expect(result).toEqual([
+        new ValidationWarning(
+          'UNDEFINED_STATE',
+          'The draft reference draft-ietf-rtgwg-segment-routing-ti-lfa does not have a defined state or could not be fetched.',
+          { ref: 'https://datatracker.ietf.org/doc/draft-ietf-rtgwg-segment-routing-ti-lfa' }
+        )
+      ])
+    })
+
     test('should return warning for drafts published as RFCs', async () => {
       const doc = cloneDeep(baseTXTDoc)
-      set(doc, 'data.extractedElements.referenceSectionDraftReferences', [
+      set(doc, 'data.extractedElements.draftStatusReferences', [
         { value: 'draft-ietf-published-as-rfc' }
       ])
 
@@ -459,7 +554,7 @@ describe('Validating published as a RFC draft references', () => {
 
     test('should return no warnings in SUBMISSION mode', async () => {
       const doc = cloneDeep(baseTXTDoc)
-      set(doc, 'data.extractedElements.referenceSectionDraftReferences', [
+      set(doc, 'data.extractedElements.draftStatusReferences', [
         { value: 'draft-ietf-example-01' }
       ])
 
@@ -499,6 +594,25 @@ describe('Validating published as a RFC draft references', () => {
           'UNDEFINED_STATE',
           'The draft reference draft-ietf-undefined-state does not have a defined state or could not be fetched.',
           { ref: 'https://datatracker.ietf.org/doc/draft-ietf-undefined-state' }
+        )
+      ])
+    })
+
+    test('should strip leading I-D. prefix before validation (XML)', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      // simulate a reference that starts with "I-D."
+      set(doc, 'data.rfc.back.references.references', [
+        { reference: [{ _attr: { anchor: 'I-D.draft-ietf-rtgwg-segment-routing-ti-lfa' } }] }
+      ])
+
+      fetchMock.mockResponseOnce(JSON.stringify({}))
+
+      const result = await validatePublishedDraftReferences(doc, { mode: MODES.NORMAL })
+      expect(result).toEqual([
+        new ValidationWarning(
+          'UNDEFINED_STATE',
+          'The draft reference draft-ietf-rtgwg-segment-routing-ti-lfa does not have a defined state or could not be fetched.',
+          { ref: 'https://datatracker.ietf.org/doc/draft-ietf-rtgwg-segment-routing-ti-lfa' }
         )
       ])
     })

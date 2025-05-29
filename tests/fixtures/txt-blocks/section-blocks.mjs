@@ -178,7 +178,7 @@ export const referenceTXTBlock = `
               Multicast Listener Discovery (MLD) Proxies for Ethernet
               VPN (EVPN)", Work in Progress, Internet-Draft,draft-ietf
               bess-evpn-igmp-mld-proxy-21, 22 March 2022,
-              <https://datatracker.ietf.org/doc/html/draft-ietf-bess
+              <https://datatracker.ietf.org/doc/html/draft-ietf-bess-
               evpn-igmp-mld-proxy-21>.
 
    [I-D.ietf-bess-bgp-multicast-controller]
@@ -186,7 +186,7 @@ export const referenceTXTBlock = `
               "Controller Based BGP Multicast Signaling", Work in
               Progress, Internet-Draft, draft-ietf-bess-bgp-multicast
               controller-09, 11 April 2022,
-              <https://datatracker.ietf.org/doc/html/draft-ietf-bess
+              <https://datatracker.ietf.org/doc/html/draft-ietf-bess-
               bgp-multicast-controller-09>.
 
    [I-D.ietf-idr-legacy-rtc]
