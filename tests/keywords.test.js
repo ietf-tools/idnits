@@ -489,6 +489,136 @@ describe('document should have valid RFC2119 keywords', () => {
         )
       ])
     })
+
+    test('BCP14: valid case – keywords, BCP14-boilerplate and reference to BCP14 are', async () => {
+      const doc = {
+        type: 'txt',
+        data: {
+          extractedElements: {
+            keywords2119: [{ keyword: 'MUST', line: 5 }],
+            boilerplate2119Keywords: []
+          },
+          boilerplate: {
+            rfc2119: false,
+            rfc8174: false,
+            bcp14: true
+          },
+          references: {
+            rfc2119: false,
+            rfc8174: false,
+            bcp14: true
+          },
+          possibleIssues: {
+            misspeled2119Keywords: []
+          }
+        }
+      }
+
+      const result = await validate2119Keywords(doc, { mode: MODES.NORMAL })
+      expect(result).toHaveLength(0)
+    })
+
+    test('BCP14: keywords and reference to BCP14, but missing boilerplate', async () => {
+      const doc = {
+        type: 'txt',
+        data: {
+          extractedElements: {
+            keywords2119: [{ keyword: 'SHOULD', line: 12 }],
+            boilerplate2119Keywords: []
+          },
+          boilerplate: {
+            rfc2119: false,
+            rfc8174: false,
+            bcp14: false
+          },
+          references: {
+            rfc2119: false,
+            rfc8174: false,
+            bcp14: true
+          },
+          possibleIssues: {
+            misspeled2119Keywords: []
+          }
+        }
+      }
+
+      const result = await validate2119Keywords(doc, { mode: MODES.NORMAL })
+      expect(result).toEqual([
+        new ValidationWarning(
+          'MISSING_REQLEVEL_BOILERPLATE',
+          'One or more RFC2119 keywords are present but an RFC2119 boilerplate is missing.',
+          { ref: 'https://www.rfc-editor.org/rfc/rfc7322.html#section-4.8.2' }
+        )
+      ])
+    })
+
+    test('BCP14: BCP14-boilerplate exist, but any keywords are missing', async () => {
+      const doc = {
+        type: 'txt',
+        data: {
+          extractedElements: {
+            keywords2119: [],
+            boilerplate2119Keywords: []
+          },
+          boilerplate: {
+            rfc2119: false,
+            rfc8174: false,
+            bcp14: true
+          },
+          references: {
+            rfc2119: false,
+            rfc8174: false,
+            bcp14: true
+          },
+          possibleIssues: {
+            misspeled2119Keywords: []
+          }
+        }
+      }
+
+      const result = await validate2119Keywords(doc, { mode: MODES.NORMAL })
+      expect(result).toEqual([
+        new ValidationWarning(
+          'MISSING_REQLEVEL_KEYWORDS',
+          'An RFC2119 boilerplate is present but no keywords are used in the document.',
+          { ref: 'https://www.rfc-editor.org/rfc/rfc7322.html#section-4.8.2' }
+        )
+      ])
+    })
+
+    test('BCP14: keywords are present, but neither boilerplate (RFC2119 or BCP14) nor any reference is present', async () => {
+      const doc = {
+        type: 'txt',
+        data: {
+          extractedElements: {
+            keywords2119: [{ keyword: 'RECOMMENDED', line: 7 }],
+            boilerplate2119Keywords: []
+          },
+          boilerplate: {
+            rfc2119: false,
+            rfc8174: false,
+            bcp14: false
+          },
+          references: {
+            rfc2119: false,
+            rfc8174: false,
+            bcp14: false
+          },
+          possibleIssues: {
+            misspeled2119Keywords: []
+          }
+        }
+      }
+
+      const result = await validate2119Keywords(doc, { mode: MODES.NORMAL })
+      expect(result).toEqual([
+        new ValidationError(
+          'MISSING_REQLEVEL_BOILERPLATE',
+          'One or more RFC2119 keywords are present but an RFC2119 boilerplate and a reference are missing.',
+          { ref: 'https://www.rfc-editor.org/rfc/rfc7322.html#section-4.8.2' }
+        )
+      ])
+    })
   })
 
   describe('XML Document Type', () => {
