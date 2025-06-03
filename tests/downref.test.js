@@ -3,7 +3,7 @@ import { MODES } from '../lib/config/modes.mjs'
 import { toContainError, ValidationWarning, ValidationError, ValidationComment } from '../lib/helpers/error.mjs'
 import { baseXMLDoc, baseTXTDoc } from './fixtures/base-doc.mjs'
 import { cloneDeep, set } from 'lodash-es'
-import { validateDownrefs, validateInformativeReferences, validateNormativeReferences, validateUnclassifiedReferences, validatePublishedDraftReferences } from '../lib/modules/downref.mjs'
+import { validateDownrefs, validateInformativeReferences, validateNormativeReferences, validateUnclassifiedReferences, validatePublishedDraftReferences, validateReferenceForStale } from '../lib/modules/downref.mjs'
 import fetchMock from 'jest-fetch-mock'
 
 expect.extend({
@@ -220,7 +220,7 @@ describe('validateDownrefs', () => {
             {
               _attr: { anchor: 'RFC4187' },
               seriesInfo: [
-                { _attr: { name: 'RFC',           value: '4187' } }
+                { _attr: { name: 'RFC', value: '4187' } }
               ]
             },
             {
@@ -715,5 +715,158 @@ describe('validateInformativeReferences', () => {
         message: expect.stringContaining('The informative reference RFC 4086 is obsolete and has been replaced by: 9000.')
       })
     )
+  })
+})
+
+describe('validateReferenceForStale (TXT)', () => {
+  test('no warnings if draft version matches latest', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+    set(doc, 'data.extractedElements.draftStatusReferences', [
+      { value: 'draft-ietf-example-03', subsection: 'normative_references' }
+    ])
+
+    fetchMock.mockResponseOnce(JSON.stringify({
+      rev_history: [
+        { rev: '01' },
+        { rev: '02' },
+        { rev: '03' }
+      ]
+    }))
+
+    const res = await validateReferenceForStale(doc, { mode: MODES.NORMAL })
+    expect(res).toHaveLength(0)
+  })
+
+  test('UNDEFINED_STATE when no rev_history', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+    set(doc, 'data.extractedElements.draftStatusReferences', [
+      { value: 'draft-ietf-missing-01', subsection: 'normative_references' }
+    ])
+
+    fetchMock.mockResponseOnce(JSON.stringify({}))
+
+    const res = await validateReferenceForStale(doc, { mode: MODES.NORMAL })
+    expect(res).toEqual([
+      new ValidationWarning(
+        'UNDEFINED_STATE',
+        'The draft reference draft-ietf-missing does not have a defined state or could not be fetched.',
+        { ref: 'https://datatracker.ietf.org/doc/draft-ietf-missing' }
+      )
+    ])
+  })
+
+  test('OUTDATED_DRAFT when there is a newer version', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+    set(doc, 'data.extractedElements.draftStatusReferences', [
+      { value: 'draft-ietf-stale-01', subsection: 'normative_references' }
+    ])
+
+    fetchMock.mockResponseOnce(JSON.stringify({
+      rev_history: [
+        { rev: '01' },
+        { rev: '02' }
+      ]
+    }))
+
+    const res = await validateReferenceForStale(doc, { mode: MODES.NORMAL })
+    expect(res).toEqual([
+      new ValidationWarning(
+        'OUTDATED_DRAFT',
+        'The draft reference draft-ietf-stale is stale. The latest version is 02.',
+        { ref: 'https://datatracker.ietf.org/doc/draft-ietf-stale' }
+      )
+    ])
+  })
+
+  test('empty result in SUBMISSION mode', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+    set(doc, 'data.extractedElements.draftStatusReferences', [
+      { value: 'draft-ietf-any-01', subsection: 'normative_references' }
+    ])
+
+    const res = await validateReferenceForStale(doc, { mode: MODES.SUBMISSION })
+    expect(res).toHaveLength(0)
+  })
+})
+
+describe('validateReferenceForStale (XML)', () => {
+  test('no warnings if draft version matches latest', async () => {
+    const doc = cloneDeep(baseXMLDoc)
+    set(doc, 'data.rfc.back.references.references', [
+      {
+        name: 'Normative References',
+        reference: [
+          { _attr: { anchor: 'draft-ietf-example-03' } }
+        ]
+      }
+    ])
+
+    fetchMock.mockResponseOnce(JSON.stringify({
+      rev_history: [
+        { rev: '01' },
+        { rev: '02' },
+        { rev: '03' }
+      ]
+    }))
+
+    const res = await validateReferenceForStale(doc, { mode: MODES.NORMAL })
+    expect(res).toHaveLength(0)
+  })
+
+  test('UNDEFINED_STATE when no rev_history in XML', async () => {
+    const doc = cloneDeep(baseXMLDoc)
+    set(doc, 'data.rfc.back.references.references', [
+      { name: 'Normative references', reference: [{ _attr: { anchor: 'draft-ietf-missing-01' }, seriesInfo: [{ _attr: { name: 'Internet-Draft', value: 'draft-ietf-missing-01' } }] }] }
+    ])
+
+    fetchMock.mockResponseOnce(JSON.stringify({}))
+
+    const res = await validateReferenceForStale(doc, { mode: MODES.NORMAL })
+    console.log(JSON.stringify(res, null, 2))
+    expect(res).toEqual([
+      new ValidationWarning(
+        'UNDEFINED_STATE',
+        'The draft reference draft-ietf-missing does not have a defined state or could not be fetched.',
+        { ref: 'https://datatracker.ietf.org/doc/draft-ietf-missing' }
+      )
+    ])
+  })
+
+  test('OUTDATED_DRAFT when XML draft is stale', async () => {
+    const doc = cloneDeep(baseXMLDoc)
+    set(doc, 'data.rfc.back.references.references', [
+      { name: 'Normative references', reference: [{ _attr: { anchor: 'draft-ietf-stale-01' }, seriesInfo: [{ _attr: { name: 'Internet-Draft', value: 'draft-ietf-stale-01' } }] }] }
+    ])
+
+    fetchMock.mockResponseOnce(JSON.stringify({
+      rev_history: [
+        { rev: '01' },
+        { rev: '02' }
+      ]
+    }))
+
+    const res = await validateReferenceForStale(doc, { mode: MODES.NORMAL })
+    expect(res).toEqual([
+      new ValidationWarning(
+        'OUTDATED_DRAFT',
+        'The draft reference draft-ietf-stale is stale. The latest version is 02.',
+        { ref: 'https://datatracker.ietf.org/doc/draft-ietf-stale' }
+      )
+    ])
+  })
+
+  test('empty result in SUBMISSION mode (XML)', async () => {
+    const doc = cloneDeep(baseXMLDoc)
+    set(doc, 'data.rfc.back.references.references', [
+      {
+        name: 'Normative References',
+        reference: [
+          { _attr: { anchor: 'draft-ietf-any-01' } }
+        ]
+      }
+    ])
+
+    const res = await validateReferenceForStale(doc, { mode: MODES.SUBMISSION })
+    expect(res).toHaveLength(0)
   })
 })
