@@ -41,7 +41,8 @@ import {
   PageBreak,
   trust28Dec2009Section6aTXTBlock,
   normativeReferenceSectionTXTBlock,
-  informativeReferenceSectionTXTBlock
+  informativeReferenceSectionTXTBlock,
+  BCP14BoilerplateTXTBlock
 } from './fixtures/txt-blocks/section-blocks.mjs'
 import { parse } from '../lib/parsers/txt.mjs'
 
@@ -607,6 +608,21 @@ describe('Testing parsing RFC2119 keywords and boilerplates', () => {
 
     const result = await parse(txt, 'txt')
     expect(result.data.references.rfc8174).toBe(false)
+  })
+
+  test('Detecting BCP14 and references', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+      ${BCP14BoilerplateTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.boilerplate.bcp14).toBe(true)
+    expect(result.data.references.bcp14).toBe(true)
   })
 })
 
@@ -1526,9 +1542,9 @@ describe('Reference is declared, but not used in the document', () => {
       expect.objectContaining({ subsection: 'normative_references', value: '2345' })
     ])
     expect(result.data.extractedElements.referenceSectionDraftReferences).toEqual([
-      expect.objectContaining({ value: '[Lalalala-Refere-Sponsor]' }),
+      expect.objectContaining({ value: '[Lalalala-Refere-Sponsor]' })
     ])
-        expect(result.data.extractedElements.draftStatusReferences).toEqual([
+    expect(result.data.extractedElements.draftStatusReferences).toEqual([
       expect.objectContaining({ value: 'draft-ietf-bess-evpn-igmp-mld-proxy-21' }),
       expect.objectContaining({ value: 'draft-ietf-bess-bgp-multicast-controller-09' })
     ])
