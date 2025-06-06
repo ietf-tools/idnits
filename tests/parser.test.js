@@ -1565,6 +1565,22 @@ describe('Reference is declared, but not used in the document', () => {
     expect(result.data.extractedElements.nonReferenceSectionDraftReferences).toHaveLength(1)
   })
 
+  test('Should detect used draft reference in text right after closing bracket', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+      [RFC1234][IANA]
+
+      This is a reference to a draft [draft-ietf-bess-evpn-igmp-mld-proxy-21].
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.nonReferenceSectionDraftReferences).toContain('[IANA]')
+  })
+
   test('Should not treat “[0]” in code as a draft reference', async () => {
     const txt = `
       ${metaTXTBlock}
