@@ -43,7 +43,8 @@ import {
   normativeReferenceSectionTXTBlock,
   informativeReferenceSectionTXTBlock,
   RFC2119Alt1BoilerplateTXTBlock,
-  RFC2119Alt2BoilerplateTXTBlock
+  RFC2119Alt2BoilerplateTXTBlock,
+  BCP14BoilerplateTXTBlock
 } from './fixtures/txt-blocks/section-blocks.mjs'
 import { parse } from '../lib/parsers/txt.mjs'
 
@@ -665,6 +666,21 @@ describe('Testing parsing RFC2119 keywords and boilerplates', () => {
 
     const result = await parse(txt, 'txt')
     expect(result.data.references.rfc8174).toBe(false)
+  })
+
+  test('Detecting BCP14 and references', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+      ${BCP14BoilerplateTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.boilerplate.bcp14).toBe(true)
+    expect(result.data.references.bcp14).toBe(true)
   })
 })
 
