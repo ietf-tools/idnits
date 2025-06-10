@@ -41,7 +41,9 @@ import {
   PageBreak,
   trust28Dec2009Section6aTXTBlock,
   normativeReferenceSectionTXTBlock,
-  informativeReferenceSectionTXTBlock
+  informativeReferenceSectionTXTBlock,
+  RFC2119Alt1BoilerplateTXTBlock,
+  RFC2119Alt2BoilerplateTXTBlock
 } from './fixtures/txt-blocks/section-blocks.mjs'
 import { parse } from '../lib/parsers/txt.mjs'
 
@@ -511,6 +513,34 @@ describe('Testing parsing RFC2119 keywords and boilerplates', () => {
     expect(result.data.boilerplate.rfc2119).toBe(true)
   })
 
+  test('Detecting RFC2119 boilerplate alt1', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${RFC2119Alt1BoilerplateTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.boilerplate.rfc2119).toBe(true)
+  })
+
+  test('Detecting RFC2119 boilerplate alt2', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${RFC2119Alt1BoilerplateTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.boilerplate.rfc2119).toBe(true)
+  })
+
   test('Detecting missing RFC2119 boilerplate', async () => {
     const txt = `
       ${metaTXTBlock}
@@ -522,6 +552,34 @@ describe('Testing parsing RFC2119 keywords and boilerplates', () => {
 
     const result = await parse(txt, 'txt')
     expect(result.data.boilerplate.rfc2119).toBe(false)
+  })
+
+  test('Detecting missing RFC2119 boilerplate alt1', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${RFC2119Alt1BoilerplateTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.boilerplate.rfc2119).toBe(true)
+  })
+
+  test('Detecting missing RFC2119 boilerplate alt2', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${RFC2119Alt2BoilerplateTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.boilerplate.rfc2119).toBe(true)
   })
 
   test('Detecting RFC2119 reference', async () => {
@@ -1526,9 +1584,9 @@ describe('Reference is declared, but not used in the document', () => {
       expect.objectContaining({ subsection: 'normative_references', value: '2345' })
     ])
     expect(result.data.extractedElements.referenceSectionDraftReferences).toEqual([
-      expect.objectContaining({ value: '[Lalalala-Refere-Sponsor]' }),
+      expect.objectContaining({ value: '[Lalalala-Refere-Sponsor]' })
     ])
-        expect(result.data.extractedElements.draftStatusReferences).toEqual([
+    expect(result.data.extractedElements.draftStatusReferences).toEqual([
       expect.objectContaining({ value: 'draft-ietf-bess-evpn-igmp-mld-proxy-21' }),
       expect.objectContaining({ value: 'draft-ietf-bess-bgp-multicast-controller-09' })
     ])
