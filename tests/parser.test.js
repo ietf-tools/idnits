@@ -42,6 +42,8 @@ import {
   trust28Dec2009Section6aTXTBlock,
   normativeReferenceSectionTXTBlock,
   informativeReferenceSectionTXTBlock,
+  RFC2119Alt1BoilerplateTXTBlock,
+  RFC2119Alt2BoilerplateTXTBlock,
   BCP14BoilerplateTXTBlock
 } from './fixtures/txt-blocks/section-blocks.mjs'
 import { parse } from '../lib/parsers/txt.mjs'
@@ -512,6 +514,34 @@ describe('Testing parsing RFC2119 keywords and boilerplates', () => {
     expect(result.data.boilerplate.rfc2119).toBe(true)
   })
 
+  test('Detecting RFC2119 boilerplate alt1', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${RFC2119Alt1BoilerplateTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.boilerplate.rfc2119).toBe(true)
+  })
+
+  test('Detecting RFC2119 boilerplate alt2', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${RFC2119Alt1BoilerplateTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.boilerplate.rfc2119).toBe(true)
+  })
+
   test('Detecting missing RFC2119 boilerplate', async () => {
     const txt = `
       ${metaTXTBlock}
@@ -523,6 +553,34 @@ describe('Testing parsing RFC2119 keywords and boilerplates', () => {
 
     const result = await parse(txt, 'txt')
     expect(result.data.boilerplate.rfc2119).toBe(false)
+  })
+
+  test('Detecting missing RFC2119 boilerplate alt1', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${RFC2119Alt1BoilerplateTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.boilerplate.rfc2119).toBe(true)
+  })
+
+  test('Detecting missing RFC2119 boilerplate alt2', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${RFC2119Alt2BoilerplateTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.boilerplate.rfc2119).toBe(true)
   })
 
   test('Detecting RFC2119 reference', async () => {
