@@ -822,7 +822,6 @@ describe('validateReferenceForStale (XML)', () => {
     fetchMock.mockResponseOnce(JSON.stringify({}))
 
     const res = await validateReferenceForStale(doc, { mode: MODES.NORMAL })
-    console.log(JSON.stringify(res, null, 2))
     expect(res).toEqual([
       new ValidationWarning(
         'UNDEFINED_STATE',
