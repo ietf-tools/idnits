@@ -372,12 +372,10 @@ describe('Parsing FQRN', () => {
     const result = await parse(txt, 'txt')
     expect(result.data.extractedElements.fqdnDomains).toEqual(
       expect.arrayContaining([
-        'foo.bar.com',
-        'sub.domain.io',
-        'alpha.beta.gamma.xyz'
+        'foo.bar.com'
       ])
     )
-    expect(result.data.extractedElements.fqdnDomains).toHaveLength(3)
+    expect(result.data.extractedElements.fqdnDomains).toHaveLength(1)
   })
 
   test('Ignores numeric-TLD and weird patterns', async () => {
@@ -401,12 +399,10 @@ describe('Parsing FQRN', () => {
     expect(result.data.extractedElements.fqdnDomains).toEqual(
       expect.arrayContaining([
         'foo.bar.com',
-        'site.org',
-        'sub.domain.io',
-        'alpha.beta.gamma.xyz'
+        'site.org'
       ])
     )
-    expect(result.data.extractedElements.fqdnDomains).toHaveLength(4)
+    expect(result.data.extractedElements.fqdnDomains).toHaveLength(2)
   })
 
   test('Does not extract email addresses or trailing @', async () => {

@@ -33,8 +33,8 @@ describe('document should have valid FQDN mentions', () => {
         data: {
           extractedElements: {
             fqdnDomains: [
-              'invalid.example.invalidtld',
-              'another.invalidtld'
+              'invalid.not-example.com',
+              'another.org'
             ]
           }
         }
@@ -42,13 +42,13 @@ describe('document should have valid FQDN mentions', () => {
 
       const result = await validateFQDNs(doc, { mode: MODES.NORMAL, offline: false })
       expect(result).toEqual([
-        new ValidationWarning('INVALID_DOMAIN_TLD', 'Domain "invalid.example.invalidtld" is not an allowed reserved domain. Consider using ".example.(com|org|net)" instead.', {
+        new ValidationWarning('INVALID_DOMAIN_TLD', 'Domain "invalid.not-example.com" is not an allowed reserved domain. Consider using ".example.(com|org|net)" instead.', {
           ref: 'https://www.rfc-editor.org/rfc/rfc6761',
-          text: 'invalid.example.invalidtld'
+          text: 'invalid.not-example.com'
         }),
-        new ValidationWarning('INVALID_DOMAIN_TLD', 'Domain "another.invalidtld" is not an allowed reserved domain. Consider using ".example.(com|org|net)" instead.', {
+        new ValidationWarning('INVALID_DOMAIN_TLD', 'Domain "another.org" is not an allowed reserved domain. Consider using ".example.(com|org|net)" instead.', {
           ref: 'https://www.rfc-editor.org/rfc/rfc6761',
-          text: 'another.invalidtld'
+          text: 'another.org'
         })
       ])
     })
@@ -100,7 +100,8 @@ describe('document should have valid FQDN mentions', () => {
           extractedElements: {
             fqdnDomains: [
               'random.arpa',
-              'invalid.example.invalidtld'
+              'invalid.not-example.com',
+              'example.org'
             ]
           }
         }
@@ -112,9 +113,9 @@ describe('document should have valid FQDN mentions', () => {
           ref: 'https://www.iana.org/domains/arpa',
           text: 'random.arpa'
         }),
-        new ValidationWarning('INVALID_DOMAIN_TLD', 'Domain "invalid.example.invalidtld" is not an allowed reserved domain. Consider using ".example.(com|org|net)" instead.', {
+        new ValidationWarning('INVALID_DOMAIN_TLD', 'Domain "invalid.not-example.com" is not an allowed reserved domain. Consider using ".example.(com|org|net)" instead.', {
           ref: 'https://www.rfc-editor.org/rfc/rfc6761',
-          text: 'invalid.example.invalidtld'
+          text: 'invalid.not-example.com'
         })
       ])
     })
@@ -128,7 +129,7 @@ describe('document should have valid FQDN mentions', () => {
     })
     test('invalid TLD', async () => {
       const doc = cloneDeep(baseXMLDoc)
-      set(doc, 'data.rfc.middle.t', 'Lorem ipsum www.something.invalidtld lorem ipsum.')
+      set(doc, 'data.rfc.middle.t', 'Lorem ipsum www.something.org lorem ipsum.')
       await expect(validateFQDNs(doc)).resolves.toContainError('INVALID_DOMAIN_TLD', ValidationWarning)
       await expect(validateFQDNs(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('INVALID_DOMAIN_TLD', ValidationWarning)
       await expect(validateFQDNs(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
