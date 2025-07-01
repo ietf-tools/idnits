@@ -763,8 +763,8 @@ describe('validateReferenceForStale (TXT)', () => {
 
     fetchMock.mockResponseOnce(JSON.stringify({
       rev_history: [
-        { rev: '01' },
-        { rev: '02' }
+        { rev: '01', name: 'draft-ietf-newer' },
+        { rev: '02', name: 'draft-ietf-newer' }
       ]
     }))
 
@@ -772,7 +772,7 @@ describe('validateReferenceForStale (TXT)', () => {
     expect(res).toEqual([
       new ValidationWarning(
         'OUTDATED_DRAFT',
-        'The draft reference draft-ietf-stale is stale. The latest version is 02.',
+        'The draft reference draft-ietf-stale (version 01) is stale. The latest version is 02 for draft-ietf-newer.',
         { ref: 'https://datatracker.ietf.org/doc/draft-ietf-stale' }
       )
     ])
