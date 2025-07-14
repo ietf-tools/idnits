@@ -345,25 +345,25 @@ try {
           switch (sev) {
             case 'ValidationError': {
               if (nitsBySeverity.error > 0) {
-                console.log(chalk.red('▀'.repeat(64)))
-                console.log(chalk.bgRed.whiteBright(' ERROR ') + ` ${nitsBySeverity.error} nit(s) of error severity`)
-                console.log(chalk.red('▄'.repeat(64)) + '\n')
+                console.log(chalk.red('█'.repeat(7) + '▀'.repeat(57)))
+                console.log(chalk.bgRed.whiteBright(' ERROR ') + ` ${nitsBySeverity.error} nit${nitsBySeverity.error > 1 ? 's' : ''} of ⛔ error severity`)
+                console.log(chalk.red('█'.repeat(7) + '▄'.repeat(57)) + '\n')
               }
               break
             }
             case 'ValidationWarning': {
               if (nitsBySeverity.warning > 0) {
-                console.log(chalk.yellow('▀'.repeat(64)))
-                console.log(chalk.bgYellow.whiteBright(' WARNING ') + ` ${nitsBySeverity.warning} nit(s) of warning severity`)
-                console.log(chalk.yellow('▄'.repeat(64)) + '\n')
+                console.log(chalk.yellow('█'.repeat(9) + '▀'.repeat(55)))
+                console.log(chalk.bgYellow.whiteBright(' WARNING ') + ` ${nitsBySeverity.warning} nit${nitsBySeverity.warning > 1 ? 's' : ''} of ⚠️ warning severity`)
+                console.log(chalk.yellow('█'.repeat(9) + '▄'.repeat(55)) + '\n')
               }
               break
             }
             case 'ValidationComment': {
               if (nitsBySeverity.comment > 0) {
-                console.log(chalk.cyan('▀'.repeat(64)))
-                console.log(chalk.bgCyan.whiteBright(' COMMENT ') + ` ${nitsBySeverity.comment} nit(s) of comment severity`)
-                console.log(chalk.cyan('▄'.repeat(64)) + '\n')
+                console.log(chalk.cyan('█'.repeat(9) + '▀'.repeat(55)))
+                console.log(chalk.bgCyan.whiteBright(' COMMENT ') + ` ${nitsBySeverity.comment} nit${nitsBySeverity.comment > 1 ? 's' : ''} of ℹ️ comment severity`)
+                console.log(chalk.cyan('█'.repeat(9) + '▄'.repeat(55)) + '\n')
               }
               break
             }
@@ -371,18 +371,18 @@ try {
           for (const entry of result.filter(r => r.constructor.name === sev)) {
             switch (entry.constructor.name) {
               case 'ValidationError': {
-                console.log(chalk.bgRed.whiteBright(` ${entryIdx} `) + chalk.redBright(' Error'))
-                console.log(chalk.grey(' └- ') + chalkAdapted('white')('Code') + chalk.grey(' - ') + chalk.redBright(entry.name))
+                console.log(chalk.bgRed.whiteBright(` ${entryIdx} `) + ' ' + chalk.redBright(entry.name))
+                // console.log(chalk.grey(' └- ') + chalkAdapted('white')('Code') + chalk.grey(' - ') + chalk.redBright(entry.name))
                 break
               }
               case 'ValidationWarning': {
-                console.log(chalk.bgYellow.whiteBright(` ${entryIdx} `) + chalk.yellowBright(' Warning'))
-                console.log(chalk.grey(' └- ') + chalkAdapted('white')('Code') + chalk.grey(' - ') + chalk.yellowBright(entry.name))
+                console.log(chalk.bgYellow.whiteBright(` ${entryIdx} `) + ' ' + chalk.yellowBright(entry.name))
+                // console.log(chalk.grey(' └- ') + chalkAdapted('white')('Code') + chalk.grey(' - ') + chalk.yellowBright(entry.name))
                 break
               }
               case 'ValidationComment': {
-                console.log(chalk.bgCyan.whiteBright(` ${entryIdx} `) + ' Comment')
-                console.log(chalk.grey(' └- ') + chalkAdapted('white')('Code') + chalk.grey(' - ') + chalk.cyanBright(entry.name))
+                console.log(chalk.bgCyan.whiteBright(` ${entryIdx} `) + ' ' + chalk.cyanBright(entry.name))
+                // console.log(chalk.grey(' └- ') + chalkAdapted('white')('Code') + chalk.grey(' - ') + chalk.cyanBright(entry.name))
                 break
               }
               default: {

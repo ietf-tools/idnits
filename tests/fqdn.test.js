@@ -1,6 +1,6 @@
 import { describe, expect, test } from '@jest/globals'
 import { MODES } from '../lib/config/modes.mjs'
-import { toContainError, ValidationWarning } from '../lib/helpers/error.mjs'
+import { toContainError, ValidationComment, ValidationWarning } from '../lib/helpers/error.mjs'
 import {
   validateFQDNs
 } from '../lib/modules/fqdn.mjs'
@@ -33,8 +33,8 @@ describe('document should have valid FQDN mentions', () => {
         data: {
           extractedElements: {
             fqdnDomains: [
-              'invalid.example.invalidtld',
-              'another.invalidtld'
+              'invalid.not-example.com',
+              'another.org'
             ]
           }
         }
@@ -42,13 +42,13 @@ describe('document should have valid FQDN mentions', () => {
 
       const result = await validateFQDNs(doc, { mode: MODES.NORMAL, offline: false })
       expect(result).toEqual([
-        new ValidationWarning('INVALID_DOMAIN_TLD', 'Domain "invalid.example.invalidtld" is not an allowed reserved domain. Consider using ".example.(com|org|net)" instead.', {
+        new ValidationWarning('INVALID_DOMAIN_TLD', 'Domain "invalid.not-example.com" is not an allowed reserved domain. Consider using ".example.(com|org|net)" instead.', {
           ref: 'https://www.rfc-editor.org/rfc/rfc6761',
-          text: 'invalid.example.invalidtld'
+          text: 'invalid.not-example.com'
         }),
-        new ValidationWarning('INVALID_DOMAIN_TLD', 'Domain "another.invalidtld" is not an allowed reserved domain. Consider using ".example.(com|org|net)" instead.', {
+        new ValidationWarning('INVALID_DOMAIN_TLD', 'Domain "another.org" is not an allowed reserved domain. Consider using ".example.(com|org|net)" instead.', {
           ref: 'https://www.rfc-editor.org/rfc/rfc6761',
-          text: 'another.invalidtld'
+          text: 'another.org'
         })
       ])
     })
@@ -93,6 +93,32 @@ describe('document should have valid FQDN mentions', () => {
       expect(result).toHaveLength(0)
     })
 
+    test('github-like domains should be mentionned as a comment', async () => {
+      const doc = {
+        type: 'txt',
+        data: {
+          extractedElements: {
+            fqdnDomains: [
+              'github.com',
+              'abcdef.gitlab.io'
+            ]
+          }
+        }
+      }
+
+      const result = await validateFQDNs(doc, { mode: MODES.NORMAL, offline: true })
+      expect(result).toEqual([
+        new ValidationWarning('POSSIBLE_INVALID_TLD', 'Ensure "github.com" isn\'t used as a example. For example domains, consider using ".example.(com|org|net)" instead.', {
+          ref: 'https://www.iana.org/domains/arpa',
+          text: 'github.com'
+        }),
+        new ValidationWarning('POSSIBLE_INVALID_TLD', 'Ensure "abcdef.gitlab.io" isn\'t used as a example. For example domains, consider using ".example.(com|org|net)" instead.', {
+          ref: 'https://www.rfc-editor.org/rfc/rfc6761',
+          text: 'abcdef.gitlab.io'
+        })
+      ])
+    })
+
     test('mixed valid and invalid domains', async () => {
       const doc = {
         type: 'txt',
@@ -100,7 +126,8 @@ describe('document should have valid FQDN mentions', () => {
           extractedElements: {
             fqdnDomains: [
               'random.arpa',
-              'invalid.example.invalidtld'
+              'invalid.not-example.com',
+              'example.org'
             ]
           }
         }
@@ -112,9 +139,9 @@ describe('document should have valid FQDN mentions', () => {
           ref: 'https://www.iana.org/domains/arpa',
           text: 'random.arpa'
         }),
-        new ValidationWarning('INVALID_DOMAIN_TLD', 'Domain "invalid.example.invalidtld" is not an allowed reserved domain. Consider using ".example.(com|org|net)" instead.', {
+        new ValidationWarning('INVALID_DOMAIN_TLD', 'Domain "invalid.not-example.com" is not an allowed reserved domain. Consider using ".example.(com|org|net)" instead.', {
           ref: 'https://www.rfc-editor.org/rfc/rfc6761',
-          text: 'invalid.example.invalidtld'
+          text: 'invalid.not-example.com'
         })
       ])
     })
@@ -128,7 +155,7 @@ describe('document should have valid FQDN mentions', () => {
     })
     test('invalid TLD', async () => {
       const doc = cloneDeep(baseXMLDoc)
-      set(doc, 'data.rfc.middle.t', 'Lorem ipsum www.something.invalidtld lorem ipsum.')
+      set(doc, 'data.rfc.middle.t', 'Lorem ipsum www.something.org lorem ipsum.')
       await expect(validateFQDNs(doc)).resolves.toContainError('INVALID_DOMAIN_TLD', ValidationWarning)
       await expect(validateFQDNs(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('INVALID_DOMAIN_TLD', ValidationWarning)
       await expect(validateFQDNs(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
@@ -138,6 +165,13 @@ describe('document should have valid FQDN mentions', () => {
       set(doc, 'data.rfc.middle.t', 'Lorem ipsum www.invalid123.arpa lorem ipsum.')
       await expect(validateFQDNs(doc)).resolves.toContainError('INVALID_ARPA_DOMAIN', ValidationWarning)
       await expect(validateFQDNs(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('INVALID_ARPA_DOMAIN', ValidationWarning)
+      await expect(validateFQDNs(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+    })
+    test('github-like domain', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      set(doc, 'data.rfc.middle.t', 'Lorem ipsum abcdef.github.com lorem ipsum.')
+      await expect(validateFQDNs(doc)).resolves.toContainError('POSSIBLE_INVALID_TLD', ValidationComment)
+      await expect(validateFQDNs(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('POSSIBLE_INVALID_TLD', ValidationComment)
       await expect(validateFQDNs(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
     // TODO: non-latin domains (xn--)
