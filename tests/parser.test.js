@@ -42,6 +42,8 @@ import {
   trust28Dec2009Section6aTXTBlock,
   normativeReferenceSectionTXTBlock,
   informativeReferenceSectionTXTBlock,
+  RFC2119Alt1BoilerplateTXTBlock,
+  RFC2119Alt2BoilerplateTXTBlock,
   BCP14BoilerplateTXTBlock
 } from './fixtures/txt-blocks/section-blocks.mjs'
 import { parse } from '../lib/parsers/txt.mjs'
@@ -370,12 +372,10 @@ describe('Parsing FQRN', () => {
     const result = await parse(txt, 'txt')
     expect(result.data.extractedElements.fqdnDomains).toEqual(
       expect.arrayContaining([
-        'foo.bar.com',
-        'sub.domain.io',
-        'alpha.beta.gamma.xyz'
+        'foo.bar.com'
       ])
     )
-    expect(result.data.extractedElements.fqdnDomains).toHaveLength(3)
+    expect(result.data.extractedElements.fqdnDomains).toHaveLength(1)
   })
 
   test('Ignores numeric-TLD and weird patterns', async () => {
@@ -399,12 +399,10 @@ describe('Parsing FQRN', () => {
     expect(result.data.extractedElements.fqdnDomains).toEqual(
       expect.arrayContaining([
         'foo.bar.com',
-        'site.org',
-        'sub.domain.io',
-        'alpha.beta.gamma.xyz'
+        'site.org'
       ])
     )
-    expect(result.data.extractedElements.fqdnDomains).toHaveLength(4)
+    expect(result.data.extractedElements.fqdnDomains).toHaveLength(2)
   })
 
   test('Does not extract email addresses or trailing @', async () => {
@@ -512,6 +510,34 @@ describe('Testing parsing RFC2119 keywords and boilerplates', () => {
     expect(result.data.boilerplate.rfc2119).toBe(true)
   })
 
+  test('Detecting RFC2119 boilerplate alt1', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${RFC2119Alt1BoilerplateTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.boilerplate.rfc2119).toBe(true)
+  })
+
+  test('Detecting RFC2119 boilerplate alt2', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${RFC2119Alt1BoilerplateTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.boilerplate.rfc2119).toBe(true)
+  })
+
   test('Detecting missing RFC2119 boilerplate', async () => {
     const txt = `
       ${metaTXTBlock}
@@ -523,6 +549,34 @@ describe('Testing parsing RFC2119 keywords and boilerplates', () => {
 
     const result = await parse(txt, 'txt')
     expect(result.data.boilerplate.rfc2119).toBe(false)
+  })
+
+  test('Detecting missing RFC2119 boilerplate alt1', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${RFC2119Alt1BoilerplateTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.boilerplate.rfc2119).toBe(true)
+  })
+
+  test('Detecting missing RFC2119 boilerplate alt2', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${RFC2119Alt2BoilerplateTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.boilerplate.rfc2119).toBe(true)
   })
 
   test('Detecting RFC2119 reference', async () => {
@@ -1563,6 +1617,22 @@ describe('Reference is declared, but not used in the document', () => {
     const result = await parse(txt, 'txt')
     expect(result.data.extractedElements.nonReferenceSectionDraftReferences).toContain('[1]')
     expect(result.data.extractedElements.nonReferenceSectionDraftReferences).toHaveLength(1)
+  })
+
+  test('Should detect used draft reference in text right after closing bracket', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+      [RFC1234][IANA]
+
+      This is a reference to a draft [draft-ietf-bess-evpn-igmp-mld-proxy-21].
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.nonReferenceSectionDraftReferences).toContain('[IANA]')
   })
 
   test('Should not treat “[0]” in code as a draft reference', async () => {

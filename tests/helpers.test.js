@@ -1,5 +1,26 @@
 import { describe, expect, test } from '@jest/globals'
+import { formatEnumeration } from '../lib/helpers/common.mjs'
 import { findDescendantWith, findAllDescendantsWith } from '../lib/helpers/traversal.mjs'
+
+describe('common', () => {
+  describe('formatEnumeration', () => {
+    test('should return empty string for empty array', async () => {
+      expect(formatEnumeration([])).toEqual('')
+    })
+    test('should return empty string for null', async () => {
+      expect(formatEnumeration(null)).toEqual('')
+    })
+    test('should return only item value if only a single item', async () => {
+      expect(formatEnumeration(['abcdef'])).toEqual('abcdef')
+    })
+    test('should return only values joined by "and" when 2 elements', async () => {
+      expect(formatEnumeration(['abcdef', 'qwerty'])).toEqual('abcdef and qwerty')
+    })
+    test('should return only values joined by oxford comma + "and" when more than 2 elements', async () => {
+      expect(formatEnumeration(['abcdef', 'qwerty', 'foobar'])).toEqual('abcdef, qwerty, and foobar')
+    })
+  })
+})
 
 describe('traversal', () => {
   describe('findDescendantWith()', () => {

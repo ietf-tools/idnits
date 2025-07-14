@@ -1,8 +1,8 @@
 import { describe, expect, test } from '@jest/globals'
-import { toContainError } from '../lib/helpers/error.mjs'
+import { toContainError, ValidationError, ValidationWarning } from '../lib/helpers/error.mjs'
 import { validateFilename, validateDocName } from '../lib/modules/filename.mjs'
 import { baseTXTDoc, baseXMLDoc } from './fixtures/base-doc.mjs'
-import { cloneDeep, set } from 'lodash-es'
+import { cloneDeep, set, repeat } from 'lodash-es'
 
 expect.extend({
   toContainError
@@ -65,15 +65,18 @@ describe('filename base name matches the name declared in the document', () => {
   })
 })
 
-describe('filename (including extension) is no more than 50 characters', () => {
+describe('filename (including extension) is no more than 72 characters', () => {
   test('valid length', async () => {
     await expect(validateFilename('draft-ietf-abcd-01.txt')).resolves.toHaveLength(0)
   })
-  test('exactly 50 characters in length', async () => {
-    await expect(validateFilename('draft-ietf-1234567890-1234567890-1234567890-01.txt')).resolves.toHaveLength(0)
+  test('exactly 72 characters in length', async () => {
+    await expect(validateFilename('draft-ietf-1234567890-1234567890-1234567890-1234567890-1234567890-12.txt')).resolves.toHaveLength(0)
   })
-  test('filename too long', async () => {
-    await expect(validateFilename('draft-ietf-1234567890-1234567890-1234567890-1234567890-01.txt')).resolves.toContainError('FILENAME_TOO_LONG')
+  test('filename too long >72 <=255', async () => {
+    await expect(validateFilename('draft-ietf-1234567890-1234567890-1234567890-1234567890-1234567890-123.txt')).resolves.toContainError('FILENAME_TOO_LONG', ValidationWarning)
+  })
+  test('filename too long >255', async () => {
+    await expect(validateFilename(`draft-ietf${repeat('-123456789', 24)}-1.txt`)).resolves.toContainError('FILENAME_TOO_LONG', ValidationError)
   })
 })
 

@@ -61,3 +61,7 @@ typings/
 .env.test
 
 dist
+
+# Test drafts
+
+draft-*
