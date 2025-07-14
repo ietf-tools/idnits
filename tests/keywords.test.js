@@ -625,11 +625,25 @@ describe('document should have valid RFC2119 keywords', () => {
     const boilerplate = `The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL
       NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED",  "MAY", and
       "OPTIONAL" in this document are to be interpreted as described in RFC 2119.`
-    test('valid keywords', async () => {
+
+    const boilerplateWithBCP14 = `The key words "<bcp14>MUST</bcp14>", "<bcp14>MUST NOT</bcp14>", "<bcp14>REQUIRED</bcp14>", "<bcp14>SHALL</bcp14>", "<bcp14>SHALL
+      NOT</bcp14>", "<bcp14>SHOULD</bcp14>", "<bcp14>SHOULD NOT</bcp14>", "<bcp14>RECOMMENDED</bcp14>", "<bcp14>NOT RECOMMENDED</bcp14>",
+      "<bcp14>MAY</bcp14>", and "<bcp14>OPTIONAL</bcp14>" in this document are to be interpreted as
+      described in BCP¤14 <xref target="BCP14"/> when, and only when, they appear in all capitals, as shown here.`
+    test('valid keywords with default boilerplate', async () => {
       const doc = cloneDeep(baseXMLDoc)
       doc.externalEntities = [{ name: 'RFC2119' }]
       set(doc, 'data.rfc.middle.t', [
         boilerplate,
+        'Lorem ipsum SHALL lorem ipsum MUST NOT lorem RECOMMENDED.'
+      ])
+      await expect(validate2119Keywords(doc)).resolves.toHaveLength(0)
+    })
+    test('valid keywords with BCP14', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      doc.externalEntities = [{ name: 'RFC2119' }]
+      set(doc, 'data.rfc.middle.t', [
+        boilerplateWithBCP14,
         'Lorem ipsum SHALL lorem ipsum MUST NOT lorem RECOMMENDED.'
       ])
       await expect(validate2119Keywords(doc)).resolves.toHaveLength(0)
@@ -672,6 +686,16 @@ describe('document should have valid RFC2119 keywords', () => {
       await expect(validate2119Keywords(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('MISSING_REQLEVEL_REF', ValidationError)
       await expect(validate2119Keywords(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
+    test('missing reference with bcp14', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      set(doc, 'data.rfc.middle.t', [
+        boilerplateWithBCP14,
+        'Lorem ipsum SHALL lorem ipsum MUST NOT lorem RECOMMENDED.'
+      ])
+      await expect(validate2119Keywords(doc)).resolves.toContainError('MISSING_REQLEVEL_REF', ValidationError)
+      await expect(validate2119Keywords(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('MISSING_REQLEVEL_REF', ValidationError)
+      await expect(validate2119Keywords(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+    })
     test('reference present but no boilerplate', async () => {
       const doc = cloneDeep(baseXMLDoc)
       doc.externalEntities = [{ name: 'RFC2119' }]
@@ -685,6 +709,17 @@ describe('document should have valid RFC2119 keywords', () => {
       doc.externalEntities = [{ name: 'RFC2119' }]
       set(doc, 'data.rfc.middle.t', [
         boilerplate,
+        'Lorem ipsum lorem ipsum lorem ipsum.'
+      ])
+      await expect(validate2119Keywords(doc)).resolves.toContainError('MISSING_REQLEVEL_KEYWORDS', ValidationWarning)
+      await expect(validate2119Keywords(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('MISSING_REQLEVEL_KEYWORDS', ValidationWarning)
+      await expect(validate2119Keywords(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+    })
+    test('boilerplate present but no keywords with bcp14', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      doc.externalEntities = [{ name: 'RFC2119' }]
+      set(doc, 'data.rfc.middle.t', [
+        boilerplateWithBCP14,
         'Lorem ipsum lorem ipsum lorem ipsum.'
       ])
       await expect(validate2119Keywords(doc)).resolves.toContainError('MISSING_REQLEVEL_KEYWORDS', ValidationWarning)
