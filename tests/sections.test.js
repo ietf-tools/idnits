@@ -987,17 +987,17 @@ describe('validateReferencesInText', () => {
       expect(result).toEqual([
         new ValidationWarning(
           'REFERENCE_NOT_USED',
-          'The reference RFC 8174 is listed in the References section but is not mentioned in the document text.',
+          'The reference 8174 is listed in the References section but is not mentioned in the document text.',
           { ref: 'https://authors.ietf.org/en/required-content#references' }
         ),
         new ValidationWarning(
           'REFERENCE_NOT_USED',
-          'The reference RFC 1234 is listed in the References section but is not mentioned in the document text.',
+          'The reference 1234 is listed in the References section but is not mentioned in the document text.',
           { ref: 'https://authors.ietf.org/en/required-content#references' }
         ),
         new ValidationWarning(
           'REFERENCE_NOT_USED',
-          'The reference RFC draft-ietf-abc-01 is listed in the References section but is not mentioned in the document text.',
+          'The reference draft-ietf-abc-01 is listed in the References section but is not mentioned in the document text.',
           { ref: 'https://authors.ietf.org/en/required-content#references' }
         )
       ])

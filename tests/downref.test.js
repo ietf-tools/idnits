@@ -763,8 +763,9 @@ describe('validateReferenceForStale (TXT)', () => {
 
     fetchMock.mockResponseOnce(JSON.stringify({
       rev_history: [
-        { rev: '01' },
-        { rev: '02' }
+        { rev: '01', name: 'draft-ietf-stale', published: '2025-01-31T12:51:10.280331+00:00' },
+        { rev: '02', name: 'draft-ietf-newer', published: '2025-02-31T12:51:10.280331+00:00' },
+        { rev: '03', name: 'draft-ietf-newer', published: '2025-03-31T12:51:10.280331+00:00' }
       ]
     }))
 
@@ -772,7 +773,7 @@ describe('validateReferenceForStale (TXT)', () => {
     expect(res).toEqual([
       new ValidationWarning(
         'OUTDATED_DRAFT',
-        'The draft reference draft-ietf-stale is stale. The latest version is 02.',
+        'The draft reference draft-ietf-stale (version 01) is stale. It was replaced by draft-ietf-newer (version 03).',
         { ref: 'https://datatracker.ietf.org/doc/draft-ietf-stale' }
       )
     ])
@@ -822,7 +823,6 @@ describe('validateReferenceForStale (XML)', () => {
     fetchMock.mockResponseOnce(JSON.stringify({}))
 
     const res = await validateReferenceForStale(doc, { mode: MODES.NORMAL })
-    console.log(JSON.stringify(res, null, 2))
     expect(res).toEqual([
       new ValidationWarning(
         'UNDEFINED_STATE',
@@ -840,8 +840,9 @@ describe('validateReferenceForStale (XML)', () => {
 
     fetchMock.mockResponseOnce(JSON.stringify({
       rev_history: [
-        { rev: '01' },
-        { rev: '02' }
+        { rev: '01', name: 'draft-ietf-stale', published: '2025-01-31T12:51:10.280331+00:00' },
+        { rev: '02', name: 'draft-ietf-newer', published: '2025-02-31T12:51:10.280331+00:00' },
+        { rev: '03', name: 'draft-ietf-newer', published: '2025-03-31T12:51:10.280331+00:00' }
       ]
     }))
 
@@ -849,7 +850,7 @@ describe('validateReferenceForStale (XML)', () => {
     expect(res).toEqual([
       new ValidationWarning(
         'OUTDATED_DRAFT',
-        'The draft reference draft-ietf-stale is stale. The latest version is 02.',
+        'The draft reference draft-ietf-stale (version 01) is stale. It was replaced by draft-ietf-newer (version 03).',
         { ref: 'https://datatracker.ietf.org/doc/draft-ietf-stale' }
       )
     ])

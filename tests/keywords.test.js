@@ -756,16 +756,20 @@ describe('document should have valid term spelling', () => {
       await expect(validateTermsStyle(doc)).resolves.toHaveLength(0)
     })
 
-    test('should not match "public-key infrastructure"', async () => {
+    test('invalid spelling (public-key)', async () => {
       const doc = cloneDeep(baseTXTDoc)
       doc.body = 'The system uses a public-key infrastructure for security.'
-      await expect(validateTermsStyle(doc)).resolves.toHaveLength(0)
+      await expect(validateTermsStyle(doc)).resolves.toContainError('INCORRECT_TERM_SPELLING', ValidationComment)
+      await expect(validateTermsStyle(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('INCORRECT_TERM_SPELLING', ValidationComment)
+      await expect(validateTermsStyle(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
 
-    test('should not match "time-stamp verification"', async () => {
+    test('invalid spelling (time-stamp)', async () => {
       const doc = cloneDeep(baseTXTDoc)
       doc.body = 'The time-stamp verification process is crucial.'
-      await expect(validateTermsStyle(doc)).resolves.toHaveLength(0)
+      await expect(validateTermsStyle(doc)).resolves.toContainError('INCORRECT_TERM_SPELLING', ValidationComment)
+      await expect(validateTermsStyle(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('INCORRECT_TERM_SPELLING', ValidationComment)
+      await expect(validateTermsStyle(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
 
     test('should not match "email client"', async () => {
@@ -812,16 +816,20 @@ describe('document should have valid term spelling', () => {
       await expect(validateTermsStyle(doc)).resolves.toHaveLength(0)
     })
 
-    test('should not match "public-key infrastructure" in XML', async () => {
+    test('invalid spelling (public-key)', async () => {
       const doc = cloneDeep(baseXMLDoc)
       set(doc, 'data.rfc.middle.t', 'The system uses a public-key infrastructure for security.')
-      await expect(validateTermsStyle(doc)).resolves.toHaveLength(0)
+      await expect(validateTermsStyle(doc)).resolves.toContainError('INCORRECT_TERM_SPELLING', ValidationComment)
+      await expect(validateTermsStyle(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('INCORRECT_TERM_SPELLING', ValidationComment)
+      await expect(validateTermsStyle(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
 
-    test('should not match "time-stamp verification" in XML', async () => {
+    test('invalid spelling (time-stamp)', async () => {
       const doc = cloneDeep(baseXMLDoc)
       set(doc, 'data.rfc.middle.t', 'The time-stamp verification process is crucial.')
-      await expect(validateTermsStyle(doc)).resolves.toHaveLength(0)
+      await expect(validateTermsStyle(doc)).resolves.toContainError('INCORRECT_TERM_SPELLING', ValidationComment)
+      await expect(validateTermsStyle(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('INCORRECT_TERM_SPELLING', ValidationComment)
+      await expect(validateTermsStyle(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
 
     test('should not match "email client" in XML', async () => {
