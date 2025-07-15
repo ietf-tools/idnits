@@ -166,9 +166,10 @@ export const referenceTXTBlock = `
               Ethernet VPN", RFC 7432, DOI 10.17487/RFC7432, February
               2015, <https://www.rfc-editor.org/info/rfc7432>.
 
-   [RFC2345]
-
-   [Lalalala-Refere-Sponsor]
+   [test]     Sajassi, A., Ed., Aggarwal, R., Bitar, N., Isaac, A.,
+              Uttaro, J., Drake, J., and W. Henderickx, "BGP MPLS-Based
+              Ethernet VPN", RFC 7432, DOI 10.17487/RFC7432, February
+              2015, <https://www.rfc-editor.org/info/rfc7432>. 
 
 7.2.  Informative References
 

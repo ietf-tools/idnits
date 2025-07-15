@@ -1538,11 +1538,10 @@ describe('Reference is declared, but not used in the document', () => {
       expect.objectContaining({ subsection: 'normative_references', value: '4360' }),
       expect.objectContaining({ subsection: 'normative_references', value: '5701' }),
       expect.objectContaining({ subsection: 'normative_references', value: '7153' }),
-      expect.objectContaining({ subsection: 'normative_references', value: '7432' }),
-      expect.objectContaining({ subsection: 'normative_references', value: '2345' })
+      expect.objectContaining({ subsection: 'normative_references', value: '7432' })
     ])
     expect(result.data.extractedElements.referenceSectionDraftReferences).toEqual([
-      expect.objectContaining({ value: '[Lalalala-Refere-Sponsor]' })
+      expect.objectContaining({ value: '[test]' })
     ])
     expect(result.data.extractedElements.draftStatusReferences).toEqual([
       expect.objectContaining({ value: 'draft-ietf-bess-evpn-igmp-mld-proxy-21' }),
