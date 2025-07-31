@@ -156,6 +156,13 @@ describe('document should have valid IP Address mentions', () => {
       await expect(validateIPs(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('INVALID_IPV4_ADDRESS', ValidationWarning)
       await expect(validateIPs(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
+    test('invalid IPv4 cidr', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      set(doc, 'data.rfc.middle.t', 'Lorem ipsum 10.11.22.1/33 lorem ipsum.')
+      await expect(validateIPs(doc)).resolves.toContainError('INVALID_IPV4_ADDRESS', ValidationWarning)
+      await expect(validateIPs(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('INVALID_IPV4_ADDRESS', ValidationWarning)
+      await expect(validateIPs(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+    })
     test('invalid IPv6', async () => {
       const doc = cloneDeep(baseXMLDoc)
       set(doc, 'data.rfc.middle.t', 'Lorem ipsum F:0DB8:0000:CD30:0000:0000111:0000:0000 lorem ipsum.')
