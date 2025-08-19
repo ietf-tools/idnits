@@ -1,4 +1,4 @@
-<div align="center">
+<img width="2236" height="855" alt="image" src="https://github.com/user-attachments/assets/e0ab5f14-f763-4b3b-b10e-8de165131c14" /><div align="center">
     
 <img src="https://raw.githubusercontent.com/ietf-tools/common/main/assets/logos/idnits.svg" alt="IDNITS" height="125" />
     
@@ -139,6 +139,9 @@ return result
 ### Tests
 
 Tests are made using the [Jest](https://jestjs.io/) library and are located under the `tests` directory.
+
+> [!WARNING]  
+> Jest is broken on Node 24.x. Use Node 23.x or lower for now.
 
 You can run the suite of tests using:
 ```sh
