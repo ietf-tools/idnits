@@ -1,4 +1,4 @@
-<img width="2236" height="855" alt="image" src="https://github.com/user-attachments/assets/e0ab5f14-f763-4b3b-b10e-8de165131c14" /><div align="center">
+<div align="center">
     
 <img src="https://raw.githubusercontent.com/ietf-tools/common/main/assets/logos/idnits.svg" alt="IDNITS" height="125" />
     
