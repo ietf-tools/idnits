@@ -1,8 +1,7 @@
 name: New Issue for idnits3
-about: Javascript-based CLI / Library
-title: ''
-labels: 'component: idnits3'
-assignees: ''
+description: Javascript-based CLI / Library
+labels:
+  - 'component: idnits3'
 body:
   - type: textarea
     attributes:
