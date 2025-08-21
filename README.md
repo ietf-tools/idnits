@@ -140,6 +140,9 @@ return result
 
 Tests are made using the [Jest](https://jestjs.io/) library and are located under the `tests` directory.
 
+> [!WARNING]  
+> Jest is broken on Node 24.x. Use Node 23.x or lower for now.
+
 You can run the suite of tests using:
 ```sh
 # Make sure you installed dependencies first:

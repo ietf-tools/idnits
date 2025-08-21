@@ -700,9 +700,9 @@ describe('The submission compliance page validate.', () => {
 
     doc.data.possibleIssues.submissionCompliancePage = null
 
-    await expect(validateSubmissionComplianceLinePage(doc, { mode: MODES.NORMAL })).resolves.toContainError('SUBMISSION_COMPLIANCE_LINE_NOT_ON_THE_FIRST_PAGE', ValidationError)
-    await expect(validateSubmissionComplianceLinePage(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('SUBMISSION_COMPLIANCE_LINE_NOT_ON_THE_FIRST_PAGE', ValidationError)
-    await expect(validateSubmissionComplianceLinePage(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('SUBMISSION_COMPLIANCE_LINE_NOT_ON_THE_FIRST_PAGE', ValidationError)
+    await expect(validateSubmissionComplianceLinePage(doc, { mode: MODES.NORMAL })).resolves.toContainError('SUBMISSION_COMPLIANCE_LINE_NOT_EARLY_IN_DOC', ValidationError)
+    await expect(validateSubmissionComplianceLinePage(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('SUBMISSION_COMPLIANCE_LINE_NOT_EARLY_IN_DOC', ValidationError)
+    await expect(validateSubmissionComplianceLinePage(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('SUBMISSION_COMPLIANCE_LINE_NOT_EARLY_IN_DOC', ValidationError)
   })
   test('submission compliance line on first page ', async () => {
     const doc = cloneDeep(baseTXTDoc)
@@ -714,14 +714,14 @@ describe('The submission compliance page validate.', () => {
     await expect(validateSubmissionComplianceLinePage(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
   })
 
-  test('submission compliance line on second page ', async () => {
+  test('submission compliance line on fourth page ', async () => {
     const doc = cloneDeep(baseTXTDoc)
 
-    doc.data.possibleIssues.submissionCompliancePage = 2
+    doc.data.possibleIssues.submissionCompliancePage = 4
 
-    await expect(validateSubmissionComplianceLinePage(doc, { mode: MODES.NORMAL })).resolves.toContainError('SUBMISSION_COMPLIANCE_LINE_NOT_ON_THE_FIRST_PAGE', ValidationError)
-    await expect(validateSubmissionComplianceLinePage(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('SUBMISSION_COMPLIANCE_LINE_NOT_ON_THE_FIRST_PAGE', ValidationError)
-    await expect(validateSubmissionComplianceLinePage(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('SUBMISSION_COMPLIANCE_LINE_NOT_ON_THE_FIRST_PAGE', ValidationError)
+    await expect(validateSubmissionComplianceLinePage(doc, { mode: MODES.NORMAL })).resolves.toContainError('SUBMISSION_COMPLIANCE_LINE_NOT_EARLY_IN_DOC', ValidationError)
+    await expect(validateSubmissionComplianceLinePage(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('SUBMISSION_COMPLIANCE_LINE_NOT_EARLY_IN_DOC', ValidationError)
+    await expect(validateSubmissionComplianceLinePage(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('SUBMISSION_COMPLIANCE_LINE_NOT_EARLY_IN_DOC', ValidationError)
   })
 })
 
