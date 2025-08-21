@@ -19,9 +19,15 @@ describe('input does not include invalid control chars', () => {
     await expect(validateContent('abc\rdef\r\ngeh')).resolves.toHaveLength(0)
   })
   test('invalid x00-x09 chars', async () => {
-    await expect(validateContent('abc\bdef\tgeh')).resolves.toContainError('INVALID_CTRL_CODES', ValidationError)
-    await expect(validateContent('abc\bdef\tgeh', { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('INVALID_CTRL_CODES', ValidationWarning)
+    await expect(validateContent('abc\bdef\bgeh')).resolves.toContainError('INVALID_CTRL_CODES', ValidationError)
+    await expect(validateContent('abc\bdef\bgeh', { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('INVALID_CTRL_CODES', ValidationWarning)
+    await expect(validateContent('abc\bdef\bgeh', { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+    await expect(validateContent('abc\bdef\tgeh')).resolves.toHaveLength(2)
+    await expect(validateContent('abc\bdef\tgeh', { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(2)
     await expect(validateContent('abc\bdef\tgeh', { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+    await expect(validateContent('abc\tdef\tgeh')).resolves.toContainError('TABS_NOT_ALLOWED', ValidationError)
+    await expect(validateContent('abc\tdef\tgeh', { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('TABS_NOT_ALLOWED', ValidationWarning)
+    await expect(validateContent('abc\tdef\tgeh', { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
   })
   test('invalid 0B char', async () => {
     await expect(validateContent('abc\vdef')).resolves.toContainError('INVALID_CTRL_CODES', ValidationError)
