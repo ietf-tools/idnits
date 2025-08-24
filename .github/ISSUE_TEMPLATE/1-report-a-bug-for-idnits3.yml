@@ -1,7 +1,8 @@
-name: New Issue for idnits3
+name: Report a Bug for idnits3
 description: Javascript-based CLI / Library
 labels:
   - 'component: idnits3'
+type: Bug
 body:
   - type: textarea
     attributes:
