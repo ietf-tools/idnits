@@ -1,0 +1,11 @@
+name: Suggest a New Feature of Enhancement for idnits3
+description: Javascript-based CLI / Library
+labels:
+  - 'component: idnits3'
+type: Feature
+body:
+  - type: textarea
+    attributes:
+      label: Description
+    validations:
+      required: true
