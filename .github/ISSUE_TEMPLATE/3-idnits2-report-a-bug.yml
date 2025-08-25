@@ -1,5 +1,5 @@
 name: idnits2 - Report a Bug
-description: Shell-based CLI
+description: Legacy Shell-based CLI
 labels:
   - 'component: idnits2'
 type: Bug
