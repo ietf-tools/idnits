@@ -1,4 +1,4 @@
-name: Report a Bug for idnits3
+name: idnits3 - Report a Bug
 description: Javascript-based CLI / Library
 labels:
   - 'component: idnits3'

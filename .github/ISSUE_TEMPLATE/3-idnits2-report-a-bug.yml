@@ -1,0 +1,11 @@
+name: idnits2 - Report a Bug
+description: Shell-based CLI
+labels:
+  - 'component: idnits2'
+type: Bug
+body:
+  - type: textarea
+    attributes:
+      label: Description
+    validations:
+      required: true
