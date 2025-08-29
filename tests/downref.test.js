@@ -184,7 +184,7 @@ describe('validateDownrefs', () => {
       ])
 
       const result = await validateDownrefs(doc, { mode: MODES.NORMAL })
-      expect(result).toContainError('DOWNREF_TO_LOWER_STATUS_IN_REGISTRY', ValidationError)
+      expect(result).toContainError('DOWNREF_TO_LOWER_STATUS_IN_REGISTRY', ValidationWarning)
     })
 
     test('FORGIVE_CHECKLIST mode returns warnings when multiple references exist', async () => {
