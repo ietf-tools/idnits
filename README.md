@@ -138,10 +138,7 @@ return result
 
 ### Tests
 
-Tests are made using the [Jest](https://jestjs.io/) library and are located under the `tests` directory.
-
-> [!WARNING]  
-> Jest is broken on Node 24.x. Use Node 23.x or lower for now.
+Tests are made using the [Vitest](https://vitest.dev/) library and are located under the `tests` directory.
 
 You can run the suite of tests using:
 ```sh

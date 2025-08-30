@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, jest, test } from '@jest/globals'
+import { afterAll, beforeAll, describe, expect, vi, test } from 'vitest'
 import {
   abstractTXTBlock,
   tableOfContentsTXTBlock,
@@ -49,11 +49,11 @@ import {
 import { parse } from '../lib/parsers/txt.mjs'
 
 beforeAll(() => {
-  jest.spyOn(console, 'info').mockImplementation(() => {})
+  vi.spyOn(console, 'info').mockImplementation(() => {})
 })
 
 afterAll(() => {
-  console.info.mockRestore()
+  vi.restoreAllMocks()
 })
 
 describe('A possible code comment is detected outside of a marked code block', () => {

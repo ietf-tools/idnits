@@ -1,4 +1,4 @@
-import { describe, expect, test } from '@jest/globals'
+import { describe, expect, test } from 'vitest'
 import { MODES } from '../lib/config/modes.mjs'
 import { toContainError, ValidationWarning } from '../lib/helpers/error.mjs'
 import {
@@ -66,7 +66,7 @@ describe('document should have valid IP Address mentions', () => {
         }),
         new ValidationWarning('INVALID_IPV4_ADDRESS', 'IPv4 address is invalid.', {
           ref: 'https://datatracker.ietf.org/doc/html/rfc791',
-          text: '192.0.2.1/33'
+          text: '192.0.2.1/999'
         }),
         new ValidationWarning('INVALID_IPV4_ADDRESS', 'IPv4 address is invalid.', {
           ref: 'https://datatracker.ietf.org/doc/html/rfc791',

@@ -1,4 +1,4 @@
-import { describe, expect, test } from '@jest/globals'
+import { describe, expect, test } from 'vitest'
 import { ALLOWED_DOMAINS_DEFAULT } from '../lib/config/externals.mjs'
 import { getModeByName } from '../lib/config/modes.mjs'
 

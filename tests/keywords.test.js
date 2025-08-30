@@ -1,4 +1,4 @@
-import { describe, expect, test } from '@jest/globals'
+import { describe, expect, test } from 'vitest'
 import { MODES } from '../lib/config/modes.mjs'
 import { toContainError, ValidationComment, ValidationError, ValidationWarning } from '../lib/helpers/error.mjs'
 import {
@@ -144,7 +144,7 @@ describe('document should have valid RFC2119 keywords', () => {
           'INCORRECT_KEYWORD_SPELLING',
           'The keyword "MUST not" is misspelled.',
           {
-            ref: 'https://datatracker.ietf.org/doc/html/rfc2119',
+            ref: 'https://www.rfc-editor.org/info/bcp14',
             lines: [{ line: 20, pos: 5 }]
           }
         )
@@ -345,7 +345,7 @@ describe('document should have valid RFC2119 keywords', () => {
           'INCORRECT_KEYWORD_SPELLING',
           'The keyword "MUST not" is misspelled.',
           {
-            ref: 'https://datatracker.ietf.org/doc/html/rfc2119',
+            ref: 'https://www.rfc-editor.org/info/bcp14',
             lines: [{ line: 20, pos: 5 }]
           }
         )

@@ -1,9 +1,7 @@
-import { describe, expect, test } from '@jest/globals'
+import { describe, expect, test } from 'vitest'
 import { MODES } from '../lib/config/modes.mjs'
 import { toContainError, ValidationComment, ValidationWarning } from '../lib/helpers/error.mjs'
-import {
-  validateFQDNs
-} from '../lib/modules/fqdn.mjs'
+import { validateFQDNs } from '../lib/modules/fqdn.mjs'
 import { baseXMLDoc } from './fixtures/base-doc.mjs'
 import { cloneDeep, set } from 'lodash-es'
 
@@ -108,11 +106,11 @@ describe('document should have valid FQDN mentions', () => {
 
       const result = await validateFQDNs(doc, { mode: MODES.NORMAL, offline: true })
       expect(result).toEqual([
-        new ValidationWarning('POSSIBLE_INVALID_TLD', 'Ensure "github.com" isn\'t used as a example. For example domains, consider using ".example.(com|org|net)" instead.', {
-          ref: 'https://www.iana.org/domains/arpa',
+        new ValidationComment('POSSIBLE_INVALID_TLD', 'Ensure "github.com" isn\'t used as a example. For example domains, consider using ".example.(com|org|net)" instead.', {
+          ref: 'https://www.rfc-editor.org/rfc/rfc6761',
           text: 'github.com'
         }),
-        new ValidationWarning('POSSIBLE_INVALID_TLD', 'Ensure "abcdef.gitlab.io" isn\'t used as a example. For example domains, consider using ".example.(com|org|net)" instead.', {
+        new ValidationComment('POSSIBLE_INVALID_TLD', 'Ensure "abcdef.gitlab.io" isn\'t used as a example. For example domains, consider using ".example.(com|org|net)" instead.', {
           ref: 'https://www.rfc-editor.org/rfc/rfc6761',
           text: 'abcdef.gitlab.io'
         })

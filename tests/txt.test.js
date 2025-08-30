@@ -1,4 +1,4 @@
-import { describe, expect, test } from '@jest/globals'
+import { describe, expect, test } from 'vitest'
 import { MODES } from '../lib/config/modes.mjs'
 import { toContainError, ValidationError, ValidationWarning, ValidationComment } from '../lib/helpers/error.mjs'
 import {
@@ -887,7 +887,7 @@ describe('validateLicenseDeclarations', () => {
 
     const result = await validateLicenseDeclarations(doc)
     expect(result).toContainEqual(new ValidationError(
-      'TLP5_LICENSE_NOTICE_MISSING',
+      'TLP5_LICENSE_RESTRICTION_NOTICE_MISSING',
       'The document does not contain a required TLP-5 license notice (6.b.i or 6.b.ii).',
       { ref: 'https://trustee.ietf.org/license-info' }
     ))
@@ -908,11 +908,13 @@ describe('validateLicenseDeclarations', () => {
     doc.data.slug = 'draft-ietf-example'
     doc.data.contains.license6_c_i = true
     const result = await validateLicenseDeclarations(doc)
-    expect(result).toContainEqual(new ValidationWarning(
-      'TLP5_LICENSE_NOTICE',
-      'The document has an IETF Trust Provisions of 28 Dec 2009, Section 6.c(i) Publication Limitation clause.',
-      { ref: 'https://trustee.ietf.org/license-info' }
-    ))
+    expect(result).toContainEqual(
+      new ValidationWarning(
+        'TLP5_LICENSE_RESTRICTION_NOTICE',
+        'The document has an IETF Trust Provisions of 28 Dec 2009, Section 6.c(i) Publication Limitation clause.',
+        { ref: 'https://trustee.ietf.org/license-info' }
+      )
+    )
   })
 
   test('should return error for licence6_c_ii when slug starts with "draft-ietf-"', async () => {
@@ -920,11 +922,13 @@ describe('validateLicenseDeclarations', () => {
     doc.data.slug = 'draft-ietf-example'
     doc.data.contains.license6_c_ii = true
     const result = await validateLicenseDeclarations(doc)
-    expect(result).toContainEqual(new ValidationError(
-      'TLP5_LICENSE_NOTICE',
-      'The document has an IETF Trust Provisions, 28 Dec 2009, Section 6.c(ii) Publication Limitation clause.',
-      { ref: 'https://trustee.ietf.org/license-info' }
-    ))
+    expect(result).toContainEqual(
+      new ValidationError(
+        'TLP5_LICENSE_RESTRICTION_NOTICE',
+        'The document has an IETF Trust Provisions, 28 Dec 2009, Section 6.c(ii) Publication Limitation clause.',
+        { ref: 'https://trustee.ietf.org/license-info' }
+      )
+    )
   })
 
   test('should not check for licence6_c if slug does not start with "draft-ietf-"', async () => {

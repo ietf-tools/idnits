@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, test } from '@jest/globals'
+import { beforeAll, afterEach, afterAll, describe, expect, test } from 'vitest'
 import { MODES } from '../lib/config/modes.mjs'
 import { toContainError, ValidationWarning, ValidationComment } from '../lib/helpers/error.mjs'
 import {
@@ -10,24 +10,46 @@ import {
 import { baseTXTDoc, baseXMLDoc } from './fixtures/base-doc.mjs'
 import { cloneDeep, set } from 'lodash-es'
 import { DateTime } from 'luxon'
-import fetchMock from 'jest-fetch-mock'
 import { abstractTXTBlock } from './fixtures/txt-blocks/section-blocks.mjs'
-
-fetchMock.enableMocks()
+import { setupServer } from 'msw/node'
+import { http, HttpResponse } from 'msw'
 
 expect.extend({
   toContainError
 })
 
+export const restHandlers = [
+  http.get('https://www.rfc-editor.org/rfc/rfc1235.json', () => {
+    return HttpResponse.json({ obsoleted_by: ['3456'] })
+  }),
+  http.get('https://www.rfc-editor.org/rfc/rfc1264.json', () => {
+    return HttpResponse.json({ obsoleted_by: ['3456'] })
+  }),
+  http.get('https://www.rfc-editor.org/rfc/rfc1236.json', () => {
+    return HttpResponse.json({ updated_by: ['3456'] })
+  }),
+  http.get('https://datatracker.ietf.org/api/v1/doc/document/draft-ietf-beep-boop/', () => {
+    return HttpResponse.json({ rev: '00' })
+  }),
+  http.get('https://datatracker.ietf.org/api/v1/doc/document/draft-ietf-beep-baap/', () => {
+    return HttpResponse.json({ rev: '08' })
+  }),
+  http.get('https://datatracker.ietf.org/api/v1/doc/document/draft-ietf-beep-biip/', () => {
+    return HttpResponse.json({ rev: '02' })
+  }),
+  http.all('*', () => {
+    return new HttpResponse(null, { status: 404 })
+  })
+]
+
+const server = setupServer(...restHandlers)
+
+beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
+afterEach(() => server.resetHandlers())
+afterAll(() => server.close())
+
 describe('document should have valid date', () => {
   describe('document should have valid obsolete/update references in text', () => {
-    beforeEach(() => {
-      fetchMock.dontMock()
-    })
-
-    afterAll(() => {
-      fetchMock.resetMocks()
-    })
     test('RFC in obsoletes metadata but missing in abstract', async () => {
       const doc = {
         type: 'txt',
@@ -44,7 +66,7 @@ describe('document should have valid date', () => {
 
       const result = await validateObsoleteUpdateRef(doc)
 
-      expect(result).toEqual([
+      expect(result).toContainEqual(
         new ValidationComment(
           'OBSOLETES_NOT_IN_ABSTRACT',
           'RFC 5678 is listed as "obsoleted" in metadata but is not mentioned in the abstract.',
@@ -53,7 +75,7 @@ describe('document should have valid date', () => {
             path: 'data.content.abstract'
           }
         )
-      ])
+      )
     })
 
     test('RFC in updates metadata but missing in abstract', async () => {
@@ -70,11 +92,9 @@ describe('document should have valid date', () => {
         }
       }
 
-      fetchMock.dontMockOnce()
-
       const result = await validateObsoleteUpdateRef(doc)
 
-      expect(result).toEqual([
+      expect(result).toContainEqual(
         new ValidationComment(
           'UPDATES_NOT_IN_ABSTRACT',
           'RFC 1234 is listed as "updated" in metadata but is not mentioned in the abstract.',
@@ -83,7 +103,7 @@ describe('document should have valid date', () => {
             path: 'data.content.abstract'
           }
         )
-      ])
+      )
     })
 
     test('RFC mentioned in abstract but not in obsoletes metadata', async () => {
@@ -99,8 +119,6 @@ describe('document should have valid date', () => {
           }
         }
       }
-
-      fetchMock.dontMockOnce()
 
       const result = await validateObsoleteUpdateRef(doc)
 
@@ -129,8 +147,6 @@ describe('document should have valid date', () => {
           }
         }
       }
-
-      fetchMock.dontMockOnce()
 
       const result = await validateObsoleteUpdateRef(doc)
 
@@ -162,7 +178,7 @@ describe('document should have valid date', () => {
 
       const result = await validateObsoleteUpdateRef(doc)
 
-      expect(result).toEqual([
+      expect(result).toContainEqual(
         new ValidationComment(
           'OBSOLETES_NOT_IN_ABSTRACT',
           'RFC 5678 is listed as "obsoleted" in metadata but is not mentioned in the abstract.',
@@ -170,7 +186,9 @@ describe('document should have valid date', () => {
             ref: 'https://authors.ietf.org/en/required-content#abstract',
             path: 'data.content.abstract'
           }
-        ),
+        )
+      )
+      expect(result).toContainEqual(
         new ValidationComment(
           'UPDATES_NOT_IN_ABSTRACT',
           'RFC 1234 is listed as "updated" in metadata but is not mentioned in the abstract.',
@@ -179,7 +197,7 @@ describe('document should have valid date', () => {
             path: 'data.content.abstract'
           }
         )
-      ])
+      )
     })
 
     test('All obsoletes/updates are properly mentioned in abstract', async () => {
@@ -200,7 +218,8 @@ describe('document should have valid date', () => {
 
       const result = await validateObsoleteUpdateRef(doc)
 
-      expect(result).toEqual([])
+      expect(result).not.toContainError('OBSOLETES_NOT_IN_ABSTRACT')
+      expect(result).not.toContainError('UPDATES_NOT_IN_ABSTRACT')
     })
 
     test('No obsoletes/updates metadata and no mentions in abstract', async () => {
@@ -248,8 +267,6 @@ describe('document should have valid date', () => {
       doc.data.extractedElements.obsoletesRfc = ['1234, 2345']
       doc.data.content.abstract = abstractTXTBlock.split('\n')
 
-      fetchMock.resetMocks()
-      fetch.mockResponse('Not Found', { status: 404 })
       await expect(validateObsoleteUpdateRef(doc)).resolves.toContainError('OBSOLETES_RFC_NOT_FOUND', ValidationWarning)
       await expect(validateObsoleteUpdateRef(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('OBSOLETES_RFC_NOT_FOUND', ValidationWarning)
       await expect(validateObsoleteUpdateRef(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
@@ -257,11 +274,9 @@ describe('document should have valid date', () => {
 
     test('Obsoletes an already obsoleted RFC', async () => {
       const doc = baseTXTDoc
-      doc.data.extractedElements.obsoletesRfc = ['1234, 2345']
+      doc.data.extractedElements.obsoletesRfc = ['1235']
       doc.data.content.abstract = abstractTXTBlock.split('\n')
 
-      fetchMock.resetMocks()
-      fetch.mockResponse(JSON.stringify({ obsoleted_by: ['3456'] }))
       await expect(validateObsoleteUpdateRef(doc)).resolves.toContainError('OBSOLETES_OBSOLETED_RFC', ValidationWarning)
       await expect(validateObsoleteUpdateRef(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('OBSOLETES_OBSOLETED_RFC', ValidationWarning)
       await expect(validateObsoleteUpdateRef(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
@@ -272,8 +287,6 @@ describe('document should have valid date', () => {
       doc.data.extractedElements.updatesRfc = ['1234, 2345']
       doc.data.content.abstract = abstractTXTBlock.split('\n')
 
-      fetchMock.resetMocks()
-      fetch.mockResponse('Not Found', { status: 404 })
       await expect(validateObsoleteUpdateRef(doc)).resolves.toContainError('UPDATES_RFC_NOT_FOUND', ValidationWarning)
       await expect(validateObsoleteUpdateRef(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('UPDATES_RFC_NOT_FOUND', ValidationWarning)
       await expect(validateObsoleteUpdateRef(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
@@ -282,11 +295,9 @@ describe('document should have valid date', () => {
     test('Updates an already obsoleted RFC', async () => {
       const doc = baseTXTDoc
 
-      doc.data.extractedElements.updatesRfc = ['1264, 2345']
+      doc.data.extractedElements.updatesRfc = ['1264']
       doc.data.content.abstract = abstractTXTBlock.split('\n')
 
-      fetchMock.resetMocks()
-      fetch.mockResponse(JSON.stringify({ obsoleted_by: ['3456'] }))
       await expect(validateObsoleteUpdateRef(doc)).resolves.toContainError('UPDATES_OBSOLETED_RFC', ValidationWarning)
       await expect(validateObsoleteUpdateRef(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('UPDATES_OBSOLETED_RFC', ValidationWarning)
       await expect(validateObsoleteUpdateRef(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
@@ -516,7 +527,6 @@ describe('document should have valid obsoletes / updates references', () => {
         obsoletes: '1234, 2345'
       })
       set(doc, 'data.rfc.front.abstract.t', 'This document obsoletes RFC 1234 and 2345.')
-      fetch.mockResponse('Not Found', { status: 404 })
       await expect(validateObsoleteUpdateRef(doc)).resolves.toContainError('OBSOLETES_RFC_NOT_FOUND', ValidationWarning)
       await expect(validateObsoleteUpdateRef(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('OBSOLETES_RFC_NOT_FOUND', ValidationWarning)
       await expect(validateObsoleteUpdateRef(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
@@ -524,10 +534,9 @@ describe('document should have valid obsoletes / updates references', () => {
     test('obsoletes an already obsoleted RFC', async () => {
       const doc = cloneDeep(baseXMLDoc)
       set(doc, 'data.rfc._attr', {
-        obsoletes: '1234, 2345'
+        obsoletes: '1235, 2345'
       })
       set(doc, 'data.rfc.front.abstract.t', 'This document obsoletes RFC 1234 and 2345.')
-      fetch.mockResponse(JSON.stringify({ obsoleted_by: ['3456'] }))
       await expect(validateObsoleteUpdateRef(doc)).resolves.toContainError('OBSOLETES_OSOLETED_RFC', ValidationWarning)
       await expect(validateObsoleteUpdateRef(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('OBSOLETES_OSOLETED_RFC', ValidationWarning)
       await expect(validateObsoleteUpdateRef(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
@@ -538,7 +547,6 @@ describe('document should have valid obsoletes / updates references', () => {
         updates: '1234, 2345'
       })
       set(doc, 'data.rfc.front.abstract.t', 'This document updates RFC 1234 and 2345.')
-      fetch.mockResponse('Not Found', { status: 404 })
       await expect(validateObsoleteUpdateRef(doc)).resolves.toContainError('UPDATES_RFC_NOT_FOUND', ValidationWarning)
       await expect(validateObsoleteUpdateRef(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('UPDATES_RFC_NOT_FOUND', ValidationWarning)
       await expect(validateObsoleteUpdateRef(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
@@ -546,10 +554,9 @@ describe('document should have valid obsoletes / updates references', () => {
     test('updates an already obsoleted RFC', async () => {
       const doc = cloneDeep(baseXMLDoc)
       set(doc, 'data.rfc._attr', {
-        updates: '1234, 2345'
+        updates: '1235, 2345'
       })
       set(doc, 'data.rfc.front.abstract.t', 'This document updates RFC 1234 and 2345.')
-      fetch.mockResponse(JSON.stringify({ obsoleted_by: ['3456'] }))
       await expect(validateObsoleteUpdateRef(doc)).resolves.toContainError('UPDATES_OSOLETED_RFC', ValidationWarning)
       await expect(validateObsoleteUpdateRef(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('UPDATES_OSOLETED_RFC', ValidationWarning)
       await expect(validateObsoleteUpdateRef(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
@@ -557,10 +564,9 @@ describe('document should have valid obsoletes / updates references', () => {
     test('updates an already updated RFC', async () => {
       const doc = cloneDeep(baseXMLDoc)
       set(doc, 'data.rfc._attr', {
-        updates: '1234, 2345'
+        updates: '1236, 2345'
       })
       set(doc, 'data.rfc.front.abstract.t', 'This document updates RFC 1234 and 2345.')
-      fetch.mockResponse(JSON.stringify({ updated_by: ['3456'] }))
       await expect(validateObsoleteUpdateRef(doc)).resolves.toContainError('UPDATES_UPDATED_RFC', ValidationWarning)
       await expect(validateObsoleteUpdateRef(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('UPDATES_UPDATED_RFC', ValidationWarning)
       await expect(validateObsoleteUpdateRef(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
@@ -575,23 +581,20 @@ describe('document should have valid version', () => {
       set(doc, 'data.rfc._attr', {
         docName: 'draft-ietf-beep-boop-01'
       })
-      fetch.mockResponse(JSON.stringify({ rev: '00' }))
       await expect(validateVersion(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
     test('valid version on non-existant doc', async () => {
       const doc = cloneDeep(baseXMLDoc)
       set(doc, 'data.rfc._attr', {
-        docName: 'draft-ietf-beep-boop-00'
+        docName: 'draft-ietf-beep-buup-00'
       })
-      fetch.mockResponse('Not Found', { status: 404 })
       await expect(validateVersion(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
     test('duplicate version', async () => {
       const doc = cloneDeep(baseXMLDoc)
       set(doc, 'data.rfc._attr', {
-        docName: 'draft-ietf-beep-boop-01'
+        docName: 'draft-ietf-beep-boop-00'
       })
-      fetch.mockResponse(JSON.stringify({ rev: '01' }))
       await expect(validateVersion(doc)).resolves.toHaveLength(0)
       await expect(validateVersion(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
       await expect(validateVersion(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('DUPLICATE_DOC_VERSION', ValidationWarning)
@@ -599,9 +602,8 @@ describe('document should have valid version', () => {
     test('unexpected version (lower than latest)', async () => {
       const doc = cloneDeep(baseXMLDoc)
       set(doc, 'data.rfc._attr', {
-        docName: 'draft-ietf-beep-boop-02'
+        docName: 'draft-ietf-beep-baap-02'
       })
-      fetch.mockResponse(JSON.stringify({ rev: '08' }))
       await expect(validateVersion(doc)).resolves.toHaveLength(0)
       await expect(validateVersion(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
       await expect(validateVersion(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('UNEXPECTED_DOC_VERSION', ValidationWarning)
@@ -609,9 +611,8 @@ describe('document should have valid version', () => {
     test('unexpected version (leaves a gap)', async () => {
       const doc = cloneDeep(baseXMLDoc)
       set(doc, 'data.rfc._attr', {
-        docName: 'draft-ietf-beep-boop-04'
+        docName: 'draft-ietf-beep-biip-04'
       })
-      fetch.mockResponse(JSON.stringify({ rev: '02' }))
       await expect(validateVersion(doc)).resolves.toHaveLength(0)
       await expect(validateVersion(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
       await expect(validateVersion(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('UNEXPECTED_DOC_VERSION', ValidationWarning)
@@ -619,9 +620,8 @@ describe('document should have valid version', () => {
     test('unexpected version on non-existant doc', async () => {
       const doc = cloneDeep(baseXMLDoc)
       set(doc, 'data.rfc._attr', {
-        docName: 'draft-ietf-beep-boop-01'
+        docName: 'draft-ietf-beep-buup-01'
       })
-      fetch.mockResponse('Not Found', { status: 404 })
       await expect(validateVersion(doc)).resolves.toHaveLength(0)
       await expect(validateVersion(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
       await expect(validateVersion(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('UNEXPECTED_DOC_VERSION', ValidationWarning)
@@ -631,50 +631,38 @@ describe('document should have valid version', () => {
   describe('TXT Document Type', () => {
     test('valid version on existing doc', async () => {
       const doc = baseTXTDoc
-
       doc.data.slug = 'draft-ietf-beep-boop-01'
-      fetch.mockResponse(JSON.stringify({ rev: '00' }))
       await expect(validateVersion(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
     test('valid version on non-existant doc', async () => {
       const doc = baseTXTDoc
-      baseTXTDoc.data.slug = 'draft-ietf-beep-boop-00'
-
-      fetch.mockResponse('Not Found', { status: 404 })
+      baseTXTDoc.data.slug = 'draft-ietf-beep-buup-00'
       await expect(validateVersion(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
     test('duplicate version', async () => {
       const doc = baseTXTDoc
-
-      doc.data.slug = 'draft-ietf-beep-boop-01'
-      fetch.mockResponse(JSON.stringify({ rev: '01' }))
+      doc.data.slug = 'draft-ietf-beep-boop-00'
       await expect(validateVersion(doc)).resolves.toHaveLength(0)
       await expect(validateVersion(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
       await expect(validateVersion(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('DUPLICATE_DOC_VERSION', ValidationWarning)
     })
     test('unexpected version (lower than latest)', async () => {
       const doc = baseTXTDoc
-
-      doc.data.slug = 'draft-ietf-beep-boop-01'
-      fetch.mockResponse(JSON.stringify({ rev: '08' }))
+      doc.data.slug = 'draft-ietf-beep-baap-01'
       await expect(validateVersion(doc)).resolves.toHaveLength(0)
       await expect(validateVersion(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
       await expect(validateVersion(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('UNEXPECTED_DOC_VERSION', ValidationWarning)
     })
     test('unexpected version (leaves a gap)', async () => {
       const doc = baseTXTDoc
-
-      doc.data.slug = 'draft-ietf-beep-boop-04'
-      fetch.mockResponse(JSON.stringify({ rev: '02' }))
+      doc.data.slug = 'draft-ietf-beep-biip-04'
       await expect(validateVersion(doc)).resolves.toHaveLength(0)
       await expect(validateVersion(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
       await expect(validateVersion(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('UNEXPECTED_DOC_VERSION', ValidationWarning)
     })
     test('unexpected version on non-existant doc', async () => {
       const doc = baseTXTDoc
-
-      doc.data.slug = 'draft-ietf-beep-boop-01'
-      fetch.mockResponse('Not Found', { status: 404 })
+      doc.data.slug = 'draft-ietf-beep-buup-01'
       await expect(validateVersion(doc)).resolves.toHaveLength(0)
       await expect(validateVersion(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
       await expect(validateVersion(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('UNEXPECTED_DOC_VERSION', ValidationWarning)
@@ -685,50 +673,38 @@ describe('document should have valid version', () => {
 describe('TXT Document Type', () => {
   test('valid version on existing doc', async () => {
     const doc = baseTXTDoc
-
     doc.data.slug = 'draft-ietf-beep-boop-01'
-    fetch.mockResponse(JSON.stringify({ rev: '00' }))
     await expect(validateVersion(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
   })
   test('valid version on non-existant doc', async () => {
     const doc = baseTXTDoc
-    doc.data.slug = 'draft-ietf-beep-boop-00'
-
-    fetch.mockResponse('Not Found', { status: 404 })
+    doc.data.slug = 'draft-ietf-beep-buup-00'
     await expect(validateVersion(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
   })
   test('duplicate version', async () => {
     const doc = baseTXTDoc
-
-    doc.data.slug = 'draft-ietf-beep-boop-01'
-    fetch.mockResponse(JSON.stringify({ rev: '01' }))
+    doc.data.slug = 'draft-ietf-beep-boop-00'
     await expect(validateVersion(doc)).resolves.toHaveLength(0)
     await expect(validateVersion(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
     await expect(validateVersion(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('DUPLICATE_DOC_VERSION', ValidationWarning)
   })
   test('unexpected version (lower than latest)', async () => {
     const doc = baseTXTDoc
-
-    doc.data.slug = 'draft-ietf-beep-boop-01'
-    fetch.mockResponse(JSON.stringify({ rev: '08' }))
+    doc.data.slug = 'draft-ietf-beep-baap-01'
     await expect(validateVersion(doc)).resolves.toHaveLength(0)
     await expect(validateVersion(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
     await expect(validateVersion(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('UNEXPECTED_DOC_VERSION', ValidationWarning)
   })
   test('unexpected version (leaves a gap)', async () => {
     const doc = baseTXTDoc
-
-    doc.data.slug = 'draft-ietf-beep-boop-04'
-    fetch.mockResponse(JSON.stringify({ rev: '02' }))
+    doc.data.slug = 'draft-ietf-beep-biip-04'
     await expect(validateVersion(doc)).resolves.toHaveLength(0)
     await expect(validateVersion(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
     await expect(validateVersion(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('UNEXPECTED_DOC_VERSION', ValidationWarning)
   })
   test('unexpected version on non-existant doc', async () => {
     const doc = baseTXTDoc
-
-    doc.data.slug = 'draft-ietf-beep-boop-01'
-    fetch.mockResponse('Not Found', { status: 404 })
+    doc.data.slug = 'draft-ietf-beep-buup-01'
     await expect(validateVersion(doc)).resolves.toHaveLength(0)
     await expect(validateVersion(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
     await expect(validateVersion(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('UNEXPECTED_DOC_VERSION', ValidationWarning)

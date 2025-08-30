@@ -1,4 +1,4 @@
-import { describe, expect, test } from '@jest/globals'
+import { describe, expect, test } from 'vitest'
 import { toContainError, ValidationError, ValidationWarning } from '../lib/helpers/error.mjs'
 import { validateFilename, validateDocName } from '../lib/modules/filename.mjs'
 import { baseTXTDoc, baseXMLDoc } from './fixtures/base-doc.mjs'

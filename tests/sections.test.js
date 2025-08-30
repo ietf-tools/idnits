@@ -1,4 +1,4 @@
-import { describe, expect, test } from '@jest/globals'
+import { describe, expect, test } from 'vitest'
 import { MODES } from '../lib/config/modes.mjs'
 import { toContainError, ValidationComment, ValidationError, ValidationWarning } from '../lib/helpers/error.mjs'
 import {
@@ -307,7 +307,7 @@ describe('document should have a valid introduction section', () => {
         Table of Contents
         1. Introduction...........................1
         2. Overview...............................2
-        
+
         1. Introduction
         This is the actual introduction section.`
       }
@@ -453,7 +453,7 @@ describe('document should have a valid security considerations section', () => {
         Table of Contents
         4. Security Considerations...........................4
         5. IANA Considerations...............................5
-        
+
         4. Security Considerations
         This is the actual security considerations section.
         `
@@ -571,7 +571,7 @@ describe('document should have valid security author sections', () => {
         body: `
         Table of Contents
         Authors' Addresses...........................7
-  
+
         Authors' Addresses
         John Doe, ACME Inc.
         Email: john.doe@example.com
@@ -699,10 +699,10 @@ describe('document should have valid references sections', () => {
         },
         body: `
         7. References
-  
+
         7.1. Normative References
         [RFC4360] Sangli, S., Tappan, D., and Y. Rekhter, "BGP Extended Communities Attribute", RFC 4360, February 2006.
-  
+
         7.2. Informative References
         [RFC7153] Rosen, E., "IANA Registries for BGP Extended Communities", RFC 7153, March 2014.
         `
@@ -737,7 +737,7 @@ describe('document should have valid references sections', () => {
         },
         body: `
         7. References
-  
+
         `
       }
       await expect(validateReferencesSection(doc, { mode: MODES.NORMAL })).resolves.toContainError(
@@ -762,10 +762,10 @@ describe('document should have valid references sections', () => {
         },
         body: `
         7. References
-  
+
         7.1. Related References
         [RFC4360] Sangli, S., "BGP Extended Communities Attribute", RFC 4360, February 2006.
-  
+
         7.2. Further Reading
         [RFC7153] Rosen, E., "IANA Registries for BGP Extended Communities", RFC 7153, March 2014.
         `
@@ -785,7 +785,7 @@ describe('document should have valid references sections', () => {
         },
         body: `
         7. References
-  
+
         `
       }
       await expect(validateReferencesSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError(
@@ -810,10 +810,10 @@ describe('document should have valid references sections', () => {
         },
         body: `
         7. References
-  
+
         7.1. Related References
         [RFC4360] Sangli, S., "BGP Extended Communities Attribute", RFC 4360, February 2006.
-  
+
         7.2. Further Reading
         [RFC7153] Rosen, E., "IANA Registries for BGP Extended Communities", RFC 7153, March 2014.
         `
