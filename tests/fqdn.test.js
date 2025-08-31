@@ -77,12 +77,44 @@ describe('document should have valid FQDN mentions', () => {
       ])
     })
 
+    test('Ignore domain matches that start with numeric sequences', async () => {
+      const doc = {
+        type: 'txt',
+        data: {
+          extractedElements: {
+            fqdnDomains: [
+              '012.3456.identifier.org'
+            ]
+          }
+        }
+      }
+
+      const result = await validateFQDNs(doc, { mode: MODES.NORMAL, offline: true })
+      expect(result).toHaveLength(0)
+    })
+
     test('www.ietf.org is always valid', async () => {
       const doc = {
         type: 'txt',
         data: {
           extractedElements: {
             fqdnDomains: []
+          }
+        }
+      }
+
+      const result = await validateFQDNs(doc, { mode: MODES.NORMAL, offline: true })
+      expect(result).toHaveLength(0)
+    })
+
+    test('Ignore domain matches that are dotdot sequences', async () => {
+      const doc = {
+        type: 'txt',
+        data: {
+          extractedElements: {
+            fqdnDomains: [
+              'a.b.c.identifier.org'
+            ]
           }
         }
       }

@@ -94,7 +94,7 @@ describe('document should have valid IP Address mentions', () => {
     })
 
     test('Valid IPv6 documentation address', async () => {
-      const input = { type: 'txt', data: { extractedElements: { ipv4: [], ipv6: ['2001:db8::1'] } } }
+      const input = { type: 'txt', data: { extractedElements: { ipv6: ['2001:db8::1'] } } }
       const result = await validateIPs(input, { mode: 0 })
       expect(result).toEqual([])
     })

@@ -878,27 +878,35 @@ describe('document should have valid references sections', () => {
   describe('XML Document Type', () => {
     test('valid references section (object)', async () => {
       const doc = cloneDeep(baseXMLDoc)
-      set(doc, 'data.rfc.back.references._attr.title', 'Normative References')
+      set(doc, 'data.rfc.back.references.name', 'Normative References')
       await expect(validateReferencesSection(doc)).resolves.toHaveLength(0)
     })
     test('valid references sections (array)', async () => {
       const doc = cloneDeep(baseXMLDoc)
-      set(doc, 'data.rfc.back.references[0]._attr.title', 'Normative References')
-      set(doc, 'data.rfc.back.references[1]._attr.title', 'Informative References')
+      set(doc, 'data.rfc.back.references[0].name', 'Normative References')
+      set(doc, 'data.rfc.back.references[1].name', 'Informative References')
+      set(doc, 'data.rfc.back.references[1].name["#text"]', 'Informative References')
       await expect(validateReferencesSection(doc)).resolves.toHaveLength(0)
     })
-    test('missing references section title', async () => {
+    test('deprecated references section title', async () => {
       const doc = cloneDeep(baseXMLDoc)
-      set(doc, 'data.rfc.back.references[0]', {})
-      await expect(validateReferencesSection(doc)).resolves.toContainError('MISSING_REFERENCES_TITLE', ValidationError)
-      await expect(validateReferencesSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('MISSING_REFERENCES_TITLE', ValidationWarning)
+      set(doc, 'data.rfc.back.references[0]._attr.title', 'Normative References')
+      await expect(validateReferencesSection(doc)).resolves.toContainError('DEPRECATED_REFERENCES_TITLE', ValidationWarning)
+      await expect(validateReferencesSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('DEPRECATED_REFERENCES_TITLE', ValidationWarning)
       await expect(validateReferencesSection(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
-    test('invalid references section title', async () => {
+    test('missing references section name', async () => {
       const doc = cloneDeep(baseXMLDoc)
-      set(doc, 'data.rfc.back.references[0]._attr.title', 'test')
-      await expect(validateReferencesSection(doc)).resolves.toContainError('INVALID_REFERENCES_TITLE', ValidationError)
-      await expect(validateReferencesSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('INVALID_REFERENCES_TITLE', ValidationWarning)
+      set(doc, 'data.rfc.back.references[0]', {})
+      await expect(validateReferencesSection(doc)).resolves.toContainError('MISSING_REFERENCES_NAME', ValidationError)
+      await expect(validateReferencesSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('MISSING_REFERENCES_NAME', ValidationWarning)
+      await expect(validateReferencesSection(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+    })
+    test('invalid references section name', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      set(doc, 'data.rfc.back.references[0].name', 'test')
+      await expect(validateReferencesSection(doc)).resolves.toContainError('INVALID_REFERENCES_NAME', ValidationError)
+      await expect(validateReferencesSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('INVALID_REFERENCES_NAME', ValidationWarning)
       await expect(validateReferencesSection(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
   })
