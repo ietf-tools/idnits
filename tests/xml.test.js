@@ -11,17 +11,17 @@ expect.extend({
   toContainError
 })
 
-export const restHandlers = [
-  http.get('https://datatracker.ietf.org/api/v1/doc/document/draft-ietf-beep-boop/', ({ request }) => {
+export const mockRestHandlers = [
+  http.get('https://datatracker.ietf.org/api/v1/doc/document/draft-ietf-beep-boop/', () => {
     return HttpResponse.json({ stream: '/api/v1/name/streamname/ietf/' })
   }),
-  http.get('https://datatracker.ietf.org/api/v1/doc/document/draft-ietf-beep-boop2/', ({ request }) => {
+  http.get('https://datatracker.ietf.org/api/v1/doc/document/draft-ietf-beep-boop2/', () => {
     return new HttpResponse(null, { status: 404 })
   }),
-  http.get('https://datatracker.ietf.org/api/v1/doc/document/draft-ietf-beep-boop3/', ({ request }) => {
+  http.get('https://datatracker.ietf.org/api/v1/doc/document/draft-ietf-beep-boop3/', () => {
     return HttpResponse.json({ stream: '/api/v1/name/streamname/iab/' })
   }),
-  http.get('https://datatracker.ietf.org/api/v1/doc/document/draft-ietf-beep-boop4/', ({ request }) => {
+  http.get('https://datatracker.ietf.org/api/v1/doc/document/draft-ietf-beep-boop4/', () => {
     return HttpResponse.json({ stream: null })
   }),
   http.all('*', () => {
@@ -29,7 +29,7 @@ export const restHandlers = [
   })
 ]
 
-const server = setupServer(...restHandlers)
+const server = setupServer(...mockRestHandlers)
 
 describe('XML document should not use deprecated elements', () => {
   test('valid ipr value', async () => {

@@ -18,7 +18,7 @@ expect.extend({
   toContainError
 })
 
-export const restHandlers = [
+export const mockRestHandlers = [
   http.get('https://www.rfc-editor.org/rfc/rfc1235.json', () => {
     return HttpResponse.json({ obsoleted_by: ['3456'] })
   }),
@@ -42,7 +42,7 @@ export const restHandlers = [
   })
 ]
 
-const server = setupServer(...restHandlers)
+const server = setupServer(...mockRestHandlers)
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
 afterEach(() => server.resetHandlers())

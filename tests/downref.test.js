@@ -11,7 +11,16 @@ expect.extend({
   toContainError
 })
 
-export const restHandlers = [
+export const mockRestHandlers = [
+  http.get('https://www.rfc-editor.org/rfc/rfc1094.json', () => {
+    return HttpResponse.json({ status: 'INFORMATIONAL' })
+  }),
+  http.get('https://www.rfc-editor.org/rfc/rfc1234.json', () => {
+    return HttpResponse.json({ status: 'HISTORIC' })
+  }),
+  http.get('https://www.rfc-editor.org/rfc/rfc2119.json', () => {
+    return HttpResponse.json({ status: 'BEST CURRENT PRACTICE' })
+  }),
   http.get('https://www.rfc-editor.org/rfc/rfc4086.json', () => {
     return HttpResponse.json({})
   }),
@@ -21,11 +30,11 @@ export const restHandlers = [
   http.get('https://www.rfc-editor.org/rfc/rfc4088.json', () => {
     return HttpResponse.json({ status: 'Proposed Standard', obsoleted_by: [] })
   }),
-  http.get('https://www.rfc-editor.org/rfc/rfc5678.json', () => {
-    return HttpResponse.json({ obsoleted_by: [] })
+  http.get('https://www.rfc-editor.org/rfc/rfc4090.json', () => {
+    return HttpResponse.json({ status: 'Proposed Standard', obsoleted_by: [] })
   }),
-  http.get('https://www.rfc-editor.org/rfc/rfc8141.json', () => {
-    return HttpResponse.json({ status: 'Unknown Status', obsoleted_by: [] })
+  http.get('https://www.rfc-editor.org/rfc/rfc4187.json', () => {
+    return HttpResponse.json({ status: 'Informational', updated_by: ['RFC5448', 'RFC9048'] })
   }),
   http.get('https://www.rfc-editor.org/rfc/rfc5086.json', () => {
     return HttpResponse.json({ status: 'Informational', obsoleted_by: [] })
@@ -33,11 +42,31 @@ export const restHandlers = [
   http.get('https://www.rfc-editor.org/rfc/rfc5087.json', () => {
     return HttpResponse.json({ status: 'Informational', obsoleted_by: ['9000'] })
   }),
-  http.get('https://www.rfc-editor.org/rfc/*', () => {
-    return passthrough()
+  http.get('https://www.rfc-editor.org/rfc/rfc5678.json', () => {
+    return HttpResponse.json({ obsoleted_by: [] })
+  }),
+  http.get('https://www.rfc-editor.org/rfc/rfc7655.json', () => {
+    return HttpResponse.json({ status: 'Proposed Standard' })
+  }),
+  http.get('https://www.rfc-editor.org/rfc/rfc8141.json', () => {
+    return HttpResponse.json({ status: 'Unknown Status', obsoleted_by: [] })
+  }),
+  http.get('https://www.rfc-editor.org/rfc/rfc8142.json', () => {
+    return HttpResponse.json({ status: 'Proposed Standard' })
+  }),
+  http.get('https://www.rfc-editor.org/rfc/rfc8174.json', () => {
+    return HttpResponse.json({ status: 'Best Current Practice' })
+  }),
+  http.get('https://www.rfc-editor.org/rfc/rfc8888.json', () => {
+    return HttpResponse.json({ status: 'Proposed Standard' })
+  }),
+  http.get('https://www.rfc-editor.org/rfc/rfc9114.json', () => {
+    return HttpResponse.json({ status: 'Proposed Standard' })
   }),
   http.get('https://datatracker.ietf.org/doc/draft-ietf-emu-aka-pfs/doc.json', () => {
-    return passthrough()
+    return HttpResponse.json({
+      intended_std_level: 'Proposed Standard'
+    })
   }),
   http.get('https://datatracker.ietf.org/doc/draft-ietf-example/doc.json', () => {
     return HttpResponse.json({ state: 'Active' })
@@ -80,7 +109,7 @@ export const restHandlers = [
   })
 ]
 
-const server = setupServer(...restHandlers)
+const server = setupServer(...mockRestHandlers)
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
 afterEach(() => server.resetHandlers())
