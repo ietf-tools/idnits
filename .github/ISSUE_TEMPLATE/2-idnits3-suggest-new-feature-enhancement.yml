@@ -1,7 +1,7 @@
 name: idnits3 - Suggest a New Feature or Enhancement
 description: Javascript-based CLI / Library
 labels:
-  - 'component: idnits3'
+  - 'idnits3'
 type: Feature
 body:
   - type: textarea

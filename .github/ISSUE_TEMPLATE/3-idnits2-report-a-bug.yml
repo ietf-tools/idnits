@@ -1,7 +1,7 @@
 name: idnits2 - Report a Bug
 description: Legacy Shell-based CLI
 labels:
-  - 'component: idnits2'
+  - 'idnits2'
 type: Bug
 body:
   - type: textarea

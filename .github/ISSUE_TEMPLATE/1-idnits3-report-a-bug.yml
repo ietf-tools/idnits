@@ -1,7 +1,7 @@
 name: idnits3 - Report a Bug
 description: Javascript-based CLI / Library
 labels:
-  - 'component: idnits3'
+  - 'idnits3'
 type: Bug
 body:
   - type: textarea
