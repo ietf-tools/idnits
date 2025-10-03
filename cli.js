@@ -2,6 +2,7 @@
 
 import { Chalk } from 'chalk'
 import yargs from 'yargs/yargs'
+import { hideBin } from 'yargs/helpers'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { pad } from 'lodash-es'
@@ -23,7 +24,7 @@ const cliDir = path.dirname(fileURLToPath(import.meta.url))
 const pkgInfo = JSON.parse(await readFile(path.join(cliDir, 'package.json'), 'utf8'))
 
 // Define CLI arguments config
-const argv = yargs(process.argv.slice(2))
+const argv = yargs(hideBin(process.argv))
   .scriptName('idnits')
   .usage('$0 [args] <file-path|http-url>')
   .example([
@@ -99,7 +100,7 @@ const argv = yargs(process.argv.slice(2))
   .alias({ h: 'help' })
   .help()
   .version(pkgInfo.version)
-  .argv
+  .parse()
 
 const chalk = (argv.color === false) ? new Chalk({ level: 0 }) : new Chalk()
 
@@ -207,11 +208,12 @@ try {
             offline: argv.offline
           }
         },
-        collectErrors: true,
+        collectErrors: 'minimal',
         exitOnError: true,
         rendererOptions: {
           collapseErrors: false,
           collapseSubtasks: true,
+          showErrorMessage: false,
           icon: {
             [ListrDefaultRendererLogLevels.COMPLETED]: '☑️',
             [ListrDefaultRendererLogLevels.FAILED]: '❌'

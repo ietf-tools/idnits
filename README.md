@@ -23,7 +23,7 @@
 
 ### Installation
 
-1. Install [Node.js 18.x or later](https://nodejs.org/)
+1. Install [Node.js 20.x or later](https://nodejs.org/)
 2. Install **idnits** using one of the methods:
 
 #### Globally *(recommended)*
