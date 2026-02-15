@@ -405,6 +405,13 @@ describe('document should have a valid introduction section', () => {
       set(doc, 'data.rfc.middle.section[0].abc', 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.')
       await expect(validateIntroductionSection(doc)).resolves.toContainError('INVALID_INTRODUCTION_SECTION_CHILD', ValidationError)
     })
+    test('valid introduction section with nested section', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      set(doc, 'data.rfc.middle.section[0].name', 'Introduction')
+      set(doc, 'data.rfc.middle.section[0].t', 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.')
+      set(doc, 'data.rfc.middle.section[0].section', [{ name: 'Background', t: 'Some background.' }])
+      await expect(validateIntroductionSection(doc)).resolves.toHaveLength(0)
+    })
   })
 })
 
@@ -505,6 +512,13 @@ describe('document should have a valid security considerations section', () => {
       set(doc, 'data.rfc.middle.section[0].t', 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.')
       set(doc, 'data.rfc.middle.section[0].abc', 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.')
       await expect(validateSecurityConsiderationsSection(doc)).resolves.toContainError('INVALID_SECURITY_CONSIDERATIONS_SECTION_CHILD', ValidationError)
+    })
+    test('valid security considerations section with nested section', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      set(doc, 'data.rfc.middle.section[0].name', 'Security Considerations')
+      set(doc, 'data.rfc.middle.section[0].t', 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.')
+      set(doc, 'data.rfc.middle.section[0].section', [{ name: 'Threat Model', t: 'Some threats.' }])
+      await expect(validateSecurityConsiderationsSection(doc)).resolves.toHaveLength(0)
     })
   })
 })
@@ -944,6 +958,13 @@ describe('document should have a valid IANA considerations section', () => {
       set(doc, 'data.rfc.middle.section[0].t', 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.')
       set(doc, 'data.rfc.middle.section[0].abc', 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.')
       await expect(validateIANAConsiderationsSection(doc)).resolves.toContainError('INVALID_IANA_CONSIDERATIONS_SECTION_CHILD', ValidationError)
+    })
+    test('valid IANA considerations section with nested section', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      set(doc, 'data.rfc.middle.section[0].name', 'IANA Considerations')
+      set(doc, 'data.rfc.middle.section[0].t', 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.')
+      set(doc, 'data.rfc.middle.section[0].section', [{ name: 'New Registries', t: 'Some registries.' }])
+      await expect(validateIANAConsiderationsSection(doc)).resolves.toHaveLength(0)
     })
   })
   describe('TXT Document Type', () => {
