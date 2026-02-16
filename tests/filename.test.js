@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import { toContainError, ValidationError, ValidationWarning } from '../lib/helpers/error.mjs'
 import { validateFilename, validateDocName } from '../lib/modules/filename.mjs'
+import { MODES } from '../lib/config/modes.mjs'
 import { baseTXTDoc, baseXMLDoc } from './fixtures/base-doc.mjs'
 import { cloneDeep, set, repeat } from 'lodash-es'
 
@@ -45,10 +46,15 @@ describe('filename base name matches the name declared in the document', () => {
       set(doc, 'data.slug', 'draft-ietf-abcd-01')
       await expect(validateDocName(doc)).resolves.toHaveLength(0)
     })
-    test('non-matching name', async () => {
+    test('non-matching name (normal mode = warning)', async () => {
       const doc = { ...cloneDeep(baseTXTDoc), filename: 'draft-ietf-abcd-01.txt' }
       set(doc, 'data.slug', 'draft-ietf-abcd-02')
-      await expect(validateDocName(doc)).resolves.toContainError('FILENAME_DOCNAME_MISMATCH')
+      await expect(validateDocName(doc)).resolves.toContainError('FILENAME_DOCNAME_MISMATCH', ValidationWarning)
+    })
+    test('non-matching name (submission mode = error)', async () => {
+      const doc = { ...cloneDeep(baseTXTDoc), filename: 'draft-ietf-abcd-01.txt' }
+      set(doc, 'data.slug', 'draft-ietf-abcd-02')
+      await expect(validateDocName(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('FILENAME_DOCNAME_MISMATCH', ValidationError)
     })
   })
   describe('XML Document Type', () => {
@@ -57,10 +63,15 @@ describe('filename base name matches the name declared in the document', () => {
       set(doc, 'data.rfc._attr.docName', 'draft-ietf-abcd-01')
       await expect(validateDocName(doc)).resolves.toHaveLength(0)
     })
-    test('non-matching name', async () => {
+    test('non-matching name (normal mode = warning)', async () => {
       const doc = { ...cloneDeep(baseXMLDoc), filename: 'draft-ietf-abcd-01.xml' }
       set(doc, 'data.rfc._attr.docName', 'draft-ietf-abcd-02')
-      await expect(validateDocName(doc)).resolves.toContainError('FILENAME_DOCNAME_MISMATCH')
+      await expect(validateDocName(doc)).resolves.toContainError('FILENAME_DOCNAME_MISMATCH', ValidationWarning)
+    })
+    test('non-matching name (submission mode = error)', async () => {
+      const doc = { ...cloneDeep(baseXMLDoc), filename: 'draft-ietf-abcd-01.xml' }
+      set(doc, 'data.rfc._attr.docName', 'draft-ietf-abcd-02')
+      await expect(validateDocName(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('FILENAME_DOCNAME_MISMATCH', ValidationError)
     })
   })
 })
@@ -96,11 +107,14 @@ describe('filename must end with a version', () => {
   test('valid version suffix', async () => {
     await expect(validateFilename('draft-ietf-abcd-01.txt')).resolves.toHaveLength(0)
   })
-  test('missing version suffix', async () => {
-    await expect(validateFilename('draft-ietf-abcd.txt')).resolves.toContainError('FILENAME_INVALID_VERSION_SUFFIX')
+  test('missing version suffix (normal mode = warning)', async () => {
+    await expect(validateFilename('draft-ietf-abcd.txt')).resolves.toContainError('FILENAME_INVALID_VERSION_SUFFIX', ValidationWarning)
   })
-  test('version suffix over 99', async () => {
-    await expect(validateFilename('draft-ietf-abcd-100.txt')).resolves.toContainError('FILENAME_INVALID_VERSION_SUFFIX')
+  test('missing version suffix (submission mode = error)', async () => {
+    await expect(validateFilename('draft-ietf-abcd.txt', { mode: MODES.SUBMISSION })).resolves.toContainError('FILENAME_INVALID_VERSION_SUFFIX', ValidationError)
+  })
+  test('version suffix over 99 (normal mode = warning)', async () => {
+    await expect(validateFilename('draft-ietf-abcd-100.txt')).resolves.toContainError('FILENAME_INVALID_VERSION_SUFFIX', ValidationWarning)
   })
 })
 
