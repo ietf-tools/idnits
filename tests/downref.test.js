@@ -386,8 +386,8 @@ describe('validateNormativeReferences', () => {
       const result = await validateNormativeReferences(doc, { mode: MODES.NORMAL })
       expect(result).toContainEqual(
         expect.objectContaining({
-          name: 'OBSOLETE_DOCUMENT',
-          message: expect.stringContaining('RFC 4087 is obsolete and has been replaced by: 9000.')
+          name: 'OBSOLETE_REFERENCE',
+          message: expect.stringContaining('RFC 4087 is obsolete and has been replaced by: RFC9000.')
         })
       )
     })
@@ -401,8 +401,8 @@ describe('validateNormativeReferences', () => {
       const result = await validateNormativeReferences(doc, { mode: MODES.FORGIVE_CHECKLIST })
       expect(result).toContainEqual(
         expect.objectContaining({
-          name: 'OBSOLETE_DOCUMENT',
-          message: expect.stringContaining('RFC 4087 is obsolete and has been replaced by: 9000.')
+          name: 'OBSOLETE_REFERENCE',
+          message: expect.stringContaining('RFC 4087 is obsolete and has been replaced by: RFC9000.')
         })
       )
     })
@@ -465,7 +465,7 @@ describe('validateUnclassifiedReferences', () => {
       ])
 
       const result = await validateUnclassifiedReferences(doc, { mode: MODES.NORMAL })
-      expect(result).toContainError('OBSOLETE_UNCLASSIFIED_REFERENCE', ValidationError)
+      expect(result).toContainError('OBSOLETE_REFERENCE', ValidationError)
     })
 
     test('FORGIVE_CHECKLIST mode for an obsolete unclassified RFC', async () => {
@@ -475,7 +475,7 @@ describe('validateUnclassifiedReferences', () => {
       ])
 
       const result = await validateUnclassifiedReferences(doc, { mode: MODES.FORGIVE_CHECKLIST })
-      expect(result).toContainError('OBSOLETE_UNCLASSIFIED_REFERENCE', ValidationWarning)
+      expect(result).toContainError('OBSOLETE_REFERENCE', ValidationWarning)
     })
   })
 
@@ -487,7 +487,7 @@ describe('validateUnclassifiedReferences', () => {
       ])
 
       const result = await validateUnclassifiedReferences(doc, { mode: MODES.NORMAL })
-      expect(result).toContainError('OBSOLETE_UNCLASSIFIED_REFERENCE', ValidationError)
+      expect(result).toContainError('OBSOLETE_REFERENCE', ValidationError)
     })
 
     test('FORGIVE_CHECKLIST mode for an obsolete unclassified RFC', async () => {
@@ -497,7 +497,7 @@ describe('validateUnclassifiedReferences', () => {
       ])
 
       const result = await validateUnclassifiedReferences(doc, { mode: MODES.FORGIVE_CHECKLIST })
-      expect(result).toContainError('OBSOLETE_UNCLASSIFIED_REFERENCE', ValidationWarning)
+      expect(result).toContainError('OBSOLETE_REFERENCE', ValidationWarning)
     })
 
     test('unclassified reference with undefined status', async () => {
@@ -717,8 +717,8 @@ describe('validateInformativeReferences', () => {
     const result = await validateInformativeReferences(doc, { mode: MODES.NORMAL })
     expect(result).toContainEqual(
       expect.objectContaining({
-        name: 'OBSOLETE_INFORMATIVE_REFERENCE',
-        message: expect.stringContaining('The informative reference RFC 5087 is obsolete and has been replaced by: 9000.')
+        name: 'OBSOLETE_REFERENCE',
+        message: expect.stringContaining('RFC 5087 is obsolete and has been replaced by: RFC9000.')
       })
     )
   })
@@ -732,8 +732,8 @@ describe('validateInformativeReferences', () => {
     const result = await validateInformativeReferences(doc, { mode: MODES.FORGIVE_CHECKLIST })
     expect(result).toContainEqual(
       expect.objectContaining({
-        name: 'OBSOLETE_INFORMATIVE_REFERENCE',
-        message: expect.stringContaining('The informative reference RFC 5087 is obsolete and has been replaced by: 9000.')
+        name: 'OBSOLETE_REFERENCE',
+        message: expect.stringContaining('RFC 5087 is obsolete and has been replaced by: RFC9000.')
       })
     )
   })
