@@ -25,7 +25,9 @@
   },
   "homepage": "https://github.com/ietf-tools/idnits#readme",
   "private": false,
-  "bin": "./cli.js",
+  "bin": {
+    "idnits": "./cli.js"
+  },
   "engines": {
     "node": ">=20"
   },

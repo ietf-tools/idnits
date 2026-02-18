@@ -21,7 +21,7 @@ jobs:
         id: buildvars
         run: |
           echo "next_version=3.0.0-alpha.${GITHUB_RUN_NUMBER}" >> $GITHUB_OUTPUT
-          
+
       - name: Setup Node.js environment
         uses: actions/setup-node@v4
         with:
@@ -40,7 +40,7 @@ jobs:
         run: npm test
 
       - name: Publish to NPM
-        run: npm publish --access public --provenance
+        run: npm publish --access public --tag latest
 
       - name: Create GH Release
         uses: ncipollo/release-action@v1.18.0
