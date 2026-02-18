@@ -5,6 +5,7 @@ import {
   validate2119Keywords,
   validateTermsStyle
 } from '../lib/modules/keywords.mjs'
+import { parse as parseXml } from '../lib/parsers/xml.mjs'
 import { baseTXTDoc, baseXMLDoc } from './fixtures/base-doc.mjs'
 import { cloneDeep, set } from 'lodash-es'
 
@@ -829,6 +830,51 @@ describe('document should have valid RFC2119 keywords', () => {
       ])
       await expect(validate2119Keywords(doc)).resolves.toHaveLength(0)
     })
+  })
+})
+
+describe('xi:include extraction should only accept bib.ietf.org URLs', () => {
+  const makeXml = (href) => `<?xml version='1.0' encoding='utf-8'?>
+<rfc version="3">
+  <front>
+    <title>Test</title>
+    <seriesInfo name="Internet-Draft" value="draft-test-00" />
+    <author fullname="Test Author"><organization>Test</organization></author>
+    <date year="2026" month="1" day="1" />
+    <abstract><t>Test.</t></abstract>
+  </front>
+  <middle><section><name>Introduction</name><t>Test.</t></section></middle>
+  <back>
+    <references>
+      <name>Normative References</name>
+      <xi:include href="${href}" />
+    </references>
+  </back>
+</rfc>`
+
+  test('accepts bib.ietf.org bibxml URL', async () => {
+    const { doc } = await parseXml(makeXml('https://bib.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml'), 'draft-test-00.xml')
+    expect(doc.externalEntities).toContainEqual(expect.objectContaining({ name: 'RFC2119', type: 'xi:include' }))
+  })
+  test('accepts bib.ietf.org BCP URL and strips leading zeros', async () => {
+    const { doc } = await parseXml(makeXml('https://bib.ietf.org/public/rfc/bibxml/reference.BCP.0014.xml'), 'draft-test-00.xml')
+    expect(doc.externalEntities).toContainEqual(expect.objectContaining({ name: 'BCP14', type: 'xi:include' }))
+  })
+  test('rejects non-bib.ietf.org host', async () => {
+    const { doc } = await parseXml(makeXml('https://evil.com/public/rfc/bibxml/reference.RFC.2119.xml'), 'draft-test-00.xml')
+    expect(doc.externalEntities).toHaveLength(0)
+  })
+  test('rejects subdomain spoofing of bib.ietf.org', async () => {
+    const { doc } = await parseXml(makeXml('https://bib.ietf.org.evil.com/public/rfc/bibxml/reference.RFC.2119.xml'), 'draft-test-00.xml')
+    expect(doc.externalEntities).toHaveLength(0)
+  })
+  test('rejects file:// scheme', async () => {
+    const { doc } = await parseXml(makeXml('file:///etc/passwd'), 'draft-test-00.xml')
+    expect(doc.externalEntities).toHaveLength(0)
+  })
+  test('rejects ftp:// scheme', async () => {
+    const { doc } = await parseXml(makeXml('ftp://bib.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml'), 'draft-test-00.xml')
+    expect(doc.externalEntities).toHaveLength(0)
   })
 })
 
