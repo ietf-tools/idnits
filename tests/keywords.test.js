@@ -24,11 +24,13 @@ describe('document should have valid RFC2119 keywords', () => {
           },
           boilerplate: {
             rfc2119: false,
-            rfc8174: false
+            rfc8174: false,
+            bcp14: false
           },
           references: {
             rfc2119: false,
-            rfc8174: false
+            rfc8174: false,
+            bcp14: false
           },
           possibleIssues: {
             misspeled2119Keywords: []
@@ -41,7 +43,7 @@ describe('document should have valid RFC2119 keywords', () => {
       expect(result).toEqual([
         new ValidationError(
           'MISSING_REQLEVEL_BOILERPLATE',
-          'One or more RFC2119 keywords are present but an RFC2119 boilerplate and a reference are missing.',
+          'One or more BCP14 keywords are present but a BCP14 boilerplate and a reference are missing.',
           { ref: 'https://www.rfc-editor.org/rfc/rfc7322.html#section-4.8.2' }
         )
       ])
@@ -57,11 +59,13 @@ describe('document should have valid RFC2119 keywords', () => {
           },
           boilerplate: {
             rfc2119: false,
-            rfc8174: false
+            rfc8174: false,
+            bcp14: false
           },
           references: {
             rfc2119: true,
-            rfc8174: false
+            rfc8174: false,
+            bcp14: false
           },
           possibleIssues: {
             misspeled2119Keywords: []
@@ -74,8 +78,13 @@ describe('document should have valid RFC2119 keywords', () => {
       expect(result).toEqual([
         new ValidationWarning(
           'MISSING_REQLEVEL_BOILERPLATE',
-          'One or more RFC2119 keywords are present but an RFC2119 boilerplate is missing.',
+          'One or more BCP14 keywords are present but a BCP14 boilerplate is missing.',
           { ref: 'https://www.rfc-editor.org/rfc/rfc7322.html#section-4.8.2' }
+        ),
+        new ValidationWarning(
+          'PREFER_BCP14_REF',
+          'Consider referencing BCP14 instead of (or in addition to) RFC2119/RFC8174, as BCP14 encompasses both specifications.',
+          { ref: 'https://www.rfc-editor.org/info/bcp14' }
         )
       ])
     })
@@ -90,11 +99,13 @@ describe('document should have valid RFC2119 keywords', () => {
           },
           boilerplate: {
             rfc2119: true,
-            rfc8174: false
+            rfc8174: false,
+            bcp14: false
           },
           references: {
             rfc2119: true,
-            rfc8174: false
+            rfc8174: false,
+            bcp14: false
           },
           possibleIssues: {
             misspeled2119Keywords: []
@@ -107,8 +118,13 @@ describe('document should have valid RFC2119 keywords', () => {
       expect(result).toEqual([
         new ValidationWarning(
           'MISSING_REQLEVEL_KEYWORDS',
-          'An RFC2119 boilerplate is present but no keywords are used in the document.',
+          'A BCP14 boilerplate is present but no keywords are used in the document.',
           { ref: 'https://www.rfc-editor.org/rfc/rfc7322.html#section-4.8.2' }
+        ),
+        new ValidationWarning(
+          'PREFER_BCP14_REF',
+          'Consider referencing BCP14 instead of (or in addition to) RFC2119/RFC8174, as BCP14 encompasses both specifications.',
+          { ref: 'https://www.rfc-editor.org/info/bcp14' }
         )
       ])
     })
@@ -123,11 +139,13 @@ describe('document should have valid RFC2119 keywords', () => {
           },
           boilerplate: {
             rfc2119: true,
-            rfc8174: false
+            rfc8174: false,
+            bcp14: false
           },
           references: {
             rfc2119: true,
-            rfc8174: false
+            rfc8174: false,
+            bcp14: false
           },
           possibleIssues: {
             misspeled2119Keywords: [
@@ -147,6 +165,11 @@ describe('document should have valid RFC2119 keywords', () => {
             ref: 'https://www.rfc-editor.org/info/bcp14',
             lines: [{ line: 20, pos: 5 }]
           }
+        ),
+        new ValidationWarning(
+          'PREFER_BCP14_REF',
+          'Consider referencing BCP14 instead of (or in addition to) RFC2119/RFC8174, as BCP14 encompasses both specifications.',
+          { ref: 'https://www.rfc-editor.org/info/bcp14' }
         )
       ])
     })
@@ -161,11 +184,13 @@ describe('document should have valid RFC2119 keywords', () => {
           },
           boilerplate: {
             rfc2119: false,
-            rfc8174: false
+            rfc8174: false,
+            bcp14: false
           },
           references: {
             rfc2119: false,
-            rfc8174: false
+            rfc8174: false,
+            bcp14: false
           },
           possibleIssues: {
             misspeled2119Keywords: []
@@ -178,7 +203,7 @@ describe('document should have valid RFC2119 keywords', () => {
       expect(result).toEqual([
         new ValidationWarning(
           'MISSING_REQLEVEL_BOILERPLATE',
-          'One or more RFC2119 keywords are present but an RFC2119 boilerplate and a reference are missing.',
+          'One or more BCP14 keywords are present but a BCP14 boilerplate and a reference are missing.',
           { ref: 'https://www.rfc-editor.org/rfc/rfc7322.html#section-4.8.2' }
         )
       ])
@@ -194,11 +219,13 @@ describe('document should have valid RFC2119 keywords', () => {
           },
           boilerplate: {
             rfc2119: false,
-            rfc8174: false
+            rfc8174: false,
+            bcp14: false
           },
           references: {
             rfc2119: true,
-            rfc8174: false
+            rfc8174: false,
+            bcp14: false
           },
           possibleIssues: {
             misspeled2119Keywords: []
@@ -209,9 +236,14 @@ describe('document should have valid RFC2119 keywords', () => {
       const result = await validate2119Keywords(doc, { mode: MODES.NORMAL })
 
       expect(result).toEqual([
-        new ValidationWarning('MISSING_REQLEVEL_BOILERPLATE', 'One or more RFC2119 keywords are present but an RFC2119 boilerplate is missing.', {
+        new ValidationWarning('MISSING_REQLEVEL_BOILERPLATE', 'One or more BCP14 keywords are present but a BCP14 boilerplate is missing.', {
           ref: 'https://www.rfc-editor.org/rfc/rfc7322.html#section-4.8.2'
-        })
+        }),
+        new ValidationWarning(
+          'PREFER_BCP14_REF',
+          'Consider referencing BCP14 instead of (or in addition to) RFC2119/RFC8174, as BCP14 encompasses both specifications.',
+          { ref: 'https://www.rfc-editor.org/info/bcp14' }
+        )
       ])
     })
 
@@ -225,11 +257,13 @@ describe('document should have valid RFC2119 keywords', () => {
           },
           boilerplate: {
             rfc2119: false,
-            rfc8174: false
+            rfc8174: false,
+            bcp14: false
           },
           references: {
             rfc2119: false,
-            rfc8174: false
+            rfc8174: false,
+            bcp14: false
           },
           possibleIssues: {
             misspeled2119Keywords: []
@@ -242,7 +276,7 @@ describe('document should have valid RFC2119 keywords', () => {
       expect(result).toEqual([
         new ValidationError(
           'MISSING_REQLEVEL_BOILERPLATE',
-          'One or more RFC2119 keywords are present but an RFC2119 boilerplate and a reference are missing.',
+          'One or more BCP14 keywords are present but a BCP14 boilerplate and a reference are missing.',
           { ref: 'https://www.rfc-editor.org/rfc/rfc7322.html#section-4.8.2' }
         )
       ])
@@ -258,11 +292,13 @@ describe('document should have valid RFC2119 keywords', () => {
           },
           boilerplate: {
             rfc2119: false,
-            rfc8174: false
+            rfc8174: false,
+            bcp14: false
           },
           references: {
             rfc2119: true,
-            rfc8174: false
+            rfc8174: false,
+            bcp14: false
           },
           possibleIssues: {
             misspeled2119Keywords: []
@@ -275,8 +311,13 @@ describe('document should have valid RFC2119 keywords', () => {
       expect(result).toEqual([
         new ValidationWarning(
           'MISSING_REQLEVEL_BOILERPLATE',
-          'One or more RFC2119 keywords are present but an RFC2119 boilerplate is missing.',
+          'One or more BCP14 keywords are present but a BCP14 boilerplate is missing.',
           { ref: 'https://www.rfc-editor.org/rfc/rfc7322.html#section-4.8.2' }
+        ),
+        new ValidationWarning(
+          'PREFER_BCP14_REF',
+          'Consider referencing BCP14 instead of (or in addition to) RFC2119/RFC8174, as BCP14 encompasses both specifications.',
+          { ref: 'https://www.rfc-editor.org/info/bcp14' }
         )
       ])
     })
@@ -291,11 +332,13 @@ describe('document should have valid RFC2119 keywords', () => {
           },
           boilerplate: {
             rfc2119: true,
-            rfc8174: false
+            rfc8174: false,
+            bcp14: false
           },
           references: {
             rfc2119: true,
-            rfc8174: false
+            rfc8174: false,
+            bcp14: false
           },
           possibleIssues: {
             misspeled2119Keywords: []
@@ -308,8 +351,13 @@ describe('document should have valid RFC2119 keywords', () => {
       expect(result).toEqual([
         new ValidationWarning(
           'MISSING_REQLEVEL_KEYWORDS',
-          'An RFC2119 boilerplate is present but no keywords are used in the document.',
+          'A BCP14 boilerplate is present but no keywords are used in the document.',
           { ref: 'https://www.rfc-editor.org/rfc/rfc7322.html#section-4.8.2' }
+        ),
+        new ValidationWarning(
+          'PREFER_BCP14_REF',
+          'Consider referencing BCP14 instead of (or in addition to) RFC2119/RFC8174, as BCP14 encompasses both specifications.',
+          { ref: 'https://www.rfc-editor.org/info/bcp14' }
         )
       ])
     })
@@ -324,11 +372,13 @@ describe('document should have valid RFC2119 keywords', () => {
           },
           boilerplate: {
             rfc2119: true,
-            rfc8174: false
+            rfc8174: false,
+            bcp14: false
           },
           references: {
             rfc2119: true,
-            rfc8174: false
+            rfc8174: false,
+            bcp14: false
           },
           possibleIssues: {
             misspeled2119Keywords: [
@@ -348,6 +398,11 @@ describe('document should have valid RFC2119 keywords', () => {
             ref: 'https://www.rfc-editor.org/info/bcp14',
             lines: [{ line: 20, pos: 5 }]
           }
+        ),
+        new ValidationWarning(
+          'PREFER_BCP14_REF',
+          'Consider referencing BCP14 instead of (or in addition to) RFC2119/RFC8174, as BCP14 encompasses both specifications.',
+          { ref: 'https://www.rfc-editor.org/info/bcp14' }
         )
       ])
     })
@@ -362,11 +417,13 @@ describe('document should have valid RFC2119 keywords', () => {
           },
           boilerplate: {
             rfc2119: false,
-            rfc8174: false
+            rfc8174: false,
+            bcp14: false
           },
           references: {
             rfc2119: false,
-            rfc8174: false
+            rfc8174: false,
+            bcp14: false
           },
           possibleIssues: {
             misspeled2119Keywords: []
@@ -379,7 +436,7 @@ describe('document should have valid RFC2119 keywords', () => {
       expect(result).toEqual([
         new ValidationWarning(
           'MISSING_REQLEVEL_BOILERPLATE',
-          'One or more RFC2119 keywords are present but an RFC2119 boilerplate and a reference are missing.',
+          'One or more BCP14 keywords are present but a BCP14 boilerplate and a reference are missing.',
           { ref: 'https://www.rfc-editor.org/rfc/rfc7322.html#section-4.8.2' }
         )
       ])
@@ -395,11 +452,13 @@ describe('document should have valid RFC2119 keywords', () => {
           },
           boilerplate: {
             rfc2119: false,
-            rfc8174: false
+            rfc8174: false,
+            bcp14: false
           },
           references: {
             rfc2119: true,
-            rfc8174: false
+            rfc8174: false,
+            bcp14: false
           },
           possibleIssues: {
             misspeled2119Keywords: []
@@ -410,9 +469,14 @@ describe('document should have valid RFC2119 keywords', () => {
       const result = await validate2119Keywords(doc, { mode: MODES.NORMAL })
 
       expect(result).toEqual([
-        new ValidationWarning('MISSING_REQLEVEL_BOILERPLATE', 'One or more RFC2119 keywords are present but an RFC2119 boilerplate is missing.', {
+        new ValidationWarning('MISSING_REQLEVEL_BOILERPLATE', 'One or more BCP14 keywords are present but a BCP14 boilerplate is missing.', {
           ref: 'https://www.rfc-editor.org/rfc/rfc7322.html#section-4.8.2'
-        })
+        }),
+        new ValidationWarning(
+          'PREFER_BCP14_REF',
+          'Consider referencing BCP14 instead of (or in addition to) RFC2119/RFC8174, as BCP14 encompasses both specifications.',
+          { ref: 'https://www.rfc-editor.org/info/bcp14' }
+        )
       ])
     })
 
@@ -431,7 +495,8 @@ describe('document should have valid RFC2119 keywords', () => {
           },
           references: {
             rfc2119: false,
-            rfc8174: false
+            rfc8174: false,
+            bcp14: false
           },
           possibleIssues: {
             misspeled2119Keywords: []
@@ -445,12 +510,12 @@ describe('document should have valid RFC2119 keywords', () => {
         expect.arrayContaining([
           new ValidationError(
             'MISSING_REQLEVEL_BOILERPLATE',
-            'An RFC2119 boilerplate is missing but a similar boilerplate was found.',
+            'A BCP14 boilerplate is missing but a similar boilerplate was found.',
             { ref: 'https://www.rfc-editor.org/rfc/rfc7322.html#section-4.8.2' }
           ),
           new ValidationError(
             'MISSING_REQLEVEL_BOILERPLATE',
-            'One or more RFC2119 keywords are present but an RFC2119 boilerplate and a reference are missing.',
+            'One or more BCP14 keywords are present but a BCP14 boilerplate and a reference are missing.',
             { ref: 'https://www.rfc-editor.org/rfc/rfc7322.html#section-4.8.2' }
           )
         ])
@@ -467,11 +532,13 @@ describe('document should have valid RFC2119 keywords', () => {
           },
           boilerplate: {
             rfc2119: true,
-            rfc8174: false
+            rfc8174: false,
+            bcp14: false
           },
           references: {
             rfc2119: true,
-            rfc8174: false
+            rfc8174: false,
+            bcp14: false
           },
           possibleIssues: {
             misspeled2119Keywords: []
@@ -484,8 +551,13 @@ describe('document should have valid RFC2119 keywords', () => {
       expect(result).toEqual([
         new ValidationWarning(
           'MISSING_NOTRECOMMENDED_IN_BOILERPLATE',
-          'The keyword NOT RECOMMENDED appears but not included in the RFC2119 boilerplate.',
+          'The keyword NOT RECOMMENDED appears but not included in the BCP14 boilerplate.',
           { ref: 'https://www.rfc-editor.org/rfc/rfc7322.html#section-4.8.2' }
+        ),
+        new ValidationWarning(
+          'PREFER_BCP14_REF',
+          'Consider referencing BCP14 instead of (or in addition to) RFC2119/RFC8174, as BCP14 encompasses both specifications.',
+          { ref: 'https://www.rfc-editor.org/info/bcp14' }
         )
       ])
     })
@@ -546,7 +618,7 @@ describe('document should have valid RFC2119 keywords', () => {
       expect(result).toEqual([
         new ValidationWarning(
           'MISSING_REQLEVEL_BOILERPLATE',
-          'One or more RFC2119 keywords are present but an RFC2119 boilerplate is missing.',
+          'One or more BCP14 keywords are present but a BCP14 boilerplate is missing.',
           { ref: 'https://www.rfc-editor.org/rfc/rfc7322.html#section-4.8.2' }
         )
       ])
@@ -580,7 +652,7 @@ describe('document should have valid RFC2119 keywords', () => {
       expect(result).toEqual([
         new ValidationWarning(
           'MISSING_REQLEVEL_KEYWORDS',
-          'An RFC2119 boilerplate is present but no keywords are used in the document.',
+          'A BCP14 boilerplate is present but no keywords are used in the document.',
           { ref: 'https://www.rfc-editor.org/rfc/rfc7322.html#section-4.8.2' }
         )
       ])
@@ -614,7 +686,7 @@ describe('document should have valid RFC2119 keywords', () => {
       expect(result).toEqual([
         new ValidationError(
           'MISSING_REQLEVEL_BOILERPLATE',
-          'One or more RFC2119 keywords are present but an RFC2119 boilerplate and a reference are missing.',
+          'One or more BCP14 keywords are present but a BCP14 boilerplate and a reference are missing.',
           { ref: 'https://www.rfc-editor.org/rfc/rfc7322.html#section-4.8.2' }
         )
       ])
@@ -632,7 +704,7 @@ describe('document should have valid RFC2119 keywords', () => {
       described in BCP¤14 <xref target="BCP14"/> when, and only when, they appear in all capitals, as shown here.`
     test('valid keywords with default boilerplate', async () => {
       const doc = cloneDeep(baseXMLDoc)
-      doc.externalEntities = [{ name: 'RFC2119' }]
+      doc.externalEntities = [{ name: 'BCP14' }]
       set(doc, 'data.rfc.middle.t', [
         boilerplate,
         'Lorem ipsum SHALL lorem ipsum MUST NOT lorem RECOMMENDED.'
@@ -641,7 +713,7 @@ describe('document should have valid RFC2119 keywords', () => {
     })
     test('valid keywords with BCP14', async () => {
       const doc = cloneDeep(baseXMLDoc)
-      doc.externalEntities = [{ name: 'RFC2119' }]
+      doc.externalEntities = [{ name: 'BCP14' }]
       set(doc, 'data.rfc.middle.t', [
         boilerplateWithBCP14,
         'Lorem ipsum SHALL lorem ipsum MUST NOT lorem RECOMMENDED.'
@@ -739,7 +811,7 @@ describe('document should have valid RFC2119 keywords', () => {
     })
     test('NOT RECOMMENDED present and appears in boilerplate', async () => {
       const doc = cloneDeep(baseXMLDoc)
-      doc.externalEntities = [{ name: 'RFC2119' }]
+      doc.externalEntities = [{ name: 'BCP14' }]
       set(doc, 'data.rfc.middle.t', [
         `The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL
         NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and
