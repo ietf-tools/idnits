@@ -820,6 +820,15 @@ describe('document should have valid RFC2119 keywords', () => {
       ])
       await expect(validate2119Keywords(doc)).resolves.toHaveLength(0)
     })
+    test('valid keywords with xi:include-sourced BCP14 reference', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      doc.externalEntities = [{ name: 'BCP14', type: 'xi:include', url: 'https://bib.ietf.org/public/rfc/bibxml/reference.BCP.0014.xml' }]
+      set(doc, 'data.rfc.middle.t', [
+        boilerplateWithBCP14,
+        'Lorem ipsum SHALL lorem ipsum MUST NOT lorem RECOMMENDED.'
+      ])
+      await expect(validate2119Keywords(doc)).resolves.toHaveLength(0)
+    })
   })
 })
 
