@@ -856,8 +856,12 @@ describe('document should have valid references sections', () => {
         `
       }
       await expect(validateReferencesSection(doc, { mode: MODES.NORMAL })).resolves.toContainError(
-        'MISSING_REFERENCES_SUBSECTIONS',
+        'MISSING_REFERENCES_CLASSIFICATION',
         ValidationError
+      )
+      await expect(validateReferencesSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError(
+        'MISSING_REFERENCES_CLASSIFICATION',
+        ValidationWarning
       )
     })
 
@@ -922,6 +926,36 @@ describe('document should have valid references sections', () => {
       await expect(validateReferencesSection(doc)).resolves.toContainError('INVALID_REFERENCES_NAME', ValidationError)
       await expect(validateReferencesSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('INVALID_REFERENCES_NAME', ValidationWarning)
       await expect(validateReferencesSection(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+    })
+    test('valid nested references wrapper with inner normative and informative sections', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      set(doc, 'data.rfc.back.references', {
+        name: 'References',
+        references: [
+          { name: 'Normative References' },
+          { name: 'Informative References' }
+        ]
+      })
+      await expect(validateReferencesSection(doc)).resolves.toHaveLength(0)
+    })
+    test('nested references wrapper with invalid inner section names should error', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      set(doc, 'data.rfc.back.references', {
+        name: 'References',
+        references: [
+          { name: 'Normative References' },
+          { name: 'Other Stuff' }
+        ]
+      })
+      await expect(validateReferencesSection(doc)).resolves.toContainError('INVALID_REFERENCES_NAME', ValidationError)
+    })
+    test('nested references wrapper with single inner section', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      set(doc, 'data.rfc.back.references', {
+        name: 'References',
+        references: { name: 'Normative References' }
+      })
+      await expect(validateReferencesSection(doc)).resolves.toHaveLength(0)
     })
   })
 })
