@@ -996,6 +996,7 @@ describe('The copyright line is not present.', () => {
 describe('Validate ID indicator', () => {
   test('Should return error if ID indicator is missing in SUBMISSION mode', async () => {
     const doc = cloneDeep(baseTXTDoc)
+    doc.data.contains.idIndication = false
     const result = await validateIDIndicator(doc, { mode: MODES.SUBMISSION })
     expect(result).toEqual([
       new ValidationError(

@@ -1,0 +1,182 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`parser output structure conforms to expected shape > txt parser output matches snapshot 1`] = `
+{
+  "body": "
+
+
+
+
+idr                                                    A. Author
+Internet-Draft
+Intended status: Standards Track                       IETF
+Expires: 8 September 2023
+Obsoletes: 5678
+                                                1 January 2025
+Updates: 1234 (if approved)
+
+
+         Test Document Title
+              draft-ietf-beep-boop-01
+
+Abstract
+
+   This document obsoletes RFC 5678.
+",
+  "data": {
+    "boilerplate": {
+      "bcp14": false,
+      "rfc2119": false,
+      "rfc8174": false,
+      "similar2119boilerplate": false,
+    },
+    "contains": {
+      "acceptableParagraphNotingThatDraft": false,
+      "codeBlocks": false,
+      "copyrightLicenseValid": false,
+      "copyrightSection6_b_i": false,
+      "draftParagraphOutSixMonthValidity": false,
+      "idIndication": true,
+      "license6_c_i": false,
+      "license6_c_ii": false,
+      "pagesFound": 0,
+      "previous6_b_i_copyright": false,
+      "revisedBsdLicense": false,
+      "revisedBsdLicense6_i": false,
+      "submissionCompliance": false,
+    },
+    "content": {
+      "abstract": [
+        "Abstract",
+        "This document obsoletes RFC 5678.",
+      ],
+      "authorAddress": [],
+      "ianaConsiderations": [],
+      "introduction": [],
+      "references": [],
+      "securityConsiderations": [],
+    },
+    "extractedElements": {
+      "boilerplate2119Keywords": [],
+      "bracketedRfcNonReferences": [],
+      "bracketedRfcReferences": [],
+      "copyrightDates": [],
+      "draftStatusReferences": [],
+      "fqdnDomains": [],
+      "ipv4": [],
+      "ipv6": [],
+      "keywords2119": [],
+      "lastPageExpiration": null,
+      "license6_b_i": [],
+      "license6_b_ii": [],
+      "nonReferenceSectionDraftReferences": [],
+      "nonReferenceSectionRfc": [
+        "5678",
+      ],
+      "obsoletesRfc": [
+        "5678",
+        "1",
+      ],
+      "referenceSectionDraftReferences": [],
+      "referenceSectionRfc": [],
+      "updatesRfc": [
+        "1234",
+      ],
+    },
+    "header": {
+      "authors": [
+        {
+          "name": "A. Author",
+          "org": "IETF",
+        },
+      ],
+      "date": {
+        "day": 1,
+        "month": "January",
+        "year": 2025,
+      },
+      "expires": "2023-09-08T00:00:00.000+00:00",
+      "intendedStatus": "Standards Track",
+      "obsoletes": [
+        "5678",
+      ],
+      "source": "idr                                                  ",
+    },
+    "markers": {
+      "abstract": {
+        "closed": true,
+        "end": 21,
+        "start": 18,
+      },
+      "authorAddress": {
+        "closed": false,
+        "end": 0,
+        "start": 0,
+      },
+      "header": {
+        "closed": true,
+        "end": 12,
+        "lastAuthor": 8,
+        "start": 6,
+      },
+      "ianaConsiderations": {
+        "closed": false,
+        "end": 0,
+        "start": 0,
+      },
+      "introduction": {
+        "closed": false,
+        "end": 0,
+        "start": 0,
+      },
+      "references": {
+        "closed": false,
+        "end": 0,
+        "start": 0,
+      },
+      "securityConsiderations": {
+        "closed": false,
+        "end": 0,
+        "start": 0,
+      },
+      "slug": 16,
+      "title": 15,
+      "toc": {
+        "closed": false,
+        "end": 0,
+        "start": 0,
+      },
+    },
+    "pageCount": 1,
+    "possibleIssues": {
+      "copyrightLines6_i": [],
+      "inlineCode": [],
+      "isAbstractNumbered": false,
+      "isCopyrightNoticeNumbered": false,
+      "isPKorBM": false,
+      "isStatusOfThisMemoNumbered": false,
+      "isTableOfContentsExists": false,
+      "linesWithSpaces": [],
+      "missingPageNumbering": [],
+      "misspeled2119Keywords": [],
+      "obsoletesWithLetter": [],
+      "pageLineWithFormFeed": [],
+      "paragraphPointingToTheListOfCurrentId": [],
+      "submissionCompliancePage": null,
+      "tooLongPages": [],
+      "unexpectedIndentation": [],
+      "updatesRfcWithLetter": [],
+    },
+    "references": {
+      "bcp14": false,
+      "rfc2119": false,
+      "rfc8174": false,
+    },
+    "slug": "draft-ietf-beep-boop-01",
+    "title": "Test Document Title",
+  },
+  "docKind": "draft",
+  "filename": "",
+  "type": "txt",
+}
+`;

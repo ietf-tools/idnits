@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, vi, test } from 'vitest'
+import { generateTXTDoc } from './generators/doc-txt.js'
 import {
   abstractTXTBlock,
   tableOfContentsTXTBlock,
@@ -2412,5 +2413,12 @@ describe('Document has obsolete TLP section', () => {
 
     const result = await parse(txt, 'txt')
     expect(result.data.contains.previous6_b_i).toBeFalsy()
+  })
+})
+
+describe('parser output structure conforms to expected shape', () => {
+  test('txt parser output matches snapshot', async () => {
+    const doc = await generateTXTDoc()
+    expect(doc).toMatchSnapshot()
   })
 })
