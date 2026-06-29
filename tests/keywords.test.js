@@ -707,7 +707,7 @@ describe('document should have valid RFC2119 keywords', () => {
       doc.externalEntities = [{ name: 'BCP14' }]
       set(doc, 'data.rfc.middle.t', [
         boilerplate,
-        'Lorem ipsum SHALL lorem ipsum MUST NOT lorem RECOMMENDED.'
+        { '#text': 'Lorem ipsum  lorem ipsum  lorem .', bcp14: ['SHALL', 'MUST NOT', 'RECOMMENDED'] }
       ])
       await expect(validate2119Keywords(doc)).resolves.toHaveLength(0)
     })
@@ -716,7 +716,7 @@ describe('document should have valid RFC2119 keywords', () => {
       doc.externalEntities = [{ name: 'BCP14' }]
       set(doc, 'data.rfc.middle.t', [
         boilerplateWithBCP14,
-        'Lorem ipsum SHALL lorem ipsum MUST NOT lorem RECOMMENDED.'
+        { '#text': 'Lorem ipsum  lorem ipsum  lorem .', bcp14: ['SHALL', 'MUST NOT', 'RECOMMENDED'] }
       ])
       await expect(validate2119Keywords(doc)).resolves.toHaveLength(0)
     })
@@ -816,9 +816,48 @@ describe('document should have valid RFC2119 keywords', () => {
         `The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL
         NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and
         "OPTIONAL" in this document are to be interpreted as described in RFC 2119.`,
-        'Lorem ipsum SHALL lorem ipsum MUST NOT lorem NOT RECOMMENDED.'
+        { '#text': 'Lorem ipsum  lorem ipsum  lorem .', bcp14: ['SHALL', 'MUST NOT', 'NOT RECOMMENDED'] }
       ])
       await expect(validate2119Keywords(doc)).resolves.toHaveLength(0)
+    })
+    test('untagged keyword not wrapped in bcp14 tags', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      doc.externalEntities = [{ name: 'BCP14' }]
+      set(doc, 'data.rfc.middle.t', [
+        boilerplate,
+        'The server MUST respond to the request.'
+      ])
+      await expect(validate2119Keywords(doc)).resolves.toContainError('MISSING_BCP14_TAGS', ValidationComment)
+      await expect(validate2119Keywords(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('MISSING_BCP14_TAGS', ValidationComment)
+      await expect(validate2119Keywords(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+    })
+    test('keyword wrapped in bcp14 tags is not flagged', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      doc.externalEntities = [{ name: 'BCP14' }]
+      set(doc, 'data.rfc.middle.t', [
+        boilerplate,
+        { '#text': 'The server  respond to the request.', bcp14: 'MUST' }
+      ])
+      const result = await validate2119Keywords(doc)
+      expect(result.find(r => r.name === 'MISSING_BCP14_TAGS')).toBeUndefined()
+    })
+    test('untagged keyword inside artwork is ignored', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      doc.externalEntities = [{ name: 'BCP14' }]
+      set(doc, 'data.rfc.middle.section', {
+        artwork: 'The parser MUST accept this artwork verbatim.'
+      })
+      const result = await validate2119Keywords(doc)
+      expect(result.find(r => r.name === 'MISSING_BCP14_TAGS')).toBeUndefined()
+    })
+    test('untagged keyword inside sourcecode is ignored', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      doc.externalEntities = [{ name: 'BCP14' }]
+      set(doc, 'data.rfc.middle.section', {
+        sourcecode: { '#text': 'if (ready) { /* SHOULD run here */ }', _attr: { type: 'c' } }
+      })
+      const result = await validate2119Keywords(doc)
+      expect(result.find(r => r.name === 'MISSING_BCP14_TAGS')).toBeUndefined()
     })
   })
 })
