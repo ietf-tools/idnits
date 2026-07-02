@@ -148,6 +148,7 @@ describe('validateDownrefs', () => {
       const doc = cloneDeep(baseTXTDoc)
       set(doc, 'data.extractedElements.referenceSectionRfc', [{ value: '1094', subsection: 'normative_references' }])
       set(doc, 'data.extractedElements.draftStatusReferences', [{ value: 'ISO10589', subsection: 'normative_references' }])
+      set(doc, 'data.header.intendedStatus', null)
 
       const result = await validateDownrefs(doc, { mode: MODES.FORGIVE_CHECKLIST })
       expect(result).toHaveLength(1)
