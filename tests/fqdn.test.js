@@ -204,6 +204,16 @@ describe('document should have valid FQDN mentions', () => {
       await expect(validateFQDNs(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('POSSIBLE_INVALID_TLD', ValidationComment)
       await expect(validateFQDNs(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
+    test('invalid TLD in a section with sibling <t> elements', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      // Repeated <t> tags parse to an array of strings, not to separate keys.
+      set(doc, 'data.rfc.middle.section.t', [
+        'Lorem ipsum dolor sit amet.',
+        'Lorem ipsum www.something.org lorem ipsum.'
+      ])
+      await expect(validateFQDNs(doc)).resolves.toContainError('INVALID_DOMAIN_TLD', ValidationWarning)
+      await expect(validateFQDNs(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+    })
     // TODO: non-latin domains (xn--)
   })
 })
