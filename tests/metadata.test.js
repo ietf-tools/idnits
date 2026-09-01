@@ -316,6 +316,17 @@ describe('document should have valid date', () => {
       })
       await expect(validateDate(doc)).resolves.toHaveLength(0)
     })
+    test('non-ascii month is reported, not thrown', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      const today = DateTime.now()
+
+      set(doc, 'data.rfc.front.date._attr', {
+        year: today.year,
+        month: '8月',
+        day: today.day
+      })
+      await expect(validateDate(doc)).resolves.toContainError('MISSING_DOC_DATE', ValidationWarning)
+    })
     test('date missing', async () => {
       const doc = cloneDeep(baseXMLDoc)
       set(doc, 'data.rfc.front', {})
@@ -393,6 +404,28 @@ describe('document should have valid date', () => {
       await expect(validateDate(doc)).resolves.toContainError('DOC_DATE_IN_FUTURE', ValidationWarning)
       await expect(validateDate(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('DOC_DATE_IN_FUTURE', ValidationWarning)
       await expect(validateDate(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('DOC_DATE_IN_FUTURE', ValidationWarning)
+    })
+    test('abbreviated month', async () => {
+      const doc = baseTXTDoc
+      const today = DateTime.now().setLocale('en-US').minus({ days: 15 })
+
+      doc.data.header.date = {
+        year: today.year,
+        month: today.monthShort,
+        day: today.day
+      }
+      await expect(validateDate(doc)).resolves.toContainError('DOC_DATE_IN_PAST', ValidationWarning)
+    })
+    test('unparseable month is reported, not thrown', async () => {
+      const doc = baseTXTDoc
+      const today = DateTime.now().setLocale('en-US')
+
+      doc.data.header.date = {
+        year: today.year,
+        month: 'Augst',
+        day: today.day
+      }
+      await expect(validateDate(doc)).resolves.toContainError('MISSING_DOC_DATE', ValidationWarning)
     })
   })
 })
