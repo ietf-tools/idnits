@@ -307,7 +307,7 @@ describe('document should have valid date', () => {
   describe('XML Document Type', () => {
     test('valid date', async () => {
       const doc = cloneDeep(baseXMLDoc)
-      const today = DateTime.now()
+      const today = DateTime.now().setLocale('en-US')
 
       set(doc, 'data.rfc.front.date._attr', {
         year: today.year,
@@ -318,7 +318,7 @@ describe('document should have valid date', () => {
     })
     test('non-ascii month is reported, not thrown', async () => {
       const doc = cloneDeep(baseXMLDoc)
-      const today = DateTime.now()
+      const today = DateTime.now().setLocale('en-US')
 
       set(doc, 'data.rfc.front.date._attr', {
         year: today.year,
@@ -336,7 +336,7 @@ describe('document should have valid date', () => {
     })
     test('date in the past', async () => {
       const doc = cloneDeep(baseXMLDoc)
-      const today = DateTime.now().minus({ days: 15 })
+      const today = DateTime.now().setLocale('en-US').minus({ days: 15 })
       set(doc, 'data.rfc.front.date._attr', {
         year: today.year,
         month: today.monthLong,
@@ -348,7 +348,7 @@ describe('document should have valid date', () => {
     })
     test('date in the future', async () => {
       const doc = cloneDeep(baseXMLDoc)
-      const today = DateTime.now().plus({ days: 15 })
+      const today = DateTime.now().setLocale('en-US').plus({ days: 15 })
       set(doc, 'data.rfc.front.date._attr', {
         year: today.year,
         month: today.monthLong,
