@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import { formatEnumeration } from '../lib/helpers/common.mjs'
-import { findDescendantWith, findAllDescendantsWith } from '../lib/helpers/traversal.mjs'
+import { findDescendantWith, findAllDescendantsWith, traverseAll, traverseAllValues } from '../lib/helpers/traversal.mjs'
 
 describe('common', () => {
   describe('formatEnumeration', () => {
@@ -71,6 +71,67 @@ describe('traversal', () => {
     })
   })
 
-  // TODO: traverseAll()
-  // TODO: traverseAllValues()
+  describe('traverseAllValues()', () => {
+    /**
+     * Collect every (value, key, path) triple a traversal reports.
+     *
+     * @param {Function} fn Traversal function under test
+     * @param {Object} obj Object to traverse
+     * @returns {Promise<Object[]>} Reported triples
+     */
+    async function collect (fn, obj) {
+      const seen = []
+      await fn(obj, (value, key, path) => {
+        seen.push({ value, key, path: path.join('.') })
+      })
+      return seen
+    }
+
+    test('should report the owning key for a lone string child', async () => {
+      expect(await collect(traverseAllValues, { section: { t: 'abc' } })).toEqual([
+        { value: 'abc', key: 't', path: 'section.t' }
+      ])
+    })
+
+    // fast-xml-parser collapses repeated sibling tags into an array of strings,
+    // so <t>a</t><t>b</t> arrives as { t: ['a', 'b'] }. Callers filter on the
+    // key to decide whether a value is prose, so the owning tag has to survive.
+    test('should report the owning key for members of an array of strings', async () => {
+      expect(await collect(traverseAllValues, { section: { t: ['abc', 'def'] } })).toEqual([
+        { value: 'abc', key: 't', path: 'section.t[0]' },
+        { value: 'def', key: 't', path: 'section.t[1]' }
+      ])
+    })
+
+    test('should report the owning key for strings mixed with objects in an array', async () => {
+      expect(await collect(traverseAllValues, { section: { t: ['abc', { '#text': 'def' }] } })).toEqual([
+        { value: 'abc', key: 't', path: 'section.t[0]' },
+        { value: 'def', key: '#text', path: 'section.t[1].#text' }
+      ])
+    })
+
+    test('should await an async callback for every value', async () => {
+      const seen = []
+      await traverseAllValues({ section: { t: ['abc', 'def'] } }, async (value, key) => {
+        await Promise.resolve()
+        seen.push([key, value])
+      })
+      expect(seen).toEqual([['t', 'abc'], ['t', 'def']])
+    })
+  })
+
+  describe('traverseAll()', () => {
+    test('should report the owning key for members of an array of strings', async () => {
+      const seen = []
+      await traverseAll({ section: { t: ['abc', 'def'] } }, (value, key, path) => {
+        if (typeof value === 'string') {
+          seen.push({ value, key, path: path.join('.') })
+        }
+      })
+      expect(seen).toEqual([
+        { value: 'abc', key: 't', path: 'section.t[0]' },
+        { value: 'def', key: 't', path: 'section.t[1]' }
+      ])
+    })
+  })
 })
