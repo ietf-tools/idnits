@@ -111,7 +111,7 @@ describe('filename must have at least 4 components', () => {
   test('valid 5 components', async () => {
     await expect(validateFilename('draft-ietf-abcd-efgh-01.txt')).resolves.toHaveLength(0)
   })
-  test('invalid 3 components', async () => {
-    await expect(validateFilename('draft-ietf-01.txt')).resolves.toContainError('FILENAME_MISSING_COMPONENTS')
+  test('3 components triggers warning', async () => {
+    await expect(validateFilename('draft-ietf-01.txt')).resolves.toContainError('FILENAME_MISSING_COMPONENTS', ValidationWarning)
   })
 })
