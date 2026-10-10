@@ -93,6 +93,24 @@ describe('A possible code comment is detected outside of a marked code block', (
     const result = await parse(txt, 'txt')
     expect(result.data.possibleIssues.inlineCode).toHaveLength(0)
   })
+
+  test('Consecutive comment lines are all detected', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractTXTBlock}
+      ${introductionTXTBlock}
+      # First possible code comment
+      # Second possible code comment
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.inlineCode).toHaveLength(2)
+    expect(result.data.possibleIssues.inlineCode).toEqual(expect.arrayContaining([
+      expect.objectContaining({ line: 39 }),
+      expect.objectContaining({ line: 40 })
+    ]))
+  })
 })
 
 describe('Missing abstract section', () => {
@@ -2413,6 +2431,43 @@ describe('Document has obsolete TLP section', () => {
 
     const result = await parse(txt, 'txt')
     expect(result.data.contains.previous6_b_i).toBeFalsy()
+  })
+})
+
+describe('Parsing the same text repeatedly', () => {
+  test('Gives the same license and boilerplate results each time', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractTXTBlock}
+      ${trust28Dec2009Section6aTXTBlock}
+      ${textAcceptableParagraphNotingThatDraftTXTBlock}
+      ${textAcceptableParagraphCallingOutSixMonthValidity}
+      ${copyrightNoticeTXTBlock}
+      ${textLicense6ciTXTBlock}
+      ${textLicense6ciiTXTBlock}
+      ${introductionTXTBlock}
+      ${RFC2119BoilerplateTXTBlock}
+      Code Components extracted from this document must include Revised BSD License text as described in Section 4.e of the Trust Legal Provisions and are provided without warranty as described in the Revised BSD License.
+      # Possible code comment
+    `
+
+    const first = await parse(txt, 'txt')
+    const second = await parse(txt, 'txt')
+
+    expect(first.data.contains).toMatchObject({
+      revisedBsdLicense: true,
+      submissionCompliance: true,
+      acceptableParagraphNotingThatDraft: true,
+      license6_c_i: true,
+      license6_c_ii: true,
+      previous6_b_i_copyright: true,
+      draftParagraphOutSixMonthValidity: true
+    })
+    expect(first.data.boilerplate.rfc2119).toBe(true)
+    expect(second.data.contains).toEqual(first.data.contains)
+    expect(second.data.boilerplate).toEqual(first.data.boilerplate)
+    expect(second.data.possibleIssues).toEqual(first.data.possibleIssues)
   })
 })
 
