@@ -327,6 +327,16 @@ describe('document should have valid date', () => {
       })
       await expect(validateDate(doc)).resolves.toContainError('MISSING_DOC_DATE', ValidationWarning)
     })
+    test('numeric month', async () => {
+      for (const month of ['8', '08']) {
+        const doc = cloneDeep(baseXMLDoc)
+        set(doc, 'data.rfc.front.date._attr', { year: 2020, month, day: 1 })
+        await expect(validateDate(doc)).resolves.toContainError('DOC_DATE_IN_PAST', ValidationWarning)
+      }
+      const doc = cloneDeep(baseXMLDoc)
+      set(doc, 'data.rfc.front.date._attr', { year: 2020, month: '13', day: 1 })
+      await expect(validateDate(doc)).resolves.toContainError('MISSING_DOC_DATE', ValidationWarning)
+    })
     test('date missing', async () => {
       const doc = cloneDeep(baseXMLDoc)
       set(doc, 'data.rfc.front', {})
@@ -426,6 +436,13 @@ describe('document should have valid date', () => {
         day: today.day
       }
       await expect(validateDate(doc)).resolves.toContainError('MISSING_DOC_DATE', ValidationWarning)
+    })
+    test('month written as "Sept", "Sep." or "September,"', async () => {
+      for (const month of ['Sept', 'Sep.', 'September,']) {
+        const doc = cloneDeep(baseTXTDoc)
+        doc.data.header.date = { year: 2020, month, day: 1 }
+        await expect(validateDate(doc)).resolves.toContainError('DOC_DATE_IN_PAST', ValidationWarning)
+      }
     })
   })
 })
