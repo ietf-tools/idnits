@@ -10,6 +10,7 @@ import {
   validateIANAConsiderationsSection,
   validateReferencesInText
 } from '../lib/modules/sections.mjs'
+import { parse } from '../lib/parsers/xml.mjs'
 import { baseTXTDoc, baseXMLDoc } from './fixtures/base-doc.mjs'
 import { cloneDeep, set, times } from 'lodash-es'
 
@@ -252,6 +253,25 @@ describe('document should have a valid abstract section', () => {
       set(doc, 'data.rfc.front.abstract.t', 'test')
       await expect(validateAbstractSection(doc)).resolves.toContainError('INVALID_ABSTRACT_SECTION_CHILD', ValidationError)
     })
+    test('abstract section with attributes', async () => {
+      const { doc } = await parse(`<rfc version="3"><front><abstract pn="section-abstract">
+        <t indent="0" pn="section-abstract-1">Lorem ipsum dolor sit amet.</t>
+      </abstract></front></rfc>`, 'rfc9999.xml')
+      await expect(validateAbstractSection(doc)).resolves.toHaveLength(0)
+    })
+    test('abstract section with attributes only', async () => {
+      const { doc } = await parse('<rfc version="3"><front><abstract pn="section-abstract"/></front></rfc>', 'rfc9999.xml')
+      await expect(validateAbstractSection(doc)).resolves.toContainError('INVALID_ABSTRACT_SECTION', ValidationError)
+    })
+    test('abstract section with line processing instructions', async () => {
+      const { doc } = await parse(`<rfc version="3"><front><abstract>
+<?line 30?>
+        <t>Lorem ipsum dolor sit amet.</t>
+<?line 32?>
+        <t>Consectetur adipiscing elit.</t>
+      </abstract></front></rfc>`, 'draft-test.xml')
+      await expect(validateAbstractSection(doc)).resolves.toHaveLength(0)
+    })
     test('abstract section children with reference', async () => {
       const doc = cloneDeep(baseXMLDoc)
       set(doc, 'data.rfc.front.abstract.t', ['test', { xref: {} }])
@@ -410,6 +430,19 @@ describe('document should have a valid introduction section', () => {
       set(doc, 'data.rfc.middle.section[0].name', 'Introduction')
       set(doc, 'data.rfc.middle.section[0].t', 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.')
       set(doc, 'data.rfc.middle.section[0].section', [{ name: 'Background', t: 'Some background.' }])
+      await expect(validateIntroductionSection(doc)).resolves.toHaveLength(0)
+    })
+    test('introduction section with line processing instructions', async () => {
+      const { doc } = await parse(`<rfc version="3"><middle>
+<?line 40?>
+        <section anchor="intro"><name>Introduction</name>
+<?line 42?>
+          <t>Lorem ipsum dolor sit amet.</t>
+<?line 44?>
+          <t>Consectetur adipiscing elit.</t>
+        </section>
+        <section><name>Terminology</name><t>Some terms.</t></section>
+      </middle></rfc>`, 'draft-test.xml')
       await expect(validateIntroductionSection(doc)).resolves.toHaveLength(0)
     })
   })
