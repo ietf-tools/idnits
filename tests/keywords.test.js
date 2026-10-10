@@ -7,6 +7,7 @@ import {
 } from '../lib/modules/keywords.mjs'
 import { baseTXTDoc, baseXMLDoc } from './fixtures/base-doc.mjs'
 import { cloneDeep, set } from 'lodash-es'
+import { parse } from '../lib/parsers/xml.mjs'
 
 expect.extend({
   toContainError
@@ -876,6 +877,23 @@ describe('document should have valid RFC2119 keywords', () => {
         ul: { li: 'The client MUST retry.' }
       })
       await expect(validate2119Keywords(doc)).resolves.toContainError('MISSING_BCP14_TAGS', ValidationComment)
+    })
+    test('untagged keyword in <strong> or <em> is flagged, but not in <tt>', async () => {
+      const { doc } = await parse(`<rfc docName="draft-ietf-beep-boop-00">
+  <front><title>Test</title></front>
+  <middle><section><name>Introduction</name>
+    <t>${boilerplate}</t>
+    <t>The client <strong>MUST</strong> retry.</t>
+    <t>The server <em>SHOULD</em> log the attempt.</t>
+    <t>The field is <tt>OPTIONAL</tt> in ASN.1.</t>
+  </section></middle>
+</rfc>`, 'draft-ietf-beep-boop-00.xml')
+      doc.externalEntities = [{ name: 'BCP14' }]
+      const result = await validate2119Keywords(doc)
+      const tagErrors = result.filter(r => r.name === 'MISSING_BCP14_TAGS')
+      expect(tagErrors.map(r => r.message).join(' ')).toMatch(/MUST/)
+      expect(tagErrors.map(r => r.message).join(' ')).toMatch(/SHOULD/)
+      expect(tagErrors.map(r => r.message).join(' ')).not.toMatch(/OPTIONAL/)
     })
   })
 })
