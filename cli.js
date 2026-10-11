@@ -32,6 +32,11 @@ const argv = yargs(hideBin(process.argv))
     [`$0 -m submission -y ${DateTime.now().year} draft-ietf-abcd-01.xml`, ''],
     ['$0 https://www.rfc-editor.org/rfc/rfc2549', '']
   ])
+  .option('fail-on', {
+    describe: 'Exit with code 2 if there is at least one nit of the given severity or higher (errors > warnings > comments).',
+    choices: ['errors', 'warnings', 'comments'],
+    type: 'string'
+  })
   .option('filter', {
     alias: 'f',
     describe: 'Filter output to only certain severity types. Can be declared multiple times to filter multiple severity types.',
@@ -283,7 +288,7 @@ try {
     // JSON | Return results as a stringified JSON object
     case 'json': {
       console.log(JSON.stringify({
-        result: result.length > 0 ? 'fail' : 'pass',
+        result: nitsBySeverity.error > 0 ? 'fail' : 'pass',
         file: {
           path: docPath,
           size: docSizeBytes
@@ -423,6 +428,15 @@ try {
     default: {
       throw new Error('Invalid Output Mode')
     }
+  }
+
+  // Exit with code 2 if nits at or above the --fail-on severity were found
+  if (
+    (argv.failOn === 'errors' && nitsBySeverity.error > 0) ||
+    (argv.failOn === 'warnings' && nitsBySeverity.error + nitsBySeverity.warning > 0) ||
+    (argv.failOn === 'comments' && result.length > 0)
+  ) {
+    process.exitCode = 2
   }
 } catch (err) {
   console.debug(err)
