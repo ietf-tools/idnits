@@ -83,9 +83,9 @@ describe('document should have valid RFC2119 keywords', () => {
           { ref: 'https://www.rfc-editor.org/rfc/rfc7322.html#section-4.8.2' }
         ),
         new ValidationWarning(
-          'PREFER_BCP14_REF',
-          'Consider referencing BCP14 instead of (or in addition to) RFC2119/RFC8174, as BCP14 encompasses both specifications.',
-          { ref: 'https://www.rfc-editor.org/info/bcp14' }
+          'MISSING_RFC8174_REF',
+          'RFC 2119 is referenced but RFC 8174 is not. BCP 14 should be cited as "BCP 14 [RFC2119] [RFC8174]".',
+          { ref: 'https://www.rfc-editor.org/rfc/rfc8174.html#section-2' }
         )
       ])
     })
@@ -123,9 +123,9 @@ describe('document should have valid RFC2119 keywords', () => {
           { ref: 'https://www.rfc-editor.org/rfc/rfc7322.html#section-4.8.2' }
         ),
         new ValidationWarning(
-          'PREFER_BCP14_REF',
-          'Consider referencing BCP14 instead of (or in addition to) RFC2119/RFC8174, as BCP14 encompasses both specifications.',
-          { ref: 'https://www.rfc-editor.org/info/bcp14' }
+          'MISSING_RFC8174_REF',
+          'RFC 2119 is referenced but RFC 8174 is not. BCP 14 should be cited as "BCP 14 [RFC2119] [RFC8174]".',
+          { ref: 'https://www.rfc-editor.org/rfc/rfc8174.html#section-2' }
         )
       ])
     })
@@ -168,9 +168,9 @@ describe('document should have valid RFC2119 keywords', () => {
           }
         ),
         new ValidationWarning(
-          'PREFER_BCP14_REF',
-          'Consider referencing BCP14 instead of (or in addition to) RFC2119/RFC8174, as BCP14 encompasses both specifications.',
-          { ref: 'https://www.rfc-editor.org/info/bcp14' }
+          'MISSING_RFC8174_REF',
+          'RFC 2119 is referenced but RFC 8174 is not. BCP 14 should be cited as "BCP 14 [RFC2119] [RFC8174]".',
+          { ref: 'https://www.rfc-editor.org/rfc/rfc8174.html#section-2' }
         )
       ])
     })
@@ -241,9 +241,9 @@ describe('document should have valid RFC2119 keywords', () => {
           ref: 'https://www.rfc-editor.org/rfc/rfc7322.html#section-4.8.2'
         }),
         new ValidationWarning(
-          'PREFER_BCP14_REF',
-          'Consider referencing BCP14 instead of (or in addition to) RFC2119/RFC8174, as BCP14 encompasses both specifications.',
-          { ref: 'https://www.rfc-editor.org/info/bcp14' }
+          'MISSING_RFC8174_REF',
+          'RFC 2119 is referenced but RFC 8174 is not. BCP 14 should be cited as "BCP 14 [RFC2119] [RFC8174]".',
+          { ref: 'https://www.rfc-editor.org/rfc/rfc8174.html#section-2' }
         )
       ])
     })
@@ -316,9 +316,9 @@ describe('document should have valid RFC2119 keywords', () => {
           { ref: 'https://www.rfc-editor.org/rfc/rfc7322.html#section-4.8.2' }
         ),
         new ValidationWarning(
-          'PREFER_BCP14_REF',
-          'Consider referencing BCP14 instead of (or in addition to) RFC2119/RFC8174, as BCP14 encompasses both specifications.',
-          { ref: 'https://www.rfc-editor.org/info/bcp14' }
+          'MISSING_RFC8174_REF',
+          'RFC 2119 is referenced but RFC 8174 is not. BCP 14 should be cited as "BCP 14 [RFC2119] [RFC8174]".',
+          { ref: 'https://www.rfc-editor.org/rfc/rfc8174.html#section-2' }
         )
       ])
     })
@@ -356,9 +356,9 @@ describe('document should have valid RFC2119 keywords', () => {
           { ref: 'https://www.rfc-editor.org/rfc/rfc7322.html#section-4.8.2' }
         ),
         new ValidationWarning(
-          'PREFER_BCP14_REF',
-          'Consider referencing BCP14 instead of (or in addition to) RFC2119/RFC8174, as BCP14 encompasses both specifications.',
-          { ref: 'https://www.rfc-editor.org/info/bcp14' }
+          'MISSING_RFC8174_REF',
+          'RFC 2119 is referenced but RFC 8174 is not. BCP 14 should be cited as "BCP 14 [RFC2119] [RFC8174]".',
+          { ref: 'https://www.rfc-editor.org/rfc/rfc8174.html#section-2' }
         )
       ])
     })
@@ -401,9 +401,9 @@ describe('document should have valid RFC2119 keywords', () => {
           }
         ),
         new ValidationWarning(
-          'PREFER_BCP14_REF',
-          'Consider referencing BCP14 instead of (or in addition to) RFC2119/RFC8174, as BCP14 encompasses both specifications.',
-          { ref: 'https://www.rfc-editor.org/info/bcp14' }
+          'MISSING_RFC8174_REF',
+          'RFC 2119 is referenced but RFC 8174 is not. BCP 14 should be cited as "BCP 14 [RFC2119] [RFC8174]".',
+          { ref: 'https://www.rfc-editor.org/rfc/rfc8174.html#section-2' }
         )
       ])
     })
@@ -474,9 +474,9 @@ describe('document should have valid RFC2119 keywords', () => {
           ref: 'https://www.rfc-editor.org/rfc/rfc7322.html#section-4.8.2'
         }),
         new ValidationWarning(
-          'PREFER_BCP14_REF',
-          'Consider referencing BCP14 instead of (or in addition to) RFC2119/RFC8174, as BCP14 encompasses both specifications.',
-          { ref: 'https://www.rfc-editor.org/info/bcp14' }
+          'MISSING_RFC8174_REF',
+          'RFC 2119 is referenced but RFC 8174 is not. BCP 14 should be cited as "BCP 14 [RFC2119] [RFC8174]".',
+          { ref: 'https://www.rfc-editor.org/rfc/rfc8174.html#section-2' }
         )
       ])
     })
@@ -556,14 +556,14 @@ describe('document should have valid RFC2119 keywords', () => {
           { ref: 'https://www.rfc-editor.org/rfc/rfc7322.html#section-4.8.2' }
         ),
         new ValidationWarning(
-          'PREFER_BCP14_REF',
-          'Consider referencing BCP14 instead of (or in addition to) RFC2119/RFC8174, as BCP14 encompasses both specifications.',
-          { ref: 'https://www.rfc-editor.org/info/bcp14' }
+          'MISSING_RFC8174_REF',
+          'RFC 2119 is referenced but RFC 8174 is not. BCP 14 should be cited as "BCP 14 [RFC2119] [RFC8174]".',
+          { ref: 'https://www.rfc-editor.org/rfc/rfc8174.html#section-2' }
         )
       ])
     })
 
-    test('BCP14: valid case – keywords, BCP14-boilerplate and reference to BCP14 are', async () => {
+    test('BCP14: keywords, BCP14-boilerplate and a [BCP14] citation', async () => {
       const doc = {
         type: 'txt',
         data: {
@@ -588,7 +588,13 @@ describe('document should have valid RFC2119 keywords', () => {
       }
 
       const result = await validate2119Keywords(doc, { mode: MODES.NORMAL })
-      expect(result).toHaveLength(0)
+      expect(result).toEqual([
+        new ValidationWarning(
+          'BCP14_CITED_INSTEAD_OF_RFCS',
+          'BCP 14 is cited as [BCP14]. Cite it as "BCP 14 [RFC2119] [RFC8174]", as RFC 8174 prescribes; the RFC Editor will change it to that.',
+          { ref: 'https://www.rfc-editor.org/rfc/rfc8174.html#section-2' }
+        )
+      ])
     })
 
     test('BCP14: keywords and reference to BCP14, but missing boilerplate', async () => {
@@ -621,6 +627,11 @@ describe('document should have valid RFC2119 keywords', () => {
           'MISSING_REQLEVEL_BOILERPLATE',
           'One or more BCP14 keywords are present but a BCP14 boilerplate is missing.',
           { ref: 'https://www.rfc-editor.org/rfc/rfc7322.html#section-4.8.2' }
+        ),
+        new ValidationWarning(
+          'BCP14_CITED_INSTEAD_OF_RFCS',
+          'BCP 14 is cited as [BCP14]. Cite it as "BCP 14 [RFC2119] [RFC8174]", as RFC 8174 prescribes; the RFC Editor will change it to that.',
+          { ref: 'https://www.rfc-editor.org/rfc/rfc8174.html#section-2' }
         )
       ])
     })
@@ -655,6 +666,11 @@ describe('document should have valid RFC2119 keywords', () => {
           'MISSING_REQLEVEL_KEYWORDS',
           'A BCP14 boilerplate is present but no keywords are used in the document.',
           { ref: 'https://www.rfc-editor.org/rfc/rfc7322.html#section-4.8.2' }
+        ),
+        new ValidationWarning(
+          'BCP14_CITED_INSTEAD_OF_RFCS',
+          'BCP 14 is cited as [BCP14]. Cite it as "BCP 14 [RFC2119] [RFC8174]", as RFC 8174 prescribes; the RFC Editor will change it to that.',
+          { ref: 'https://www.rfc-editor.org/rfc/rfc8174.html#section-2' }
         )
       ])
     })
@@ -892,7 +908,25 @@ ${entities}<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3">
         const names = await errorNames(doc)
         expect(names).not.toContain('MISSING_REQLEVEL_REF')
         expect(names).not.toContain('MISSING_REQLEVEL_BOILERPLATE')
-        expect(names).toContain('PREFER_BCP14_REF')
+        expect(names).not.toContain('MISSING_RFC8174_REF')
+        expect(names).not.toContain('MISSING_RFC2119_REF')
+        expect(names).not.toContain('BCP14_CITED_INSTEAD_OF_RFCS')
+      })
+      test('BCP14 reference group cited as [RFC2119] [RFC8174]', async () => {
+        const doc = await parseXML({
+          xrefs: '<xref target="RFC2119"/> <xref target="RFC8174"/>',
+          back: `<references><name>Normative References</name>
+            <referencegroup anchor="BCP14" target="https://www.rfc-editor.org/info/bcp14">
+              <reference anchor="RFC2119"><front><title>Key words for use in RFCs to Indicate Requirement Levels</title></front></reference>
+              <reference anchor="RFC8174"><front><title>Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words</title></front></reference>
+            </referencegroup>
+          </references>`
+        })
+        const names = await errorNames(doc)
+        expect(names).not.toContain('MISSING_REQLEVEL_REF')
+        expect(names).not.toContain('MISSING_RFC8174_REF')
+        expect(names).not.toContain('MISSING_RFC2119_REF')
+        expect(names).not.toContain('BCP14_CITED_INSTEAD_OF_RFCS')
       })
       test('xi:include of the BCP14 bibxml file only', async () => {
         const doc = await parseXML({
@@ -902,13 +936,13 @@ ${entities}<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3">
         })
         const names = await errorNames(doc)
         expect(names).not.toContain('MISSING_REQLEVEL_REF')
-        expect(names).not.toContain('PREFER_BCP14_REF')
+        expect(names).not.toContain('BCP14_CITED_INSTEAD_OF_RFCS')
       })
       test('xref to BCP14 only (case-insensitive)', async () => {
         const doc = await parseXML({ xrefs: '<xref target="bcp14"/>' })
         const names = await errorNames(doc)
         expect(names).not.toContain('MISSING_REQLEVEL_REF')
-        expect(names).not.toContain('PREFER_BCP14_REF')
+        expect(names).toContain('BCP14_CITED_INSTEAD_OF_RFCS')
       })
       test('inline reference with a non-standard anchor and an RFC seriesInfo', async () => {
         const doc = await parseXML({
@@ -922,7 +956,7 @@ ${entities}<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3">
         })
         const names = await errorNames(doc)
         expect(names).not.toContain('MISSING_REQLEVEL_REF')
-        expect(names).not.toContain('PREFER_BCP14_REF')
+        expect(names).toContain('MISSING_RFC8174_REF')
       })
       test('reference anchor in flat references', async () => {
         const doc = await parseXML({
@@ -932,7 +966,7 @@ ${entities}<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3">
         })
         const names = await errorNames(doc)
         expect(names).not.toContain('MISSING_REQLEVEL_REF')
-        expect(names).toContain('PREFER_BCP14_REF')
+        expect(names).toContain('MISSING_RFC2119_REF')
       })
       test('external entity URL naming the RFC2119 bibxml file', async () => {
         const doc = await parseXML({
