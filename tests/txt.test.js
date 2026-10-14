@@ -60,18 +60,60 @@ describe('Text document should not contain over-long lines', () => {
     await expect(validateLineLength(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('LINE_TOO_LONG', ValidationWarning)
   })
 
-  test('ignores lines containing non-ASCII characters even if over 72 chars', async () => {
+  test('measures lines containing non-ASCII characters', async () => {
     const doc = { ...baseTXTDoc }
     // 80 ASCII chars plus one non-ASCII at the end
-    doc.body = 'x'.repeat(80) + 'é\n'
+    doc.body = 'x'.repeat(80) + '\u00e9\n'
+    await expect(validateLineLength(doc)).resolves.toContainError('LINE_TOO_LONG', ValidationError)
+  })
+
+  test('includes indentation in the measured length', async () => {
+    const doc = { ...baseTXTDoc }
+    // raw length is 100 even though the trimmed length is only 10
+    doc.body = ' '.repeat(90) + 'abcdefghij\n'
+    await expect(validateLineLength(doc)).resolves.toContainError('LINE_TOO_LONG', ValidationError)
+  })
+
+  test('reports an indented line whose text alone fits in 72 chars', async () => {
+    const doc = { ...baseTXTDoc }
+    doc.body = 'x'.repeat(72) + '\n' + '   ' + 'x'.repeat(70) + '\n'
+    const result = await validateLineLength(doc)
+    expect(result).toContainError('LINE_TOO_LONG', ValidationError)
+    expect(result[0].lines).toEqual([{ line: 2, pos: 73 }])
+  })
+
+  test('accepts an indented line of exactly 72 chars', async () => {
+    const doc = { ...baseTXTDoc }
+    doc.body = '   ' + 'x'.repeat(69) + '\n'
     await expect(validateLineLength(doc)).resolves.toHaveLength(0)
   })
 
-  test('measures trimmed length, not raw length', async () => {
+  test('measures non-ASCII lines in code points, not UTF-16 units', async () => {
     const doc = { ...baseTXTDoc }
-    // raw length is 100 but trimmed length is only 10
-    doc.body = ' '.repeat(90) + 'abcdefghij\n'
+    // 72 code points (but 76 UTF-16 units) is fine
+    doc.body = '\u{1F600}\u{1F600}' + '\u00e9'.repeat(2) + 'x'.repeat(66) + '\u{1F600}\u{1F600}\n'
     await expect(validateLineLength(doc)).resolves.toHaveLength(0)
+    // 73 code points is too long
+    doc.body = '\u{1F600}'.repeat(2) + '\u00e9'.repeat(2) + 'x'.repeat(67) + '\u{1F600}'.repeat(2) + '\n'
+    const result = await validateLineLength(doc)
+    expect(result).toContainError('LINE_TOO_LONG', ValidationError)
+    expect(result[0].lines).toEqual([{ line: 1, pos: 73 }])
+  })
+
+  test('ignores trailing whitespace', async () => {
+    const doc = { ...baseTXTDoc }
+    doc.body = '  ' + 'x'.repeat(70) + ' \t  \n'
+    await expect(validateLineLength(doc)).resolves.toHaveLength(0)
+  })
+
+  test('handles CRLF line endings the same way', async () => {
+    const doc = { ...baseTXTDoc }
+    doc.body = 'x'.repeat(72) + '\r\n' + '  ' + 'x'.repeat(70) + '  \r\n'
+    await expect(validateLineLength(doc)).resolves.toHaveLength(0)
+    doc.body = 'x'.repeat(72) + '\r\n' + '  ' + 'x'.repeat(71) + '\r\n'
+    const result = await validateLineLength(doc)
+    expect(result).toContainError('LINE_TOO_LONG', ValidationError)
+    expect(result[0].lines).toEqual([{ line: 2, pos: 73 }])
   })
 })
 
