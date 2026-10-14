@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import { ALLOWED_DOMAINS_DEFAULT } from '../lib/config/externals.mjs'
 import { getModeByName } from '../lib/config/modes.mjs'
+import { getStatusCategory, rfcStatusHierarchy } from '../lib/config/rfc-status-hierarchy.mjs'
 
 describe('externals', () => {
   test('allowedDomainsDefault is an array of domains', async () => {
@@ -30,5 +31,18 @@ describe('modes', () => {
   })
   test('getModeByName() should fail for an invalid mode name', async () => {
     expect(() => { getModeByName('invalid') }).toThrow()
+  })
+})
+
+describe('rfc-status-hierarchy', () => {
+  test('status regexes are not global, so repeated .test() calls agree', async () => {
+    for (const status of rfcStatusHierarchy) {
+      expect(status.regex.global).toBe(false)
+    }
+  })
+
+  test('getStatusCategory gives the same result on repeated calls', async () => {
+    expect(getStatusCategory('Informational')).toBe(getStatusCategory('Informational'))
+    expect(getStatusCategory('Standards Track')).toBe(getStatusCategory('Standards Track'))
   })
 })
