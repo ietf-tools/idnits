@@ -911,6 +911,43 @@ describe('document should have valid RFC2119 keywords', () => {
       expect(tagErrors.map(r => r.message).join(' ')).toMatch(/SHOULD/)
       expect(tagErrors.map(r => r.message).join(' ')).not.toMatch(/OPTIONAL/)
     })
+    describe('text inside cited references', () => {
+      const abstract = '<front><title>Cited</title><abstract><t>Implementations MUST use US-ASCII.</t></abstract></front>'
+      const parseXML = async ({ middle = '', back = '' }) => {
+        const { doc } = await parse(`<rfc docName="draft-ietf-beep-boop-00">
+  <front><title>Test</title></front>
+  <middle><section><name>Introduction</name><t>Lorem ipsum.</t>${middle}</section></middle>
+  <back>${back}</back>
+</rfc>`, 'draft-ietf-beep-boop-00.xml')
+        return doc
+      }
+
+      test('keywords in a reference abstract are not BCP14 keyword uses', async () => {
+        const doc = await parseXML({
+          back: `<references><name>Informative References</name>
+            <reference anchor="RFC9999">${abstract}</reference>
+          </references>`
+        })
+        await expect(validate2119Keywords(doc)).resolves.toHaveLength(0)
+      })
+      test('keywords in a reference nested in a referencegroup are not BCP14 keyword uses', async () => {
+        const doc = await parseXML({
+          back: `<references><name>Informative References</name>
+            <referencegroup anchor="STD99">
+              <reference anchor="RFC9998"><front><title>Other</title></front></reference>
+              <reference anchor="RFC9999">${abstract}</reference>
+            </referencegroup>
+          </references>`
+        })
+        await expect(validate2119Keywords(doc)).resolves.toHaveLength(0)
+      })
+      test('the same keywords written by the author are still flagged', async () => {
+        const doc = await parseXML({ middle: '<t>Implementations MUST use US-ASCII.</t>' })
+        const result = await validate2119Keywords(doc)
+        expect(result).toContainError('MISSING_BCP14_TAGS', ValidationComment)
+        expect(result).toContainError('MISSING_REQLEVEL_BOILERPLATE', ValidationError)
+      })
+    })
 
     describe('BCP14 reference detection (parsed XML)', () => {
       const parsedBoilerplate = `<t>The key words "<bcp14>MUST</bcp14>", "<bcp14>MUST NOT</bcp14>", "<bcp14>REQUIRED</bcp14>",
@@ -1184,6 +1221,53 @@ describe('document should have valid term spelling', () => {
       ])
       await expect(validateTermsStyle(doc)).resolves.toContainError('INCORRECT_TERM_SPELLING', ValidationComment)
       await expect(validateTermsStyle(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+    })
+
+    describe('text inside cited references', () => {
+      const parseXML = async ({ middle = '', back = '' }) => {
+        const { doc } = await parse(`<rfc docName="draft-ietf-beep-boop-00">
+  <front><title>Test</title></front>
+  <middle><section><name>Introduction</name><t>Lorem ipsum.</t>${middle}</section></middle>
+  <back>${back}</back>
+</rfc>`, 'draft-ietf-beep-boop-00.xml')
+        return doc
+      }
+
+      test('terms in a reference abstract are not checked', async () => {
+        const doc = await parseXML({
+          back: `<references><name>Normative References</name>
+            <reference anchor="RFC3629"><front><title>UTF-8</title>
+              <abstract><t>UTF-8 has the characteristic of preserving the full US-ASCII range.</t></abstract>
+            </front></reference>
+          </references>`
+        })
+        await expect(validateTermsStyle(doc)).resolves.toHaveLength(0)
+      })
+      test('terms in a reference nested in a referencegroup are not checked', async () => {
+        const doc = await parseXML({
+          back: `<references><name>Normative References</name>
+            <referencegroup anchor="STD63">
+              <reference anchor="RFC3629"><front><title>UTF-8</title>
+                <abstract><t>Lorem ipsum.</t><t>UTF-8 has the characteristic of preserving the full US-ASCII range.</t></abstract>
+              </front></reference>
+            </referencegroup>
+          </references>`
+        })
+        await expect(validateTermsStyle(doc)).resolves.toHaveLength(0)
+      })
+      test('the same terms written by the author are still flagged', async () => {
+        const doc = await parseXML({ middle: '<t>UTF-8 has the characteristic of preserving the full US-ASCII range.</t>' })
+        await expect(validateTermsStyle(doc)).resolves.toContainError('INCORRECT_TERM_SPELLING', ValidationComment)
+      })
+      test('terms in a back section written by the author are still flagged', async () => {
+        const doc = await parseXML({
+          back: `<references><name>Normative References</name>
+            <reference anchor="RFC3629"><front><title>UTF-8</title></front></reference>
+          </references>
+          <section><name>Acknowledgments</name><t>Thanks for the e-mail feedback.</t></section>`
+        })
+        await expect(validateTermsStyle(doc)).resolves.toContainError('INCORRECT_TERM_SPELLING', ValidationComment)
+      })
     })
   })
 })

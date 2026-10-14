@@ -6,6 +6,7 @@ import {
   validateIPs
 } from '../lib/modules/ip.mjs'
 import { baseXMLDoc } from './fixtures/base-doc.mjs'
+import { parse } from '../lib/parsers/xml.mjs'
 import { cloneDeep, set } from 'lodash-es'
 
 expect.extend({
@@ -185,6 +186,44 @@ describe('document should have valid IP Address mentions', () => {
           99:4f:b7:c1:6b:d7:e8:c1:f4:40:ff:a8:d0:4f:f1:
           e1:3f`)
       await expect(validateIPs(doc)).resolves.toHaveLength(0)
+    })
+    describe('text inside cited references', () => {
+      const invalidIPv6 = 'F:0DB8:0000:CD30:0000:0000111:0000:0000'
+      const parseXML = async ({ middle = '', back = '' }) => {
+        const { doc } = await parse(`<rfc docName="draft-ietf-beep-boop-00">
+  <front><title>Test</title></front>
+  <middle><section><name>Introduction</name><t>Lorem ipsum.</t>${middle}</section></middle>
+  <back>${back}</back>
+</rfc>`, 'draft-ietf-beep-boop-00.xml')
+        return doc
+      }
+
+      test('addresses in a reference abstract are not checked', async () => {
+        const doc = await parseXML({
+          back: `<references><name>Informative References</name>
+            <reference anchor="RFC9999"><front><title>Cited</title>
+              <abstract><t>Lorem ipsum ${invalidIPv6} lorem ipsum.</t></abstract>
+            </front></reference>
+          </references>`
+        })
+        await expect(validateIPs(doc)).resolves.toHaveLength(0)
+      })
+      test('addresses in a reference nested in a referencegroup are not checked', async () => {
+        const doc = await parseXML({
+          back: `<references><name>Informative References</name>
+            <referencegroup anchor="STD99">
+              <reference anchor="RFC9999"><front><title>Cited</title>
+                <abstract><t>Lorem ipsum ${invalidIPv6} lorem ipsum.</t></abstract>
+              </front></reference>
+            </referencegroup>
+          </references>`
+        })
+        await expect(validateIPs(doc)).resolves.toHaveLength(0)
+      })
+      test('the same address written by the author is still flagged', async () => {
+        const doc = await parseXML({ middle: `<t>Lorem ipsum ${invalidIPv6} lorem ipsum.</t>` })
+        await expect(validateIPs(doc)).resolves.toContainError('INVALID_IPV6_ADDRESS', ValidationWarning)
+      })
     })
     // TODO: More IPv6 variations, compressed, mix with v4, etc.
   })

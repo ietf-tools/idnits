@@ -3,6 +3,7 @@ import { MODES } from '../lib/config/modes.mjs'
 import { toContainError, ValidationComment, ValidationWarning } from '../lib/helpers/error.mjs'
 import { validateFQDNs } from '../lib/modules/fqdn.mjs'
 import { baseXMLDoc } from './fixtures/base-doc.mjs'
+import { parse } from '../lib/parsers/xml.mjs'
 import { cloneDeep, set } from 'lodash-es'
 
 expect.extend({
@@ -213,6 +214,43 @@ describe('document should have valid FQDN mentions', () => {
       ])
       await expect(validateFQDNs(doc)).resolves.toContainError('INVALID_DOMAIN_TLD', ValidationWarning)
       await expect(validateFQDNs(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+    })
+    describe('text inside cited references', () => {
+      const parseXML = async ({ middle = '', back = '' }) => {
+        const { doc } = await parse(`<rfc docName="draft-ietf-beep-boop-00">
+  <front><title>Test</title></front>
+  <middle><section><name>Introduction</name><t>Lorem ipsum.</t>${middle}</section></middle>
+  <back>${back}</back>
+</rfc>`, 'draft-ietf-beep-boop-00.xml')
+        return doc
+      }
+
+      test('domains in a reference abstract are not checked', async () => {
+        const doc = await parseXML({
+          back: `<references><name>Informative References</name>
+            <reference anchor="RFC9999"><front><title>Cited</title>
+              <abstract><t>Lorem ipsum www.something.org lorem ipsum.</t></abstract>
+            </front></reference>
+          </references>`
+        })
+        await expect(validateFQDNs(doc)).resolves.toHaveLength(0)
+      })
+      test('domains in a reference nested in a referencegroup are not checked', async () => {
+        const doc = await parseXML({
+          back: `<references><name>Informative References</name>
+            <referencegroup anchor="STD99">
+              <reference anchor="RFC9999"><front><title>Cited</title>
+                <abstract><t>Lorem ipsum www.something.org lorem ipsum.</t></abstract>
+              </front></reference>
+            </referencegroup>
+          </references>`
+        })
+        await expect(validateFQDNs(doc)).resolves.toHaveLength(0)
+      })
+      test('the same domain written by the author is still flagged', async () => {
+        const doc = await parseXML({ middle: '<t>Lorem ipsum www.something.org lorem ipsum.</t>' })
+        await expect(validateFQDNs(doc)).resolves.toContainError('INVALID_DOMAIN_TLD', ValidationWarning)
+      })
     })
     // TODO: non-latin domains (xn--)
   })
