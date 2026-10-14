@@ -47,7 +47,7 @@ import {
   RFC2119Alt2BoilerplateTXTBlock,
   BCP14BoilerplateTXTBlock
 } from './fixtures/txt-blocks/section-blocks.mjs'
-import { parse } from '../lib/parsers/txt.mjs'
+import { pageBreakLineType, parse } from '../lib/parsers/txt.mjs'
 
 beforeAll(() => {
   vi.spyOn(console, 'info').mockImplementation(() => {})
@@ -1752,6 +1752,63 @@ ${introductionTXTBlock}
     const result = await parse(txt, 'txt')
     expect(result.data.pageCount).toBe(1)
   })
+
+  test('Paragraph split by a lowercase "[page N]" footer with trailing whitespace is still recognized', async () => {
+    // Excerpt from draft-urien-tls-im-trusted-exporter-00 (CRLF line endings)
+    const txt = `
+${metaTXTBlock}
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents
+
+   Urien                    Expires November 2026           [page 1] \f
+   TLS 1.3 Identity Module Trusted Exporter                  May 2026 
+
+   at any time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+${introductionTXTBlock}
+`.replace(/\n/g, '\r\n')
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.contains.draftParagraphOutSixMonthValidity).toBe(true)
+  })
+
+  test('Paragraph split by a page break whose running header reads "Month DD,YYYY" is still recognized', async () => {
+    const txt = `
+${metaTXTBlock}
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+
+Li, et al.               Expires September, 2026                [Page 1]
+\f
+Internet-Draft         FlowSpec by Destination-QP          March 02,2026
+
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+${introductionTXTBlock}
+`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.contains.draftParagraphOutSixMonthValidity).toBe(true)
+  })
+
+  test.each([
+    ['Zhang, et al.           Expires 8 September 2023                [Page 1]', 'footer'],
+    ['Gueron                  Expires March 16, 2027                 [Page 2] ', 'footer'],
+    ['   Urien                    Expires November 2026           [page 1] \r', 'footer'],
+    ['Internet-Draft               RT-derived ECs                   March 2023', 'header'],
+    ['Internet-Draft              CATS OAM Use Cases            21 July 2026', 'header'],
+    ['Internet-Draft                   MSYNC                      May 28, 2026', 'header'],
+    ['Internet-Draft         FlowSpec by Destination-QP          March 02,2026', 'header'],
+    ['   Internet-Draft       ICMP extension for SAVNET          July, 2026', 'header'],
+    ['   TLS 1.3 Identity Module Trusted Exporter                  May 2026 \r', 'header'],
+    ['   until the counter wraps around in may 2048', null],
+    ['   published in March 2014 [RFC7154] and still in use.', null],
+    ['   see page 4 of the specification', null]
+  ])('pageBreakLineType(%j) is %j', (line, expected) => {
+    expect(pageBreakLineType(line)).toBe(expected)
+  })
 })
 
 describe('Status of this memo section is numbered', () => {
@@ -1912,6 +1969,24 @@ describe('Parsing pages (page count)', () => {
     expect(result.data.pageCount).toEqual(3)
   })
 
+  test('Page footers with trailing whitespace or a lowercase "page" are counted', async () => {
+    const txt = `
+${metaTXTBlock}
+${abstractTXTBlock}
+
+Gueron                  Expires March 16, 2027                 [Page 1] 
+\f
+Internet-Draft                  DNDK-GCM                  September 2026
+
+${introductionTXTBlock}
+
+   Urien                    Expires November 2026           [page 2] 
+`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.contains.pagesFound).toEqual(2)
+  })
+
   test('Parser should detect table of contents in the document', async () => {
     const txt = `
     ${metaTXTBlock}
@@ -2063,6 +2138,88 @@ describe('Parsing expires line', () => {
     expect(result.data.header.expires).toBeDefined()
     expect(result.data.header.expires.toISODate()).toEqual('2023-09-08')
     expect(result.data.extractedElements.lastPageExpiration).toBeDefined()
+    expect(result.data.extractedElements.lastPageExpiration.toISODate()).toEqual('2023-03-07')
+  })
+
+  test.each([
+    ['Expires: 8 September 2023', '2023-09-08', true],
+    ['Expires: October 19, 2026', '2026-10-19', true],
+    ['Expires: January 08, 2027', '2027-01-08', true],
+    ['Expires: October 2026', '2026-10-01', false],
+    ['Expires: September, 2026', '2026-09-01', false],
+    ['Expires: 2027-01-20', '2027-01-20', true],
+    ['Expiration date: 2027-01-20', '2027-01-20', true]
+  ])('Header "%s" gives expiry %s', async (expiresLine, isoDate, hasDay) => {
+    const txt = `
+${metaTXTBlock.replace('Expires: 8 September 2023', expiresLine)}
+${abstractTXTBlock}
+`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.header.expires.toISODate()).toEqual(isoDate)
+    expect(result.data.header.expiresHasDay).toBe(hasDay)
+  })
+
+  test('Indented header Expires line with trailing whitespace is parsed', async () => {
+    const txt = `
+${metaTXTBlock.replace('Expires: 8 September 2023                                      K. Patel', '  Expires: November 2026 ')}
+${abstractTXTBlock}
+`.replace(/\n/g, '\r\n')
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.header.expires.toISODate()).toEqual('2026-11-01')
+    expect(result.data.header.expiresHasDay).toBe(false)
+  })
+
+  test.each([
+    ['Bashandy               Expires October 19, 2026                [Page 7]', '2026-10-19', true],
+    ['Lin, et al.           Expires January 08, 2027                [Page 13]', '2027-01-08', true],
+    ['Cheng, et al.          Expires December, 2026                 [Page 7]', '2026-12-01', false],
+    ['   Urien                 Expires November 2026               [Page 6] ', '2026-11-01', false],
+    ['Gueron                  Expires March 16, 2027                 [Page 45] ', '2027-03-16', true]
+  ])('Last page footer "%s" gives expiry %s', async (footer, isoDate, hasDay) => {
+    const txt = `
+${metaTXTBlock}
+${abstractTXTBlock}
+${introductionTXTBlock}
+
+${footer}
+`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.lastPageExpiration.toISODate()).toEqual(isoDate)
+    expect(result.data.extractedElements.lastPageExpirationHasDay).toBe(hasDay)
+  })
+
+  test('Expiration date is found in a footer followed by a running header', async () => {
+    // As in draft-dikshit-cats-oam-usecases-00, whose only footer is on page 1
+    const txt = `
+${metaTXTBlock}
+${abstractTXTBlock}
+
+Dikshit                 Expires 1 February 2027                 [Page 1]
+\f
+Internet-Draft              CATS OAM Use Cases                July 2026
+
+${introductionTXTBlock}
+`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.contains.pagesFound).toEqual(1)
+    expect(result.data.extractedElements.lastPageExpiration.toISODate()).toEqual('2027-02-01')
+    expect(result.data.extractedElements.lastPageExpirationHasDay).toBe(true)
+  })
+
+  test('Expiration date is taken from the last page footer', async () => {
+    const txt = `
+${metaTXTBlock}
+${abstractTXTBlock}
+${PageBlock}
+${introductionTXTBlock}
+${expiresLineFooterTXTBlock}
+`
+
+    const result = await parse(txt, 'txt')
     expect(result.data.extractedElements.lastPageExpiration.toISODate()).toEqual('2023-03-07')
   })
 })
