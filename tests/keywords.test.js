@@ -860,6 +860,41 @@ describe('document should have valid RFC2119 keywords', () => {
       const result = await validate2119Keywords(doc)
       expect(result.find(r => r.name === 'MISSING_BCP14_TAGS')).toBeUndefined()
     })
+    test('untagged keyword in a list item is flagged', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      doc.externalEntities = [{ name: 'BCP14' }]
+      set(doc, 'data.rfc.middle.section', {
+        t: boilerplate,
+        ul: { li: ['The client MUST retry.', 'The server logs the attempt.'] }
+      })
+      await expect(validate2119Keywords(doc)).resolves.toContainError('MISSING_BCP14_TAGS', ValidationComment)
+    })
+    test('untagged keyword in a lone list item is flagged', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      doc.externalEntities = [{ name: 'BCP14' }]
+      set(doc, 'data.rfc.middle.section', {
+        t: boilerplate,
+        ul: { li: 'The client MUST retry.' }
+      })
+      await expect(validate2119Keywords(doc)).resolves.toContainError('MISSING_BCP14_TAGS', ValidationComment)
+    })
+    test('untagged keyword in <strong> or <em> is flagged, but not in <tt>', async () => {
+      const { doc } = await parse(`<rfc docName="draft-ietf-beep-boop-00">
+  <front><title>Test</title></front>
+  <middle><section><name>Introduction</name>
+    <t>${boilerplate}</t>
+    <t>The client <strong>MUST</strong> retry.</t>
+    <t>The server <em>SHOULD</em> log the attempt.</t>
+    <t>The field is <tt>OPTIONAL</tt> in ASN.1.</t>
+  </section></middle>
+</rfc>`, 'draft-ietf-beep-boop-00.xml')
+      doc.externalEntities = [{ name: 'BCP14' }]
+      const result = await validate2119Keywords(doc)
+      const tagErrors = result.filter(r => r.name === 'MISSING_BCP14_TAGS')
+      expect(tagErrors.map(r => r.message).join(' ')).toMatch(/MUST/)
+      expect(tagErrors.map(r => r.message).join(' ')).toMatch(/SHOULD/)
+      expect(tagErrors.map(r => r.message).join(' ')).not.toMatch(/OPTIONAL/)
+    })
 
     describe('BCP14 reference detection (parsed XML)', () => {
       const parsedBoilerplate = `<t>The key words "<bcp14>MUST</bcp14>", "<bcp14>MUST NOT</bcp14>", "<bcp14>REQUIRED</bcp14>",
@@ -1104,6 +1139,17 @@ describe('document should have valid term spelling', () => {
       const doc = cloneDeep(baseXMLDoc)
       set(doc, 'data.rfc.middle.t', 'Online banking services have improved security.')
       await expect(validateTermsStyle(doc)).resolves.toHaveLength(0)
+    })
+
+    test('invalid spelling in a section with sibling <t> elements', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      // Repeated <t> tags parse to an array of strings, not to separate keys.
+      set(doc, 'data.rfc.middle.section.t', [
+        'The system is described below.',
+        'Lorem ipsum e-mail address.'
+      ])
+      await expect(validateTermsStyle(doc)).resolves.toContainError('INCORRECT_TERM_SPELLING', ValidationComment)
+      await expect(validateTermsStyle(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
   })
 })
