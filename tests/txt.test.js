@@ -34,6 +34,8 @@ import {
   validateTableOfContentsAndDocumentPages
 } from '../lib/modules/txt.mjs'
 import { baseTXTDoc } from './fixtures/base-doc.mjs'
+import { abstractTXTBlock, introductionTXTBlock, metaTXTBlock } from './fixtures/txt-blocks/section-blocks.mjs'
+import { parse } from '../lib/parsers/txt.mjs'
 import { cloneDeep } from 'lodash-es'
 import { DateTime } from 'luxon'
 import { PAGE_THRESHOLD_REQUIRING_TOC } from '../lib/config/consts.mjs'
@@ -897,6 +899,49 @@ describe('Validate Expires Line in the document', () => {
         }
       )
     ])
+  })
+
+  /**
+   * Parse a paginated draft with the given header Expires line and last page footer
+   */
+  async function parseWithExpires (expiresLine, footer) {
+    return parse(`
+${metaTXTBlock.replace('Expires: 8 September 2023', expiresLine)}
+${abstractTXTBlock}
+
+${footer}
+\f
+Internet-Draft               RT-derived ECs                   July 2026
+
+${introductionTXTBlock}
+
+${footer.replace('[Page 1]', '[Page 2]')}
+`, 'draft-ietf-idr-rt-derived-community-05.txt')
+  }
+
+  test.each([
+    // draft-bashandy-rtgwg-segment-routing-uloop-18
+    ['Expires: October 2026', 'Bashandy               Expires October 19, 2026                [Page 1]'],
+    // draft-cheng-dhc-distribute-arn-dhcp-01
+    ['Expires: December 10, 2026', 'Cheng, et al.          Expires December, 2026                 [Page 1]'],
+    ['Expires: January 08, 2027', 'Lin, et al.           Expires January 08, 2027                [Page 1]'],
+    ['Expires: 1 February 2027', 'Dikshit                 Expires February 1, 2027                [Page 1]']
+  ])('should return no errors if "%s" matches the footer "%s"', async (expiresLine, footer) => {
+    const doc = await parseWithExpires(expiresLine, footer)
+
+    await expect(validateExpiresLine(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
+    await expect(validateExpiresLine(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+  })
+
+  test.each([
+    ['Expires: October 2026', 'Bashandy               Expires November 19, 2026               [Page 1]'],
+    ['Expires: October 19, 2026', 'Bashandy               Expires October 20, 2026                [Page 1]'],
+    ['Expires: October 19, 2026', 'Bashandy               Expires November 2026                   [Page 1]']
+  ])('should return an error if "%s" does not match the footer "%s"', async (expiresLine, footer) => {
+    const doc = await parseWithExpires(expiresLine, footer)
+
+    await expect(validateExpiresLine(doc, { mode: MODES.NORMAL })).resolves.toContainError('EXPIRES_LINE_MISMATCH', ValidationError)
+    await expect(validateExpiresLine(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('EXPIRES_LINE_MISMATCH', ValidationError)
   })
 })
 
