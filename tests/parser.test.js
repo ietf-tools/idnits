@@ -1985,6 +1985,39 @@ describe('Missing acceptable paragraph calling out 6 month validity', () => {
     const result = await parse(txt, 'txt')
     expect(result.data.contains.draftParagraphOutSixMonthValidity).toBeTruthy()
   })
+
+  test('The acceptable paragraph calling out 6 month validity is present with the period outside the quotes', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${textAcceptableParagraphCallingOutSixMonthValidity.replace('"work in progress."', '"work in progress".')}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.contains.draftParagraphOutSixMonthValidity).toBeTruthy()
+  })
+
+  test('The acceptable paragraph calling out 6 month validity without the period is not accepted', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${textAcceptableParagraphCallingOutSixMonthValidity.replace('"work in progress."', '"work in progress"')}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.contains.draftParagraphOutSixMonthValidity).toBeFalsy()
+  })
+
+  test('The acceptable paragraph calling out 6 month validity with different text is not accepted', async () => {
+    const txt = `
+    ${metaTXTBlock}
+    ${tableOfContentsTXTBlock}
+    ${textAcceptableParagraphCallingOutSixMonthValidity.replace('"work in progress."', '"work underway".')}
+  `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.contains.draftParagraphOutSixMonthValidity).toBeFalsy()
+  })
 })
 
 describe('Parsing expires line', () => {
