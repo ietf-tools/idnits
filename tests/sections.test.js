@@ -11,6 +11,8 @@ import {
   validateReferencesInText
 } from '../lib/modules/sections.mjs'
 import { parse } from '../lib/parsers/xml.mjs'
+import { parse as parseTXT } from '../lib/parsers/txt.mjs'
+import { CANONICAL_TXT } from './generators/doc-txt.js'
 import { baseTXTDoc, baseXMLDoc } from './fixtures/base-doc.mjs'
 import { cloneDeep, set, times } from 'lodash-es'
 
@@ -889,13 +891,33 @@ describe('document should have valid references sections', () => {
         `
       }
       await expect(validateReferencesSection(doc, { mode: MODES.NORMAL })).resolves.toContainError(
-        'MISSING_REFERENCES_CLASSIFICATION',
+        'REFERENCE_TYPE_NOT_DECLARED',
         ValidationError
       )
       await expect(validateReferencesSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError(
-        'MISSING_REFERENCES_CLASSIFICATION',
+        'REFERENCE_TYPE_NOT_DECLARED',
         ValidationWarning
       )
+    })
+
+    test('references type must be declared, but a single Normative or Informative section is fine', async () => {
+      const parseWithReferences = (title) => parseTXT(`${CANONICAL_TXT}
+1.  Introduction
+
+   This document uses [RFC4360].
+
+2.  ${title}
+
+   [RFC4360]  Sangli, S., "BGP Extended Communities Attribute",
+              RFC 4360, February 2006.
+`, '')
+      await expect(validateReferencesSection(await parseWithReferences('References'))).resolves.toEqual([
+        new ValidationError('REFERENCE_TYPE_NOT_DECLARED', 'References must be identified as Normative or Informative.', {
+          ref: 'https://authors.ietf.org/required-content#references'
+        })
+      ])
+      await expect(validateReferencesSection(await parseWithReferences('Normative References'))).resolves.toHaveLength(0)
+      await expect(validateReferencesSection(await parseWithReferences('Informative References'))).resolves.toHaveLength(0)
     })
 
     test('Should throw an error when reference content has two or more section titles', async () => {
