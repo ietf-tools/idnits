@@ -1,6 +1,11 @@
 import { describe, expect, test } from 'vitest'
+import { toContainError, ValidationWarning } from '../lib/helpers/error.mjs'
 import { parse } from '../lib/parsers/xml.mjs'
 import { validate2119Keywords } from '../lib/modules/keywords.mjs'
+
+expect.extend({
+  toContainError
+})
 
 /**
  * Parse an XML body wrapped in a minimal but valid draft skeleton.
@@ -78,5 +83,93 @@ describe('XML parser', () => {
       const result = await validate2119Keywords(doc)
       expect(result.map(r => r.name)).toContain('MISSING_BCP14_TAGS')
     })
+  })
+})
+
+const body = `<rfc version="3" docName="draft-ietf-beep-boop-00">
+  <front><title>Test</title><seriesInfo name="Internet-Draft" value="draft-ietf-beep-boop-00"/></front>
+  <middle><section><name>Intro</name><t>Text&nbsp;here.</t></section></middle>
+  <back><references><name>Normative References</name>&RFC2119;&RFC8174;</references></back>
+</rfc>`
+
+describe('XML parser should handle external entities', () => {
+  test('SYSTEM entities and their references', async () => {
+    const { doc } = await parse(`<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE rfc [
+<!ENTITY nbsp "&#160;">
+<!ENTITY RFC2119 SYSTEM "https://bib.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml">
+<!ENTITY RFC8174 SYSTEM 'https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8174.xml'>
+]>
+${body}`, 'draft-ietf-beep-boop-00.xml')
+    expect(doc.externalEntities).toMatchObject([
+      { name: 'RFC2119', type: 'SYSTEM', url: 'https://bib.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml' },
+      { name: 'RFC8174', type: 'SYSTEM', url: 'https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8174.xml' }
+    ])
+    expect(doc.data.rfc.middle.section.t).toBe('Text&nbsp;here.')
+  })
+  test('PUBLIC entities with a public identifier', async () => {
+    const { doc } = await parse(`<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE rfc [
+<!ENTITY nbsp "&#160;">
+<!ENTITY RFC2119 PUBLIC '' 'https://bib.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml'>
+<!ENTITY RFC8174 PUBLIC "-//IETF//RFC 8174//EN"
+  "https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8174.xml">
+]>
+${body}`, 'draft-ietf-beep-boop-00.xml')
+    expect(doc.externalEntities).toMatchObject([
+      { name: 'RFC2119', type: 'PUBLIC', url: 'https://bib.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml' },
+      { name: 'RFC8174', type: 'PUBLIC', url: 'https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8174.xml' }
+    ])
+  })
+  test('entities commented out in the DTD are ignored', async () => {
+    const { doc } = await parse(`<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE rfc [
+<!-- e.g. &lt;!ENTITY RFC8174 SYSTEM
+     "https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8174.xml"> -->
+<!-- <!ENTITY RFC1234 SYSTEM "https://bib.ietf.org/public/rfc/bibxml/reference.RFC.1234.xml"> -->
+<!ENTITY nbsp "&#160;">
+<!ENTITY RFC2119 SYSTEM "https://bib.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml">
+<!ENTITY RFC8174 SYSTEM "https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8174.xml">
+]>
+${body}`, 'draft-ietf-beep-boop-00.xml')
+    expect(doc.externalEntities.map(e => e.name)).toEqual(['RFC2119', 'RFC8174'])
+  })
+})
+
+describe('XML parser should handle processing instructions', () => {
+  test('unbalanced quotes in processing instructions', async () => {
+    const { doc } = await parse(`<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type='text/xsl' href='rfc2629.xslt' ?>
+<?rfc toc="yes"?>
+<rfc docName="draft-ietf-beep-boop-00">
+  <front><title>Test</title></front>
+  <back><references title="Normative References">
+    <?rfc include="reference.RFC.2119'?>
+  </references></back>
+</rfc>`, 'draft-ietf-beep-boop-00.xml')
+    expect(doc.data.rfc.front.title).toBe('Test')
+  })
+  test('processing instructions and entity references inside CDATA are kept', async () => {
+    const { doc } = await parse(`<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE rfc [
+<!ENTITY RFC2119 SYSTEM "https://bib.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml">
+]>
+<rfc docName="draft-ietf-beep-boop-00">
+  <front><title>Test</title></front>
+  <middle><section><name>Code</name><sourcecode><![CDATA[<?php echo "&RFC2119;"; ?>]]></sourcecode></section></middle>
+</rfc>`, 'draft-ietf-beep-boop-00.xml')
+    expect(doc.data.rfc.middle.section.sourcecode).toBe('<?php echo "&RFC2119;"; ?>')
+  })
+})
+
+describe('XML parser should determine the document kind', () => {
+  test('unexpected seriesInfo name', async () => {
+    const { doc, nits } = await parse(`<?xml version="1.0" encoding="UTF-8"?>
+<rfc version="3" docName="draft-ietf-beep-boop-00">
+  <front><title>Test</title><seriesInfo name="Draft" value="draft-ietf-beep-boop-00"/></front>
+</rfc>`, 'draft-ietf-beep-boop-00.xml')
+    expect(doc.docKind).toBe('draft')
+    expect(doc.docKindCertainty).toBe('guess')
+    expect(nits).toContainError('XML_UNEXPECTED_SERIESINFO_NAME', ValidationWarning)
   })
 })
