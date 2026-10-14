@@ -3,6 +3,7 @@ import { MODES } from '../lib/config/modes.mjs'
 import { toContainError, ValidationWarning, ValidationError, ValidationComment } from '../lib/helpers/error.mjs'
 import { baseXMLDoc, baseTXTDoc } from './fixtures/base-doc.mjs'
 import { cloneDeep, set } from 'lodash-es'
+import { parse } from '../lib/parsers/xml.mjs'
 import { validateDownrefs, validateInformativeReferences, validateNormativeReferences, validateUnclassifiedReferences, validatePublishedDraftReferences, validateReferenceForStale } from '../lib/modules/downref.mjs'
 import { setupServer } from 'msw/node'
 import { http, HttpResponse, passthrough } from 'msw'
@@ -115,6 +116,28 @@ beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
 afterEach(() => server.resetHandlers())
 afterAll(() => server.close())
 
+/**
+ * Parse an XML draft with the given <back> content
+ *
+ * @param {string} back Content of the <back> element
+ * @returns {Promise<Object>} Parsed document
+ */
+async function parseXMLBack (back) {
+  const { doc } = await parse(`<rfc version="3" category="std"><back>${back}</back></rfc>`, 'draft-test-references-00.xml')
+  return doc
+}
+
+/**
+ * Wrap <reference> entries in a single <references> section nested in a References wrapper
+ *
+ * @param {string} name Name of the inner <references> section
+ * @param {string} entries <reference> entries
+ * @returns {string} XML
+ */
+function nestedReferences (name, entries) {
+  return `<references><name>References</name><references><name>${name}</name>${entries}</references></references>`
+}
+
 describe('validateDownrefs', () => {
   describe('TXT Document Type', () => {
     test('valid references with no downrefs', async () => {
@@ -181,6 +204,19 @@ describe('validateDownrefs', () => {
 
       const result = await validateDownrefs(doc, { mode: MODES.NORMAL })
       expect(result).toHaveLength(0)
+    })
+
+    test('parsed single nested and flat references sections', async () => {
+      const entry = '<reference anchor="RFC7322"><front/><seriesInfo name="RFC" value="7322"/></reference>'
+      const expected = [
+        new ValidationError(
+          'POSSIBLE_DOWNREF',
+          'RFC 7322 status can\'t be fetched. Reference is possible downref',
+          { ref: 'https://www.rfc-editor.org/info/bcp97' }
+        )
+      ]
+      await expect(validateDownrefs(await parseXMLBack(nestedReferences('Normative References', entry)), { mode: MODES.NORMAL })).resolves.toEqual(expected)
+      await expect(validateDownrefs(await parseXMLBack(`<references><name>Normative References</name>${entry}</references>`), { mode: MODES.NORMAL })).resolves.toEqual(expected)
     })
 
     test('invalid XML ref for a draft', async () => {
@@ -439,6 +475,19 @@ describe('validateNormativeReferences', () => {
       ])
     })
 
+    test('normative reference in a parsed single nested references section', async () => {
+      const doc = await parseXMLBack(nestedReferences('Normative References', '<reference anchor="RFC4086"><front/><seriesInfo name="RFC" value="4086"/></reference>'))
+
+      const result = await validateNormativeReferences(doc, { mode: MODES.NORMAL })
+      expect(result).toEqual([
+        new ValidationComment(
+          'UNDEFINED_STATUS',
+          'RFC 4086 does not have a defined status or could not be fetched.',
+          { ref: 'https://www.rfc-editor.org/info/rfc4086' }
+        )
+      ])
+    })
+
     test('normative reference with unknown status', async () => {
       const doc = cloneDeep(baseXMLDoc)
       set(doc, 'data.rfc.back.references.references', [
@@ -489,6 +538,14 @@ describe('validateUnclassifiedReferences', () => {
 
       const result = await validateUnclassifiedReferences(doc, { mode: MODES.NORMAL })
       expect(result).toContainError('OBSOLETE_REFERENCE', ValidationError)
+    })
+
+    test('unclassified reference to an obsolete RFC in a parsed flat references section', async () => {
+      const doc = await parseXMLBack('<references><name>References</name><reference anchor="RFC4087"><front/></reference></references>')
+
+      const result = await validateUnclassifiedReferences(doc, { mode: MODES.NORMAL })
+      expect(result).toContainError('OBSOLETE_REFERENCE', ValidationError)
+      await expect(validateUnclassifiedReferences(await parseXMLBack(nestedReferences('Normative References', '<reference anchor="RFC4087"><front/></reference>')), { mode: MODES.NORMAL })).resolves.toHaveLength(0)
     })
 
     test('FORGIVE_CHECKLIST mode for an obsolete unclassified RFC', async () => {
@@ -669,6 +726,19 @@ describe('Validating published as a RFC draft references', () => {
       ])
     })
 
+    test('should return warning for drafts published as RFCs in a parsed single nested references section', async () => {
+      const doc = await parseXMLBack(nestedReferences('Informative References', '<reference anchor="draft-ietf-published-as-rfc"><front/></reference>'))
+
+      const result = await validatePublishedDraftReferences(doc, { mode: MODES.NORMAL })
+      expect(result).toEqual([
+        new ValidationWarning(
+          'INVALID_STATE_FOR_DRAFT',
+          'The draft reference draft-ietf-published-as-rfc is already published as an RFC and should not be referenced as a draft.',
+          { ref: 'https://datatracker.ietf.org/doc/draft-ietf-published-as-rfc' }
+        )
+      ])
+    })
+
     test('should return no warnings in SUBMISSION mode (XML)', async () => {
       const doc = cloneDeep(baseXMLDoc)
       set(doc, 'data.rfc.back.references.references', [
@@ -831,6 +901,19 @@ describe('validateReferenceForStale (XML)', () => {
     set(doc, 'data.rfc.back.references.references', [
       { name: 'Normative references', reference: [{ _attr: { anchor: 'draft-ietf-stale-01' }, seriesInfo: [{ _attr: { name: 'Internet-Draft', value: 'draft-ietf-stale-01' } }] }] }
     ])
+
+    const res = await validateReferenceForStale(doc, { mode: MODES.NORMAL })
+    expect(res).toEqual([
+      new ValidationWarning(
+        'OUTDATED_DRAFT',
+        'The draft reference draft-ietf-stale (version 01) is stale. It was replaced by draft-ietf-newer (version 03).',
+        { ref: 'https://datatracker.ietf.org/doc/draft-ietf-stale' }
+      )
+    ])
+  })
+
+  test('OUTDATED_DRAFT in a parsed single nested references section', async () => {
+    const doc = await parseXMLBack(nestedReferences('Informative References', '<reference anchor="I-D.ietf-stale"><front/><seriesInfo name="Internet-Draft" value="draft-ietf-stale-01"/></reference>'))
 
     const res = await validateReferenceForStale(doc, { mode: MODES.NORMAL })
     expect(res).toEqual([
