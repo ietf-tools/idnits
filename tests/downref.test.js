@@ -96,6 +96,46 @@ export const mockRestHandlers = [
       ]
     })
   }),
+  http.get('https://datatracker.ietf.org/doc/draft-ietf-bess-rfc7432bis/doc.json', () => {
+    return HttpResponse.json({
+      state: 'Active',
+      rev_history: [
+        { rev: '10', name: 'draft-ietf-bess-rfc7432bis', published: '2024-07-01T12:00:00+00:00' },
+        { rev: '13', name: 'draft-ietf-bess-rfc7432bis', published: '2025-06-25T01:52:50+00:00' },
+        { rev: '14', name: 'draft-ietf-bess-rfc7432bis', published: '2026-03-02T17:54:00+00:00' }
+      ]
+    })
+  }),
+  http.get('https://datatracker.ietf.org/doc/draft-ldbc-cats-framework/doc.json', () => {
+    return HttpResponse.json({
+      state: 'Replaced',
+      rev_history: [
+        { rev: '06', name: 'draft-ldbc-cats-framework', published: '2024-01-01T12:00:00+00:00' },
+        { rev: '00', name: 'draft-ldbc-cats-framework-merged', published: '2024-03-01T12:00:00+00:00' },
+        { rev: '00', name: 'draft-ietf-cats-framework', published: '2024-06-01T12:00:00+00:00' },
+        { rev: '10', name: 'draft-ietf-cats-framework', published: '2025-06-01T12:00:00+00:00' }
+      ]
+    })
+  }),
+  http.get('https://datatracker.ietf.org/doc/draft-ldbc-cats-replaced-rfc/doc.json', () => {
+    return HttpResponse.json({
+      state: 'Replaced',
+      rev_history: [
+        { rev: '06', name: 'draft-ldbc-cats-replaced-rfc', published: '2024-01-01T12:00:00+00:00' },
+        { rev: '24', name: 'draft-ietf-cats-replacement', published: '2026-04-02T14:05:54+00:00' },
+        { rev: 'rfc10053', name: 'rfc10053', published: '2026-10-06T21:50:52+00:00' }
+      ]
+    })
+  }),
+  http.get('https://datatracker.ietf.org/doc/draft-ietf-quic-transport/doc.json', () => {
+    return HttpResponse.json({
+      state: 'RFC',
+      rev_history: [
+        { rev: '34', name: 'draft-ietf-quic-transport', published: '2021-01-15T03:14:41+00:00' },
+        { rev: 'rfc9000', name: 'rfc9000', published: '2021-05-27T21:39:03+00:00' }
+      ]
+    })
+  }),
   http.get('https://datatracker.ietf.org/doc/draft-ietf-rtgwg-segment-routing-ti-lfa/doc.json', () => {
     return HttpResponse.json({})
   }),
@@ -847,8 +887,92 @@ describe('validateReferenceForStale (TXT)', () => {
     expect(res).toEqual([
       new ValidationWarning(
         'OUTDATED_DRAFT',
-        'The draft reference draft-ietf-stale (version 01) is stale. It was replaced by draft-ietf-newer (version 03).',
+        'The draft reference draft-ietf-stale-01 is stale. draft-ietf-stale was replaced by draft-ietf-newer, whose latest revision is -03.',
         { ref: 'https://datatracker.ietf.org/doc/draft-ietf-stale' }
+      )
+    ])
+  })
+
+  test('OUTDATED_DRAFT when there is a newer revision of the same draft', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+    set(doc, 'data.extractedElements.draftStatusReferences', [
+      { value: 'draft-ietf-bess-rfc7432bis-10', subsection: 'normative_references' }
+    ])
+
+    const res = await validateReferenceForStale(doc, { mode: MODES.NORMAL })
+    expect(res).toEqual([
+      new ValidationWarning(
+        'OUTDATED_DRAFT',
+        'The draft reference draft-ietf-bess-rfc7432bis-10 is stale. Its latest revision is -14.',
+        { ref: 'https://datatracker.ietf.org/doc/draft-ietf-bess-rfc7432bis' }
+      )
+    ])
+  })
+
+  test('OUTDATED_DRAFT names the end of a chain of replacements', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+    set(doc, 'data.extractedElements.draftStatusReferences', [
+      { value: 'draft-ldbc-cats-framework-06', subsection: 'normative_references' }
+    ])
+
+    const res = await validateReferenceForStale(doc, { mode: MODES.NORMAL })
+    expect(res).toEqual([
+      new ValidationWarning(
+        'OUTDATED_DRAFT',
+        'The draft reference draft-ldbc-cats-framework-06 is stale. draft-ldbc-cats-framework was replaced by draft-ietf-cats-framework, whose latest revision is -10.',
+        { ref: 'https://datatracker.ietf.org/doc/draft-ldbc-cats-framework' }
+      )
+    ])
+  })
+
+  test('OUTDATED_DRAFT names the RFC when the chain of replacements ends in an RFC', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+    set(doc, 'data.extractedElements.draftStatusReferences', [
+      { value: 'draft-ldbc-cats-replaced-rfc-06', subsection: 'normative_references' }
+    ])
+
+    const res = await validateReferenceForStale(doc, { mode: MODES.NORMAL })
+    expect(res).toEqual([
+      new ValidationWarning(
+        'OUTDATED_DRAFT',
+        'The draft reference draft-ldbc-cats-replaced-rfc-06 is stale. draft-ldbc-cats-replaced-rfc was replaced by draft-ietf-cats-replacement, which has been published as RFC 10053.',
+        { ref: 'https://datatracker.ietf.org/doc/draft-ldbc-cats-replaced-rfc' }
+      )
+    ])
+  })
+
+  test('no OUTDATED_DRAFT for a draft that was itself published as an RFC', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+    set(doc, 'data.extractedElements.draftStatusReferences', [
+      { value: 'draft-ietf-quic-transport-34', subsection: 'normative_references' }
+    ])
+
+    const res = await validateReferenceForStale(doc, { mode: MODES.NORMAL })
+    expect(res).toHaveLength(0)
+  })
+
+  test('no warnings for a versionless reference to a current draft', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+    set(doc, 'data.extractedElements.draftStatusReferences', [
+      { value: 'draft-ietf-bess-rfc7432bis', subsection: 'normative_references' }
+    ])
+
+    const res = await validateReferenceForStale(doc, { mode: MODES.NORMAL })
+    expect(res).toHaveLength(0)
+  })
+
+  test('versionless reference to a replaced draft does not mention an empty version', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+    set(doc, 'data.extractedElements.draftStatusReferences', [
+      { value: 'draft-ldbc-cats-framework', subsection: 'normative_references' }
+    ])
+
+    const res = await validateReferenceForStale(doc, { mode: MODES.NORMAL })
+    expect(res).toEqual([
+      new ValidationWarning(
+        'OUTDATED_DRAFT',
+        'The draft reference draft-ldbc-cats-framework is stale. draft-ldbc-cats-framework was replaced by draft-ietf-cats-framework, whose latest revision is -10.',
+        { ref: 'https://datatracker.ietf.org/doc/draft-ldbc-cats-framework' }
       )
     ])
   })
@@ -906,7 +1030,7 @@ describe('validateReferenceForStale (XML)', () => {
     expect(res).toEqual([
       new ValidationWarning(
         'OUTDATED_DRAFT',
-        'The draft reference draft-ietf-stale (version 01) is stale. It was replaced by draft-ietf-newer (version 03).',
+        'The draft reference draft-ietf-stale-01 is stale. draft-ietf-stale was replaced by draft-ietf-newer, whose latest revision is -03.',
         { ref: 'https://datatracker.ietf.org/doc/draft-ietf-stale' }
       )
     ])
@@ -919,8 +1043,21 @@ describe('validateReferenceForStale (XML)', () => {
     expect(res).toEqual([
       new ValidationWarning(
         'OUTDATED_DRAFT',
-        'The draft reference draft-ietf-stale (version 01) is stale. It was replaced by draft-ietf-newer (version 03).',
+        'The draft reference draft-ietf-stale-01 is stale. draft-ietf-stale was replaced by draft-ietf-newer, whose latest revision is -03.',
         { ref: 'https://datatracker.ietf.org/doc/draft-ietf-stale' }
+      )
+    ])
+  })
+
+  test('OUTDATED_DRAFT when XML references an older revision of the same draft', async () => {
+    const doc = await parseXMLBack(nestedReferences('Normative References', '<reference anchor="I-D.ietf-bess-rfc7432bis"><front/><seriesInfo name="Internet-Draft" value="draft-ietf-bess-rfc7432bis-10"/></reference>'))
+
+    const res = await validateReferenceForStale(doc, { mode: MODES.NORMAL })
+    expect(res).toEqual([
+      new ValidationWarning(
+        'OUTDATED_DRAFT',
+        'The draft reference draft-ietf-bess-rfc7432bis-10 is stale. Its latest revision is -14.',
+        { ref: 'https://datatracker.ietf.org/doc/draft-ietf-bess-rfc7432bis' }
       )
     ])
   })
