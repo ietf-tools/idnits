@@ -25,6 +25,15 @@ export const mockRestHandlers = [
   http.get('https://datatracker.ietf.org/api/v1/doc/document/draft-ietf-beep-boop4/', () => {
     return HttpResponse.json({ stream: null })
   }),
+  http.get('https://datatracker.ietf.org/api/v1/doc/document/draft-beep-boop5/', () => {
+    return HttpResponse.json({ stream: '/api/v1/name/streamname/ise/' })
+  }),
+  http.get('https://datatracker.ietf.org/api/v1/doc/document/draft-beep-boop6/', () => {
+    return HttpResponse.json({ stream: '/api/v1/name/streamname/editorial/' })
+  }),
+  http.get('https://datatracker.ietf.org/api/v1/doc/document/draft-iab-beep-boop/', () => {
+    return HttpResponse.json({ stream: '/api/v1/name/streamname/ietf/' })
+  }),
   http.all('*', () => {
     return new HttpResponse(null, { status: 404 })
   })
@@ -172,6 +181,20 @@ describe('XML document should have a valid submission type', () => {
   afterEach(() => server.resetHandlers())
   afterAll(() => server.close())
 
+  const ALL_MODES = [MODES.NORMAL, MODES.FORGIVE_CHECKLIST, MODES.SUBMISSION]
+
+  function makeDoc (submissionType, docName) {
+    const doc = cloneDeep(baseXMLDoc)
+    if (submissionType) {
+      set(doc, 'data.rfc._attr.submissionType', submissionType)
+    }
+    if (docName) {
+      set(doc, 'data.rfc._attr.docName', docName)
+    }
+    set(doc, 'filename', 'draft-beep-boop.xml')
+    return doc
+  }
+
   test('valid submissionType', async () => {
     const doc = cloneDeep(baseXMLDoc)
     set(doc, 'data.rfc._attr.submissionType', 'ietf')
@@ -186,45 +209,93 @@ describe('XML document should have a valid submission type', () => {
     await expect(validateSubmissionType(doc, { offline: true, mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('SUBMISSION_TYPE_INVALID', ValidationError)
     await expect(validateSubmissionType(doc, { offline: true, mode: MODES.SUBMISSION })).resolves.toContainError('SUBMISSION_TYPE_INVALID', ValidationError)
   })
-  test('filename stream mismatch', async () => {
-    const doc = cloneDeep(baseXMLDoc)
-    set(doc, 'data.rfc._attr.submissionType', 'ietf')
-    set(doc, 'filename', 'draft-iab-beep-boop.xml')
+  test('docName stream mismatch', async () => {
+    const doc = makeDoc('IETF', 'draft-iab-beep-boop-00')
     await expect(validateSubmissionType(doc, { offline: true })).resolves.toContainError('SUBMISSION_TYPE_MISMATCH', ValidationError)
     await expect(validateSubmissionType(doc, { offline: true, mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('SUBMISSION_TYPE_MISMATCH', ValidationError)
     await expect(validateSubmissionType(doc, { offline: true, mode: MODES.SUBMISSION })).resolves.toContainError('SUBMISSION_TYPE_MISMATCH', ValidationError)
   })
-  test('valid submissionType with matching online stream', async () => {
-    const doc = cloneDeep(baseXMLDoc)
-    set(doc, 'data.rfc._attr.submissionType', 'ietf')
-    set(doc, 'data.rfc._attr.docName', 'draft-ietf-beep-boop')
-    set(doc, 'filename', 'draft-ietf-beep-boop.xml')
-    await expect(validateSubmissionType(doc)).resolves.toHaveLength(0)
+  test('docName stream prefix matching submissionType', async () => {
+    await expect(validateSubmissionType(makeDoc('IAB', 'draft-iab-beep-boop-00'), { offline: true })).resolves.toHaveLength(0)
+    await expect(validateSubmissionType(makeDoc('IRTF', 'draft-irtf-beep-boop-00'), { offline: true })).resolves.toHaveLength(0)
   })
-  test('valid submissionType with non-existent online doc', async () => {
-    const doc = cloneDeep(baseXMLDoc)
-    set(doc, 'data.rfc._attr.submissionType', 'ietf')
-    set(doc, 'data.rfc._attr.docName', 'draft-ietf-beep-boop2')
-    set(doc, 'filename', 'draft-ietf-beep-boop.xml')
-    await expect(validateSubmissionType(doc)).resolves.toHaveLength(0)
+  test('name prefix check uses docName, not the input filename', async () => {
+    const doc = makeDoc('IETF', 'draft-beep-boop-00')
+    set(doc, 'filename', 'draft-iab-beep-boop.xml')
+    await expect(validateSubmissionType(doc, { offline: true })).resolves.toHaveLength(0)
+    set(doc, 'filename', 'draft-beep-boop.xml')
+    set(doc, 'data.rfc._attr.docName', 'draft-irtf-beep-boop-00')
+    await expect(validateSubmissionType(doc, { offline: true })).resolves.toContainError('SUBMISSION_TYPE_MISMATCH', ValidationError)
   })
-  test('stream mismatch with existing online doc', async () => {
-    const doc = cloneDeep(baseXMLDoc)
-    set(doc, 'data.rfc._attr.submissionType', 'ietf')
-    set(doc, 'data.rfc._attr.docName', 'draft-ietf-beep-boop3')
-    set(doc, 'filename', 'draft-ietf-beep-boop.xml')
+  test('name prefix mismatch does not stop the Datatracker comparison', async () => {
+    // Datatracker has draft-iab-beep-boop in the IETF stream
+    const doc = makeDoc('IRTF', 'draft-iab-beep-boop-00')
+    const result = await validateSubmissionType(doc)
+    expect(result).toContainError('SUBMISSION_TYPE_MISMATCH', ValidationError)
+    expect(result).toContainError('SUBMISSION_TYPE_UNEXPECTED', ValidationError)
+  })
+  test('same stream on Datatracker', async () => {
+    for (const mode of ALL_MODES) {
+      await expect(validateSubmissionType(makeDoc('IETF', 'draft-ietf-beep-boop-01'), { mode })).resolves.toHaveLength(0)
+    }
+  })
+  test('non-existent online doc', async () => {
+    for (const mode of ALL_MODES) {
+      await expect(validateSubmissionType(makeDoc('IETF', 'draft-ietf-beep-boop2'), { mode })).resolves.toHaveLength(0)
+    }
+  })
+  test('different stream on Datatracker', async () => {
+    const doc = makeDoc('IETF', 'draft-ietf-beep-boop3')
     await expect(validateSubmissionType(doc)).resolves.toContainError('SUBMISSION_TYPE_UNEXPECTED', ValidationError)
-    await expect(validateSubmissionType(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('SUBMISSION_TYPE_UNEXPECTED', ValidationError)
+    await expect(validateSubmissionType(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('SUBMISSION_TYPE_UNEXPECTED', ValidationWarning)
     await expect(validateSubmissionType(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('SUBMISSION_TYPE_UNEXPECTED', ValidationError)
+    const [entry] = await validateSubmissionType(doc, { mode: MODES.SUBMISSION })
+    expect(entry.message).toContain('IETF')
+    expect(entry.message).toContain('IAB')
   })
-  test('stream set while existing online doc is not set', async () => {
-    const doc = cloneDeep(baseXMLDoc)
-    set(doc, 'data.rfc._attr.submissionType', 'ietf')
-    set(doc, 'data.rfc._attr.docName', 'draft-ietf-beep-boop4')
-    set(doc, 'filename', 'draft-ietf-beep-boop.xml')
+  test('no stream on Datatracker yet', async () => {
+    const doc = makeDoc('IETF', 'draft-ietf-beep-boop4')
     await expect(validateSubmissionType(doc)).resolves.toContainError('SUBMISSION_TYPE_UNEXPECTED', ValidationError)
-    await expect(validateSubmissionType(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('SUBMISSION_TYPE_UNEXPECTED', ValidationError)
-    await expect(validateSubmissionType(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('SUBMISSION_TYPE_UNEXPECTED', ValidationError)
+    await expect(validateSubmissionType(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('SUBMISSION_TYPE_UNEXPECTED', ValidationWarning)
+    await expect(validateSubmissionType(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('SUBMISSION_TYPE_UNEXPECTED', ValidationComment)
+    const [entry] = await validateSubmissionType(doc, { mode: MODES.SUBMISSION })
+    expect(entry.message).toContain('IETF stream')
+    expect(entry.message).toContain('no stream')
+  })
+  test('independent matches Datatracker ise stream', async () => {
+    for (const mode of ALL_MODES) {
+      await expect(validateSubmissionType(makeDoc('independent', 'draft-beep-boop5'), { mode })).resolves.toHaveLength(0)
+    }
+    await expect(validateSubmissionType(makeDoc('IETF', 'draft-beep-boop5'))).resolves.toContainError('SUBMISSION_TYPE_UNEXPECTED', ValidationError)
+  })
+  test('independent compared when Datatracker has no stream or a different one', async () => {
+    await expect(validateSubmissionType(makeDoc('independent', 'draft-ietf-beep-boop4'), { mode: MODES.SUBMISSION })).resolves.toContainError('SUBMISSION_TYPE_UNEXPECTED', ValidationComment)
+    await expect(validateSubmissionType(makeDoc('independent', 'draft-ietf-beep-boop'), { mode: MODES.SUBMISSION })).resolves.toContainError('SUBMISSION_TYPE_UNEXPECTED', ValidationError)
+  })
+  test('editorial stream compared', async () => {
+    for (const mode of ALL_MODES) {
+      await expect(validateSubmissionType(makeDoc('editorial', 'draft-beep-boop6'), { mode })).resolves.toHaveLength(0)
+    }
+    await expect(validateSubmissionType(makeDoc('editorial', 'draft-ietf-beep-boop'))).resolves.toContainError('SUBMISSION_TYPE_UNEXPECTED', ValidationError)
+    await expect(validateSubmissionType(makeDoc('IETF', 'draft-beep-boop6'), { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('SUBMISSION_TYPE_UNEXPECTED', ValidationWarning)
+  })
+  test('missing submissionType is treated as IETF', async () => {
+    for (const mode of ALL_MODES) {
+      const result = await validateSubmissionType(makeDoc(null, 'draft-ietf-beep-boop'), { mode })
+      expect(result).toHaveLength(1)
+      expect(result).toContainError('SUBMISSION_TYPE_MISSING', ValidationComment)
+      expect(result[0].message).toContain('submissionType="IETF"')
+    }
+    await expect(validateSubmissionType(makeDoc(null, 'draft-ietf-beep-boop3'))).resolves.toContainError('SUBMISSION_TYPE_UNEXPECTED', ValidationError)
+    await expect(validateSubmissionType(makeDoc(null, 'draft-ietf-beep-boop4'), { mode: MODES.SUBMISSION })).resolves.toContainError('SUBMISSION_TYPE_UNEXPECTED', ValidationComment)
+  })
+  test('offline skips the Datatracker comparison but keeps the missing submissionType comment', async () => {
+    for (const mode of ALL_MODES) {
+      await expect(validateSubmissionType(makeDoc('IETF', 'draft-ietf-beep-boop3'), { mode, offline: true })).resolves.toHaveLength(0)
+      const result = await validateSubmissionType(makeDoc(null, 'draft-ietf-beep-boop3'), { mode, offline: true })
+      expect(result).toHaveLength(1)
+      expect(result).toContainError('SUBMISSION_TYPE_MISSING', ValidationComment)
+    }
   })
 })
 
