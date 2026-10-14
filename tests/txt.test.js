@@ -163,8 +163,8 @@ describe('Validate pages are not separated by formfeeds.', () => {
   test('pages are not separated by formfeeds.', async () => {
     const doc = cloneDeep(baseTXTDoc)
 
-    doc.data.contains.pagesFound = 3
-    doc.data.pageCount = 6
+    doc.data.contains.pagesFound = 6
+    doc.data.pageCount = 3
 
     await expect(validateSeparatedFormfeeds(doc, { mode: MODES.NORMAL })).resolves.toContainError('PAGES_NOT_SEPARATED_BY_FORMFEEDS', ValidationWarning)
     await expect(validateSeparatedFormfeeds(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('PAGES_NOT_SEPARATED_BY_FORMFEEDS', ValidationWarning)
@@ -179,6 +179,23 @@ describe('Validate pages are not separated by formfeeds.', () => {
     await expect(validateSeparatedFormfeeds(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
     await expect(validateSeparatedFormfeeds(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
     await expect(validateSeparatedFormfeeds(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+  })
+  test('unpaginated document without page footers or formfeeds.', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.contains.pagesFound = 0
+    doc.data.pageCount = 1
+
+    await expect(validateSeparatedFormfeeds(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
+    await expect(validateSeparatedFormfeeds(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
+  })
+  test('formfeeds without page footers are not flagged here.', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.data.contains.pagesFound = 0
+    doc.data.pageCount = 4
+
+    await expect(validateSeparatedFormfeeds(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
   })
 })
 
@@ -760,6 +777,8 @@ describe(`The document has more than ${PAGE_THRESHOLD_REQUIRING_TOC} pages and n
 describe('Validate Expires Line in the document', () => {
   test('should return an error if the Expires lines are missing', async () => {
     const doc = cloneDeep(baseTXTDoc)
+    doc.data.contains.pagesFound = 3
+    doc.data.extractedElements.lastPageExpiration = null
 
     await expect(validateExpiresLine(doc, { mode: MODES.NORMAL })).resolves.toEqual([
       new ValidationError(
@@ -770,6 +789,25 @@ describe('Validate Expires Line in the document', () => {
         }
       )
     ])
+  })
+
+  test('should return no errors for an unpaginated document with a header Expires line', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+    doc.data.contains.pagesFound = 0
+    doc.data.header.expires = DateTime.fromFormat('2023-09-08', 'yyyy-MM-dd')
+    doc.data.extractedElements.lastPageExpiration = null
+
+    await expect(validateExpiresLine(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
+    await expect(validateExpiresLine(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+  })
+
+  test('should return an error for a paginated document without a last page Expires line', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+    doc.data.contains.pagesFound = 3
+    doc.data.header.expires = DateTime.fromFormat('2023-09-08', 'yyyy-MM-dd')
+    doc.data.extractedElements.lastPageExpiration = null
+
+    await expect(validateExpiresLine(doc, { mode: MODES.NORMAL })).resolves.toContainError('EXPIRES_LINE_MISSING', ValidationError)
   })
 
   test('should return no errors if the Expires lines are present and match', async () => {

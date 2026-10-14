@@ -25,7 +25,7 @@ export const mockRestHandlers = [
     return HttpResponse.json({})
   }),
   http.get('https://www.rfc-editor.org/rfc/rfc4087.json', () => {
-    return HttpResponse.json({ status: 'Proposed Standard', obsoleted_by: ['9000'] })
+    return HttpResponse.json({ status: 'Proposed Standard', obsoleted_by: ['RFC9000'] })
   }),
   http.get('https://www.rfc-editor.org/rfc/rfc4088.json', () => {
     return HttpResponse.json({ status: 'Proposed Standard', obsoleted_by: [] })
@@ -40,7 +40,7 @@ export const mockRestHandlers = [
     return HttpResponse.json({ status: 'Informational', obsoleted_by: [] })
   }),
   http.get('https://www.rfc-editor.org/rfc/rfc5087.json', () => {
-    return HttpResponse.json({ status: 'Informational', obsoleted_by: ['9000'] })
+    return HttpResponse.json({ status: 'Informational', obsoleted_by: ['RFC9000', '9001'] })
   }),
   http.get('https://www.rfc-editor.org/rfc/rfc5678.json', () => {
     return HttpResponse.json({ obsoleted_by: [] })
@@ -388,7 +388,7 @@ describe('validateNormativeReferences', () => {
       expect(result).toContainEqual(
         expect.objectContaining({
           name: 'OBSOLETE_REFERENCE',
-          message: expect.stringContaining('RFC 4087 is obsolete and has been replaced by: RFC9000.')
+          message: 'RFC 4087 is obsolete and has been replaced by: RFC9000.'
         })
       )
     })
@@ -403,7 +403,7 @@ describe('validateNormativeReferences', () => {
       expect(result).toContainEqual(
         expect.objectContaining({
           name: 'OBSOLETE_REFERENCE',
-          message: expect.stringContaining('RFC 4087 is obsolete and has been replaced by: RFC9000.')
+          message: 'RFC 4087 is obsolete and has been replaced by: RFC9000.'
         })
       )
     })
@@ -719,7 +719,7 @@ describe('validateInformativeReferences', () => {
     expect(result).toContainEqual(
       expect.objectContaining({
         name: 'OBSOLETE_REFERENCE',
-        message: expect.stringContaining('RFC 5087 is obsolete and has been replaced by: RFC9000.')
+        message: 'RFC 5087 is obsolete and has been replaced by: RFC9000, RFC9001.'
       })
     )
   })
@@ -734,7 +734,7 @@ describe('validateInformativeReferences', () => {
     expect(result).toContainEqual(
       expect.objectContaining({
         name: 'OBSOLETE_REFERENCE',
-        message: expect.stringContaining('RFC 5087 is obsolete and has been replaced by: RFC9000.')
+        message: 'RFC 5087 is obsolete and has been replaced by: RFC9000, RFC9001.'
       })
     )
   })

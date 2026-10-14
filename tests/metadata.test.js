@@ -541,6 +541,16 @@ describe('document should have valid obsoletes / updates references', () => {
       await expect(validateObsoleteUpdateRef(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('OBSOLETES_OSOLETED_RFC', ValidationWarning)
       await expect(validateObsoleteUpdateRef(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
+    test('obsoletes several already obsoleted RFCs', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      set(doc, 'data.rfc._attr', {
+        obsoletes: '1235, 1264'
+      })
+      set(doc, 'data.rfc.front.abstract.t', 'This document obsoletes RFC 1235 and 1264.')
+      const result = await validateObsoleteUpdateRef(doc)
+      expect(result.filter(r => r.name === 'OBSOLETES_OSOLETED_RFC')).toHaveLength(2)
+      await expect(validateObsoleteUpdateRef(doc)).resolves.toEqual(result)
+    })
     test('updates a non-existant RFC', async () => {
       const doc = cloneDeep(baseXMLDoc)
       set(doc, 'data.rfc._attr', {

@@ -6,8 +6,8 @@ import {
   validateTermsStyle
 } from '../lib/modules/keywords.mjs'
 import { baseTXTDoc, baseXMLDoc } from './fixtures/base-doc.mjs'
-import { cloneDeep, set } from 'lodash-es'
 import { parse } from '../lib/parsers/xml.mjs'
+import { cloneDeep, set } from 'lodash-es'
 
 expect.extend({
   toContainError
@@ -894,6 +894,121 @@ describe('document should have valid RFC2119 keywords', () => {
       expect(tagErrors.map(r => r.message).join(' ')).toMatch(/MUST/)
       expect(tagErrors.map(r => r.message).join(' ')).toMatch(/SHOULD/)
       expect(tagErrors.map(r => r.message).join(' ')).not.toMatch(/OPTIONAL/)
+    })
+
+    describe('BCP14 reference detection (parsed XML)', () => {
+      const parsedBoilerplate = `<t>The key words "<bcp14>MUST</bcp14>", "<bcp14>MUST NOT</bcp14>", "<bcp14>REQUIRED</bcp14>",
+        "<bcp14>SHALL</bcp14>", "<bcp14>SHALL NOT</bcp14>", "<bcp14>SHOULD</bcp14>", "<bcp14>SHOULD NOT</bcp14>",
+        "<bcp14>RECOMMENDED</bcp14>", "<bcp14>NOT RECOMMENDED</bcp14>", "<bcp14>MAY</bcp14>", and "<bcp14>OPTIONAL</bcp14>"
+        in this document are to be interpreted as described in BCP 14 XREFS when, and only when, they appear in all capitals, as shown here.</t>`
+      const parseXML = async ({ xrefs = '', back = '', entities = '' } = {}) => {
+        const { doc } = await parse(`<?xml version="1.0" encoding="UTF-8"?>
+${entities}<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3">
+  <middle>
+    <section><name>Terminology</name>${parsedBoilerplate.replace('XREFS', xrefs)}</section>
+    <section><name>Protocol</name><t>The client <bcp14>MUST</bcp14> connect.</t></section>
+  </middle>
+  <back>${back}</back>
+</rfc>`, 'draft-test-bcp14-refs-00.xml')
+        return doc
+      }
+      const errorNames = async (doc) => (await validate2119Keywords(doc)).map(r => r.name)
+
+      test('netconf-style layout: nested references, xref to RFC2119, reference via xi:include', async () => {
+        const doc = await parseXML({
+          xrefs: '<xref target="RFC2119"/> <xref target="RFC8174"/>',
+          back: `<references><name>References</name>
+            <references><name>Normative References</name>
+              <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml"/>
+              <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8174.xml"/>
+            </references>
+          </references>`
+        })
+        const names = await errorNames(doc)
+        expect(names).not.toContain('MISSING_REQLEVEL_REF')
+        expect(names).not.toContain('MISSING_REQLEVEL_BOILERPLATE')
+        expect(names).toContain('PREFER_BCP14_REF')
+      })
+      test('xi:include of the BCP14 bibxml file only', async () => {
+        const doc = await parseXML({
+          back: `<references><name>Normative References</name>
+            <xi:include href="https://bib.ietf.org/public/rfc/bibxml-rfcsubseries/reference.BCP.0014.xml"/>
+          </references>`
+        })
+        const names = await errorNames(doc)
+        expect(names).not.toContain('MISSING_REQLEVEL_REF')
+        expect(names).not.toContain('PREFER_BCP14_REF')
+      })
+      test('xref to BCP14 only (case-insensitive)', async () => {
+        const doc = await parseXML({ xrefs: '<xref target="bcp14"/>' })
+        const names = await errorNames(doc)
+        expect(names).not.toContain('MISSING_REQLEVEL_REF')
+        expect(names).not.toContain('PREFER_BCP14_REF')
+      })
+      test('inline reference with a non-standard anchor and an RFC seriesInfo', async () => {
+        const doc = await parseXML({
+          back: `<references><name>Normative References</name>
+            <reference anchor="KEYWORDS" target="https://www.rfc-editor.org/info/rfc2119">
+              <front><title>Key words for use in RFCs to Indicate Requirement Levels</title></front>
+              <seriesInfo name="BCP" value="14"/>
+              <seriesInfo name="RFC" value="2119"/>
+            </reference>
+          </references>`
+        })
+        const names = await errorNames(doc)
+        expect(names).not.toContain('MISSING_REQLEVEL_REF')
+        expect(names).not.toContain('PREFER_BCP14_REF')
+      })
+      test('reference anchor in flat references', async () => {
+        const doc = await parseXML({
+          back: `<references><name>Normative References</name>
+            <reference anchor="RFC8174"><front><title>Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words</title></front></reference>
+          </references>`
+        })
+        const names = await errorNames(doc)
+        expect(names).not.toContain('MISSING_REQLEVEL_REF')
+        expect(names).toContain('PREFER_BCP14_REF')
+      })
+      test('external entity URL naming the RFC2119 bibxml file', async () => {
+        const doc = await parseXML({
+          entities: '<!DOCTYPE rfc [\n<!ENTITY KEYWORDS SYSTEM "https://bib.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml">\n]>\n'
+        })
+        expect(await errorNames(doc)).not.toContain('MISSING_REQLEVEL_REF')
+      })
+      test('keywords and boilerplate but no RFC2119/RFC8174/BCP14 reference', async () => {
+        const doc = await parseXML({
+          xrefs: '<xref target="RFC9000"/>',
+          back: `<references><name>Normative References</name>
+            <references><name>Normative References</name>
+              <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.9000.xml"/>
+              <reference anchor="RFC21190"><seriesInfo name="RFC" value="21190"/></reference>
+            </references>
+          </references>`
+        })
+        await expect(validate2119Keywords(doc)).resolves.toContainError('MISSING_REQLEVEL_REF', ValidationError)
+        await expect(validate2119Keywords(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('MISSING_REQLEVEL_REF', ValidationError)
+        await expect(validate2119Keywords(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+      })
+      test('document whose only keyword is SHOULD / SHOULD NOT uses keywords', async () => {
+        const doc = cloneDeep(baseXMLDoc)
+        doc.externalEntities = [{ name: 'BCP14' }]
+        set(doc, 'data.rfc.middle.t', [
+          boilerplate,
+          'The client SHOULD retry, but SHOULD NOT retry forever.'
+        ])
+        const result = await validate2119Keywords(doc)
+        expect(result.map(r => r.name)).not.toContain('MISSING_REQLEVEL_KEYWORDS')
+        expect(result.map(r => r.name)).not.toContain('INVALID_REQLEVEL_KEYWORD')
+
+        const noBoilerplate = cloneDeep(baseXMLDoc)
+        set(noBoilerplate, 'data.rfc.middle.t', 'The client SHOULD retry.')
+        await expect(validate2119Keywords(noBoilerplate)).resolves.toContainError('MISSING_REQLEVEL_BOILERPLATE', ValidationError)
+      })
+      test('SHOULD with lowercase not is an invalid keyword', async () => {
+        const doc = cloneDeep(baseXMLDoc)
+        set(doc, 'data.rfc.middle.t', 'Lorem ipsum SHOULD not lorem ipsum.')
+        await expect(validate2119Keywords(doc)).resolves.toContainError('INVALID_REQLEVEL_KEYWORD', ValidationComment)
+      })
     })
   })
 })

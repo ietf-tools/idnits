@@ -55,6 +55,7 @@ idnits [args] <file path|url>
 
 | Arguments | Alias | Description | Default |
 |---|---|---|---|
+| `--fail-on` |  | Exit with code `2` if there is at least one nit of the given severity or higher (`errors` > `warnings` > `comments`).<br>Accepted values: `errors`, `warnings`, `comments` |  |
 | `--filter` | `-f` | Filter output to only certain severity types. Can be declared multiple times to filter multiple severity types.<br>Accepted values: `errors`, `warnings`, `comments` |  |
 | `--mode` | `-m` | Validation mode, must be either `normal`, `forgive-checklist` or `submission`<br>Accepted shorthands: `norm`, `n`, `f-c`, `fc`, `f`, `sub`, `s` | `normal` |
 | `--no-color` |  | Disable colors in `pretty` output.<br>No effect in other output formats. |  |
@@ -65,6 +66,14 @@ idnits [args] <file path|url>
 | `--year` | `-y` | Expect the given year in the boilerplate |  |
 | `--help` | `-h` | Print the help text and exit |  |
 | `--version` |  | Print the version and exit |  |
+
+#### Exit codes
+
+| Code | Meaning |
+|---|---|
+| `0` | Validation completed (whatever nits were found, unless `--fail-on` is used) |
+| `1` | Validation could not be completed (e.g. the document could not be read or parsed) |
+| `2` | Validation completed and found at least one nit at or above the `--fail-on` severity |
 
 ### Library Usage
 
