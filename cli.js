@@ -10,7 +10,7 @@ import { readFile } from 'node:fs/promises'
 import { DateTime } from 'luxon'
 import { gte } from 'semver'
 import { Listr, ListrDefaultRendererLogLevels } from 'listr2'
-import { checkNits, getAllValidations } from './lib/index.mjs'
+import { checkNits, getAllValidations, labelFindings } from './lib/index.mjs'
 import { getModeByName } from './lib/config/modes.mjs'
 
 // Check Node.js version
@@ -226,7 +226,8 @@ try {
         }
       }
     )
-    await tasks.run()
+    const ctx = await tasks.run()
+    labelFindings(result, ctx.doc)
     console.info('')
   } else {
     result = await checkNits(docRaw, docPathObj.base, {
@@ -301,6 +302,7 @@ try {
           ...r.text && { text: r.text },
           ...r.refUrl && { ref: r.refUrl },
           ...r.path && { path: r.path },
+          ...r.label && { label: r.label },
           ...r.lines && { line: r.lines }
         }))
       }, null, 2))
@@ -319,7 +321,8 @@ try {
           ValidationComment: 'Comment'
         }
         for (const entry of result) {
-          console.log(`[${entryIdx}] ${validationSeverity[entry.constructor.name]} | ${entry.name} | ${entry.message}`)
+          const location = entry.label ? ` | ${entry.label} (${entry.path})` : ''
+          console.log(`[${entryIdx}] ${validationSeverity[entry.constructor.name]} | ${entry.name} | ${entry.message}${location}`)
           entryIdx++
         }
       }
@@ -402,6 +405,9 @@ try {
             }
             if (entry.refUrl) {
               console.log(chalk.grey(' └- ') + chalkAdapted('white')('Ref ') + chalk.grey(' - ') + chalk.cyan(entry.refUrl))
+            }
+            if (entry.label) {
+              console.log(chalk.grey(' └- ') + chalkAdapted('white')('Loc ') + chalk.grey(' - ') + chalkAdapted('whiteBright')(entry.label))
             }
             if (entry.path) {
               console.log(chalk.grey(' └- ') + chalkAdapted('white')('Path') + chalk.grey(' - ') + chalkAdapted('white')(entry.path))
