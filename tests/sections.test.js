@@ -982,35 +982,64 @@ describe('document should have valid references sections', () => {
       await expect(validateReferencesSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('INVALID_REFERENCES_NAME', ValidationWarning)
       await expect(validateReferencesSection(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
-    test('valid nested references wrapper with inner normative and informative sections', async () => {
-      const doc = cloneDeep(baseXMLDoc)
-      set(doc, 'data.rfc.back.references', {
-        name: 'References',
-        references: [
-          { name: 'Normative References' },
-          { name: 'Informative References' }
-        ]
+    describe('parsed XML layouts', () => {
+      const parseBack = async (back) => {
+        const { doc } = await parse(`<rfc version="3"><back>${back}</back></rfc>`, 'draft-test-references-00.xml')
+        return doc
+      }
+      const normative = '<references><name>Normative References</name><reference anchor="RFC2119"/></references>'
+      const informative = '<references><name>Informative References</name><reference anchor="RFC8174"/></references>'
+
+      test('valid nested references wrapper with inner normative and informative sections', async () => {
+        const doc = await parseBack(`<references><name>References</name>${normative}${informative}</references>`)
+        await expect(validateReferencesSection(doc)).resolves.toHaveLength(0)
       })
-      await expect(validateReferencesSection(doc)).resolves.toHaveLength(0)
-    })
-    test('nested references wrapper with invalid inner section names should error', async () => {
-      const doc = cloneDeep(baseXMLDoc)
-      set(doc, 'data.rfc.back.references', {
-        name: 'References',
-        references: [
-          { name: 'Normative References' },
-          { name: 'Other Stuff' }
-        ]
+      test('nested references wrapper with an invalid inner section name reports the inner path', async () => {
+        const doc = await parseBack(`<references><name>References</name>${normative}
+          <references><name>Other Stuff</name><reference anchor="RFC8174"/></references>
+        </references>`)
+        const result = await validateReferencesSection(doc)
+        expect(result).toHaveLength(1)
+        expect(result).toContainError('INVALID_REFERENCES_NAME', ValidationError)
+        expect(result[0].path).toBe('rfc.back.references[0].references[1].name')
       })
-      await expect(validateReferencesSection(doc)).resolves.toContainError('INVALID_REFERENCES_NAME', ValidationError)
-    })
-    test('nested references wrapper with single inner section', async () => {
-      const doc = cloneDeep(baseXMLDoc)
-      set(doc, 'data.rfc.back.references', {
-        name: 'References',
-        references: { name: 'Normative References' }
+      test('nested references wrapper with single inner section', async () => {
+        const doc = await parseBack(`<references><name>References</name>${normative}</references>`)
+        await expect(validateReferencesSection(doc)).resolves.toHaveLength(0)
       })
-      await expect(validateReferencesSection(doc)).resolves.toHaveLength(0)
+      test('flat single references section', async () => {
+        await expect(validateReferencesSection(await parseBack(normative))).resolves.toHaveLength(0)
+        const result = await validateReferencesSection(await parseBack('<references><name>References</name><reference anchor="RFC2119"/></references>'))
+        expect(result).toHaveLength(1)
+        expect(result).toContainError('INVALID_REFERENCES_NAME', ValidationError)
+        expect(result[0].path).toBe('rfc.back.references[0].name')
+      })
+      test('references wrapper that also holds references directly', async () => {
+        const doc = await parseBack(`<references><name>References</name><reference anchor="RFC7322"/>${normative}${informative}</references>`)
+        const result = await validateReferencesSection(doc)
+        expect(result).toHaveLength(1)
+        expect(result).toContainError('INVALID_REFERENCES_NAME', ValidationError)
+        expect(result[0].path).toBe('rfc.back.references[0].name')
+      })
+      test('references wrapper next to another top-level references section', async () => {
+        const doc = await parseBack(`<references><name>References</name>${normative}</references>
+          <references><name>Other Stuff</name><reference anchor="RFC8174"/></references>`)
+        const result = await validateReferencesSection(doc)
+        expect(result).toHaveLength(1)
+        expect(result).toContainError('INVALID_REFERENCES_NAME', ValidationError)
+        expect(result[0].path).toBe('rfc.back.references[1].name')
+      })
+      test('v2 title attribute layout', async () => {
+        const doc = await parseBack(`<references title="Normative References"><reference anchor="RFC2119"/></references>
+          <references title="Other Stuff"><reference anchor="RFC8174"/></references>`)
+        const result = await validateReferencesSection(doc)
+        expect(result.map(r => [r.name, r.path])).toEqual([
+          ['DEPRECATED_REFERENCES_TITLE', 'rfc.back.references[0].title'],
+          ['DEPRECATED_REFERENCES_TITLE', 'rfc.back.references[1].title'],
+          ['INVALID_REFERENCES_NAME', 'rfc.back.references[1].title']
+        ])
+        await expect(validateReferencesSection(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+      })
     })
   })
 })
@@ -1239,6 +1268,27 @@ describe('validateReferencesInText', () => {
       const result = await validateReferencesInText(xmlDoc)
 
       expect(result).toEqual([])
+    })
+
+    test('should return warnings for unused references in a parsed XML document (flat and nested layouts)', async () => {
+      const references = `<references><name>Normative References</name>
+        <reference anchor="RFC2119"/>
+        <reference anchor="RFC8174"/>
+      </references>`
+      const unused = [
+        new ValidationWarning(
+          'REFERENCE_NOT_USED',
+          'The reference RFC8174 is listed in the References section but is not mentioned in the document text.',
+          { ref: 'https://authors.ietf.org/en/required-content#references' }
+        )
+      ]
+      for (const back of [references, `<references><name>References</name>${references}</references>`]) {
+        const { doc } = await parse(`<rfc version="3">
+          <middle><section><name>Terminology</name><t>See <xref target="RFC2119"/>.</t></section></middle>
+          <back>${back}</back>
+        </rfc>`, 'draft-test-references-00.xml')
+        await expect(validateReferencesInText(doc)).resolves.toEqual(unused)
+      }
     })
 
     test('should handle empty references in an XML document', async () => {
