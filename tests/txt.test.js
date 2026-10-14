@@ -901,6 +901,17 @@ describe('Validate Expires Line in the document', () => {
     ])
   })
 
+  test('should return no errors for an unpaginated document with an abbreviated month in the header Expires line', async () => {
+    // As in draft-zhang-dnsop-tld-transition-00
+    const doc = await parse(`
+${metaTXTBlock.replace('Expires: 8 September 2023', 'Expires: 11 Nov 2026')}
+${abstractTXTBlock}
+${introductionTXTBlock}
+`, 'draft-ietf-idr-rt-derived-community-05.txt')
+
+    await expect(validateExpiresLine(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+  })
+
   /**
    * Parse a paginated draft with the given header Expires line and last page footer
    */
@@ -925,7 +936,8 @@ ${footer.replace('[Page 1]', '[Page 2]')}
     // draft-cheng-dhc-distribute-arn-dhcp-01
     ['Expires: December 10, 2026', 'Cheng, et al.          Expires December, 2026                 [Page 1]'],
     ['Expires: January 08, 2027', 'Lin, et al.           Expires January 08, 2027                [Page 1]'],
-    ['Expires: 1 February 2027', 'Dikshit                 Expires February 1, 2027                [Page 1]']
+    ['Expires: 1 February 2027', 'Dikshit                 Expires February 1, 2027                [Page 1]'],
+    ['Expires: November 10, 2026', 'Jaehwoon Lee              Expires Nov. 10, 2026               [Page 1]']
   ])('should return no errors if "%s" matches the footer "%s"', async (expiresLine, footer) => {
     const doc = await parseWithExpires(expiresLine, footer)
 

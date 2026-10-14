@@ -1803,6 +1803,9 @@ ${introductionTXTBlock}
     ['Internet-Draft         FlowSpec by Destination-QP          March 02,2026', 'header'],
     ['   Internet-Draft       ICMP extension for SAVNET          July, 2026', 'header'],
     ['   TLS 1.3 Identity Module Trusted Exporter                  May 2026 \r', 'header'],
+    ['Internet-Draft              WildCard Extensions                Sep 2026', 'header'],
+    ['Internet-Draft         Informational Add-on for HTTP          Nov. 2013', 'header'],
+    ['   the counter wraps around in nov 2048', null],
     ['   until the counter wraps around in may 2048', null],
     ['   published in March 2014 [RFC7154] and still in use.', null],
     ['   see page 4 of the specification', null]
@@ -2147,6 +2150,10 @@ describe('Parsing expires line', () => {
     ['Expires: January 08, 2027', '2027-01-08', true],
     ['Expires: October 2026', '2026-10-01', false],
     ['Expires: September, 2026', '2026-09-01', false],
+    ['Expires: 11 Nov 2026', '2026-11-11', true],
+    ['Expires: Nov. 10, 2026', '2026-11-10', true],
+    ['Expires: Sept 2026', '2026-09-01', false],
+    ['Expires: November , 2026', '2026-11-01', false],
     ['Expires: 2027-01-20', '2027-01-20', true],
     ['Expiration date: 2027-01-20', '2027-01-20', true]
   ])('Header "%s" gives expiry %s', async (expiresLine, isoDate, hasDay) => {
@@ -2176,7 +2183,11 @@ ${abstractTXTBlock}
     ['Lin, et al.           Expires January 08, 2027                [Page 13]', '2027-01-08', true],
     ['Cheng, et al.          Expires December, 2026                 [Page 7]', '2026-12-01', false],
     ['   Urien                 Expires November 2026               [Page 6] ', '2026-11-01', false],
-    ['Gueron                  Expires March 16, 2027                 [Page 45] ', '2027-03-16', true]
+    ['Gueron                  Expires March 16, 2027                 [Page 45] ', '2027-03-16', true],
+    ['Dunbar, et al.           Expires Dec 1, 2026            [Page 2]', '2026-12-01', true],
+    ['Melegassi                 Expires 29 Nov 2026                  [Page 1]', '2026-11-29', true],
+    ['Jaehwoon Lee              Expires Nov. 10, 2026               [Page 1]', '2026-11-10', true],
+    ['Cheng, et al.       Expires November , 2026                    [Page 2]', '2026-11-01', false]
   ])('Last page footer "%s" gives expiry %s', async (footer, isoDate, hasDay) => {
     const txt = `
 ${metaTXTBlock}
