@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest'
 import { MODES } from '../lib/config/modes.mjs'
 import { toContainError, ValidationWarning } from '../lib/helpers/error.mjs'
 import {
+  IPV6_LOOSE_RE,
   validateIPs
 } from '../lib/modules/ip.mjs'
 import { baseXMLDoc } from './fixtures/base-doc.mjs'
@@ -177,6 +178,36 @@ describe('document should have valid IP Address mentions', () => {
       await expect(validateIPs(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('INVALID_IPV6_ADDRESS', ValidationWarning)
       await expect(validateIPs(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
+    test('hex dump is not an IPv6 address', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      set(doc, 'data.rfc.middle.t', `pub:
+          99:90:d5:b0:4b:72:a1:80:66:d4:09:2b:52:c7:d4:
+          99:4f:b7:c1:6b:d7:e8:c1:f4:40:ff:a8:d0:4f:f1:
+          e1:3f`)
+      await expect(validateIPs(doc)).resolves.toHaveLength(0)
+    })
     // TODO: More IPv6 variations, compressed, mix with v4, etc.
+  })
+
+  describe('IPv6 candidate extraction', () => {
+    const extract = (text) => [...text.matchAll(IPV6_LOOSE_RE)].map(m => m[0])
+
+    test('hex dump lines yield no candidates', () => {
+      expect(extract('    99:90:d5:b0:4b:72:a1:80:66:d4:09:2b:52:c7:d4:')).toEqual([])
+      expect(extract('    99:4f:b7:c1:6b:d7:e8:c1:f4:40:ff:a8:d0:4f:f1:')).toEqual([])
+      expect(extract('    e1:3f')).toEqual([])
+    })
+
+    test.each([
+      ['Address is 2001:db8::1.', '2001:db8::1'],
+      ['Prefix 2001:DB8:0:0::/100 here', '2001:DB8:0:0::/100'],
+      ['fe80::1', 'fe80::1'],
+      ['mapped ::ffff:192.0.2.1 address', '::ffff:192.0.2.1'],
+      ['loopback ::1', '::1'],
+      ['address 2001:db8::1: the', '2001:db8::1'],
+      ['Lorem ipsum F:0DB8:0000:CD30:0000:0000111:0000:0000 lorem ipsum.', 'F:0DB8:0000:CD30:0000:0000111:0000:0000']
+    ])('finds candidate in %j', (text, expected) => {
+      expect(extract(text)).toEqual([expected])
+    })
   })
 })
