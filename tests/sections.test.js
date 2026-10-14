@@ -1026,12 +1026,10 @@ describe('document should have valid references sections', () => {
       set(doc, 'data.rfc.back.references[1].name["#text"]', 'Informative References')
       await expect(validateReferencesSection(doc)).resolves.toHaveLength(0)
     })
-    test('deprecated references section title', async () => {
+    test('references section title attribute is left to DEPRECATED_ATTRIBUTE', async () => {
       const doc = cloneDeep(baseXMLDoc)
       set(doc, 'data.rfc.back.references[0]._attr.title', 'Normative References')
-      await expect(validateReferencesSection(doc)).resolves.toContainError('DEPRECATED_REFERENCES_TITLE', ValidationWarning)
-      await expect(validateReferencesSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('DEPRECATED_REFERENCES_TITLE', ValidationWarning)
-      await expect(validateReferencesSection(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+      await expect(validateReferencesSection(doc)).resolves.toHaveLength(0)
     })
     test('missing references section name', async () => {
       const doc = cloneDeep(baseXMLDoc)
@@ -1099,8 +1097,6 @@ describe('document should have valid references sections', () => {
           <references title="Other Stuff"><reference anchor="RFC8174"/></references>`)
         const result = await validateReferencesSection(doc)
         expect(result.map(r => [r.name, r.path])).toEqual([
-          ['DEPRECATED_REFERENCES_TITLE', 'rfc.back.references[0].title'],
-          ['DEPRECATED_REFERENCES_TITLE', 'rfc.back.references[1].title'],
           ['INVALID_REFERENCES_NAME', 'rfc.back.references[1].title']
         ])
         await expect(validateReferencesSection(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
