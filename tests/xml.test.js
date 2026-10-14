@@ -73,6 +73,16 @@ describe('XML document should not use deprecated elements', () => {
     expect(result).toContainError('DEPRECATED_ELEMENT', ValidationWarning)
     expect(result[0].path).toBe('rfc.back.references.reference.format')
   })
+  test('deprecated relref element', async () => {
+    const { doc } = await parse(`<rfc version="3"><middle><section><name>Introduction</name>
+      <t>See <relref target="RFC9000" section="2"/> and <xref target="RFC9000" section="3" relative="#section-3"/>.</t>
+    </section></middle></rfc>`, 'draft-test.xml')
+    const result = await detectDeprecatedElements(doc)
+    expect(result).toHaveLength(1)
+    expect(result).toContainError('DEPRECATED_ELEMENT', ValidationWarning)
+    expect(result[0].path).toBe('rfc.middle.section.t.relref')
+    expect(result[0].message).toContain('The <relref> element is deprecated. Instead, use <xref>')
+  })
   describe('deprecated attributes', () => {
     const parseDoc = async (body, rfcAttrs = '') => {
       const { doc } = await parse(`<rfc version="3"${rfcAttrs}>${body}</rfc>`, 'draft-test-attributes-00.xml')
