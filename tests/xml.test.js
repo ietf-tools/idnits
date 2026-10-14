@@ -169,6 +169,23 @@ describe('XML document should not use deprecated elements', () => {
       const doc = await parseDoc('<middle><section title="Introduction"><t><xref target="RFC2119" pageno="false"/></t></section></middle>')
       await expect(detectDeprecatedElements(doc)).resolves.toHaveLength(0)
     })
+    test('attributes added by the prep tool are not reported in prepped XML', async () => {
+      const body = `<front><seriesInfo name="RFC" value="9999" stream="IETF" status="standard"/></front>${inSection('<figure align="left" suppress-title="false"><artwork>x</artwork></figure>')}`
+      const prepped = await parseDoc(body, ' prepTime="2026-01-01T00:00:00"')
+      await expect(detectDeprecatedAttributes(prepped)).resolves.toHaveLength(0)
+      const unprepped = await parseDoc(body)
+      const result = await detectDeprecatedAttributes(unprepped)
+      expect(result.map(r => r.path).sort()).toEqual([
+        'rfc.front.seriesInfo._attr.status',
+        'rfc.front.seriesInfo._attr.stream',
+        'rfc.middle.section.figure._attr.align',
+        'rfc.middle.section.figure._attr.suppress-title'
+      ])
+    })
+    test('other deprecated attributes are still reported in prepped XML', async () => {
+      const doc = await parseDoc(inSection('<figure title="Figure"><artwork height="10">x</artwork></figure>'), ' prepTime="2026-01-01T00:00:00"')
+      await expect(detectDeprecatedAttributes(doc)).resolves.toHaveLength(2)
+    })
   })
 })
 
