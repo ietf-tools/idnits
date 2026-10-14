@@ -8,6 +8,7 @@ import {
   validateVersion
 } from '../lib/modules/metadata.mjs'
 import { baseTXTDoc, baseXMLDoc } from './fixtures/base-doc.mjs'
+import { parse } from '../lib/parsers/xml.mjs'
 import { cloneDeep, set } from 'lodash-es'
 import { DateTime } from 'luxon'
 import { abstractTXTBlock } from './fixtures/txt-blocks/section-blocks.mjs'
@@ -337,12 +338,44 @@ describe('document should have valid date', () => {
       set(doc, 'data.rfc.front.date._attr', { year: 2020, month: '13', day: 1 })
       await expect(validateDate(doc)).resolves.toContainError('MISSING_DOC_DATE', ValidationWarning)
     })
+    const parseDate = async (date) => {
+      const { doc } = await parse(`<rfc docName="draft-ietf-beep-boop-00" version="3">
+  <front><title>Test</title>${date}</front>
+</rfc>`, 'draft-ietf-beep-boop-00.xml')
+      return doc
+    }
     test('date missing', async () => {
-      const doc = cloneDeep(baseXMLDoc)
-      set(doc, 'data.rfc.front', {})
+      const doc = await parseDate('')
+      await expect(validateDate(doc)).resolves.toContainError('MISSING_DOC_DATE', ValidationComment)
+      await expect(validateDate(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('MISSING_DOC_DATE', ValidationComment)
+      await expect(validateDate(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('MISSING_DOC_DATE', ValidationComment)
+      const result = await validateDate(doc)
+      expect(result).toHaveLength(1)
+      expect(result[0].path).toBe('rfc.front.date')
+    })
+    test('empty <date/> is today', async () => {
+      const doc = await parseDate('<date/>')
+      await expect(validateDate(doc)).resolves.toHaveLength(0)
+    })
+    test('partial date is completed from today', async () => {
+      const doc = await parseDate(`<date year="${DateTime.now().year}"/>`)
+      await expect(validateDate(doc)).resolves.toHaveLength(0)
+    })
+    test('non-numeric day is reported, not thrown', async () => {
+      const doc = await parseDate('<date year="2026" month="February" day="x"/>')
       await expect(validateDate(doc)).resolves.toContainError('MISSING_DOC_DATE', ValidationWarning)
-      await expect(validateDate(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('MISSING_DOC_DATE', ValidationWarning)
-      await expect(validateDate(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('MISSING_DOC_DATE', ValidationWarning)
+    })
+    test('non-numeric or out-of-range year is reported, not thrown', async () => {
+      for (const year of ['x', '0']) {
+        const doc = await parseDate(`<date year="${year}" month="February" day="1"/>`)
+        await expect(validateDate(doc)).resolves.toContainError('MISSING_DOC_DATE', ValidationWarning)
+      }
+    })
+    test('impossible date is reported', async () => {
+      for (const day of ['31', '32']) {
+        const doc = await parseDate(`<date year="2026" month="February" day="${day}"/>`)
+        await expect(validateDate(doc)).resolves.toContainError('MISSING_DOC_DATE', ValidationWarning)
+      }
     })
     test('date in the past', async () => {
       const doc = cloneDeep(baseXMLDoc)
