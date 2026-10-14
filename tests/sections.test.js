@@ -10,6 +10,7 @@ import {
   validateIANAConsiderationsSection,
   validateReferencesInText
 } from '../lib/modules/sections.mjs'
+import { getMiddleSections, getSectionName } from '../lib/helpers/sections.mjs'
 import { parse } from '../lib/parsers/xml.mjs'
 import { parse as parseTXT } from '../lib/parsers/txt.mjs'
 import { CANONICAL_TXT } from './generators/doc-txt.js'
@@ -447,6 +448,60 @@ describe('document should have a valid introduction section', () => {
       </middle></rfc>`, 'draft-test.xml')
       await expect(validateIntroductionSection(doc)).resolves.toHaveLength(0)
     })
+    describe('section names', () => {
+      const parseMiddle = async (middle) => {
+        const { doc } = await parse(`<rfc version="3"><middle>${middle}</middle></rfc>`, 'draft-test-sections-00.xml')
+        return doc
+      }
+
+      test('getSectionName reads a plain <name>', async () => {
+        const doc = await parseMiddle('<section><name>Introduction</name><t>Text.</t></section>')
+        expect(getSectionName(getMiddleSections(doc)[0])).toBe('Introduction')
+      })
+      test('getSectionName reads a <name> with attributes (prepped XML)', async () => {
+        const doc = await parseMiddle('<section><name slugifiedName="name-introduction">Introduction</name><t>Text.</t></section>')
+        expect(getSectionName(getMiddleSections(doc)[0])).toBe('Introduction')
+      })
+      test('getSectionName reads a <name> with inline markup', async () => {
+        const doc = await parseMiddle(`<section><name>Use of <tt>foo</tt>
+          in   Practice</name><t>Text.</t></section>
+          <section><name><em>Overview</em></name><t>Text.</t></section>`)
+        const sections = getMiddleSections(doc)
+        expect(getSectionName(sections[0])).toBe('Use of in Practice')
+        expect(getSectionName(sections[1])).toBe('Overview')
+      })
+      test('getSectionName reads the v2 title attribute', async () => {
+        const doc = await parseMiddle('<section title="Introduction"><t>Text.</t></section>')
+        expect(getSectionName(getMiddleSections(doc)[0])).toBe('Introduction')
+      })
+      test('getSectionName returns an empty string when there is no name', async () => {
+        const doc = await parseMiddle('<section><t>Text.</t></section>')
+        expect(getSectionName(getMiddleSections(doc)[0])).toBe('')
+        expect(getSectionName('')).toBe('')
+      })
+      test('getMiddleSections wraps a single <section> in an array', async () => {
+        const doc = await parseMiddle('<section><name>Introduction</name><t>Text.</t></section>')
+        expect(doc.data.rfc.middle.section).not.toBeInstanceOf(Array)
+        expect(getMiddleSections(doc)).toHaveLength(1)
+        expect(getMiddleSections(cloneDeep(baseXMLDoc))).toEqual([])
+      })
+      test('introduction section with slugifiedName, title attribute or as single section', async () => {
+        for (const middle of [
+          '<section><name slugifiedName="name-introduction">Introduction</name><t>Text.</t></section><section><name>Other</name><t>Text.</t></section>',
+          '<section title="Introduction"><t>Text.</t></section><section title="Other"><t>Text.</t></section>',
+          '<section><name>Introduction</name><t>Text.</t></section>'
+        ]) {
+          await expect(validateIntroductionSection(await parseMiddle(middle))).resolves.toHaveLength(0)
+        }
+      })
+      test('invalid introduction section reports its index', async () => {
+        const doc = await parseMiddle('<section title="Terminology"><t>Text.</t></section><section title="Introduction"/>')
+        const result = await validateIntroductionSection(doc)
+        expect(result).toHaveLength(1)
+        expect(result).toContainError('INVALID_INTRODUCTION_SECTION', ValidationError)
+        expect(result[0].path).toBe('rfc.middle.section[1]')
+      })
+    })
   })
 })
 
@@ -554,6 +609,16 @@ describe('document should have a valid security considerations section', () => {
       set(doc, 'data.rfc.middle.section[0].t', 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.')
       set(doc, 'data.rfc.middle.section[0].section', [{ name: 'Threat Model', t: 'Some threats.' }])
       await expect(validateSecurityConsiderationsSection(doc)).resolves.toHaveLength(0)
+    })
+    test('security considerations section with slugifiedName, title attribute or as single section', async () => {
+      for (const middle of [
+        '<section><name slugifiedName="name-security-considerations">Security Considerations</name><t>Text.</t></section><section><name>Other</name><t>Text.</t></section>',
+        '<section title="Security Considerations"><t>Text.</t></section><section title="Other"><t>Text.</t></section>',
+        '<section><name>Security Considerations</name><t>Text.</t></section>'
+      ]) {
+        const { doc } = await parse(`<rfc version="3"><middle>${middle}</middle></rfc>`, 'draft-test-sections-00.xml')
+        await expect(validateSecurityConsiderationsSection(doc)).resolves.toHaveLength(0)
+      }
     })
   })
 })
@@ -961,12 +1026,10 @@ describe('document should have valid references sections', () => {
       set(doc, 'data.rfc.back.references[1].name["#text"]', 'Informative References')
       await expect(validateReferencesSection(doc)).resolves.toHaveLength(0)
     })
-    test('deprecated references section title', async () => {
+    test('references section title attribute is left to DEPRECATED_ATTRIBUTE', async () => {
       const doc = cloneDeep(baseXMLDoc)
       set(doc, 'data.rfc.back.references[0]._attr.title', 'Normative References')
-      await expect(validateReferencesSection(doc)).resolves.toContainError('DEPRECATED_REFERENCES_TITLE', ValidationWarning)
-      await expect(validateReferencesSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('DEPRECATED_REFERENCES_TITLE', ValidationWarning)
-      await expect(validateReferencesSection(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+      await expect(validateReferencesSection(doc)).resolves.toHaveLength(0)
     })
     test('missing references section name', async () => {
       const doc = cloneDeep(baseXMLDoc)
@@ -1034,8 +1097,6 @@ describe('document should have valid references sections', () => {
           <references title="Other Stuff"><reference anchor="RFC8174"/></references>`)
         const result = await validateReferencesSection(doc)
         expect(result.map(r => [r.name, r.path])).toEqual([
-          ['DEPRECATED_REFERENCES_TITLE', 'rfc.back.references[0].title'],
-          ['DEPRECATED_REFERENCES_TITLE', 'rfc.back.references[1].title'],
           ['INVALID_REFERENCES_NAME', 'rfc.back.references[1].title']
         ])
         await expect(validateReferencesSection(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
@@ -1083,6 +1144,16 @@ describe('document should have a valid IANA considerations section', () => {
       set(doc, 'data.rfc.middle.section[0].t', 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.')
       set(doc, 'data.rfc.middle.section[0].section', [{ name: 'New Registries', t: 'Some registries.' }])
       await expect(validateIANAConsiderationsSection(doc)).resolves.toHaveLength(0)
+    })
+    test('IANA considerations section with slugifiedName, title attribute or as single section', async () => {
+      for (const middle of [
+        '<section><name slugifiedName="name-iana-considerations">IANA Considerations</name><t>Text.</t></section><section><name>Other</name><t>Text.</t></section>',
+        '<section title="IANA Considerations"><t>Text.</t></section><section title="Other"><t>Text.</t></section>',
+        '<section><name>IANA Considerations</name><t>Text.</t></section>'
+      ]) {
+        const { doc } = await parse(`<rfc version="3"><middle>${middle}</middle></rfc>`, 'draft-test-sections-00.xml')
+        await expect(validateIANAConsiderationsSection(doc)).resolves.toHaveLength(0)
+      }
     })
   })
   describe('TXT Document Type', () => {
