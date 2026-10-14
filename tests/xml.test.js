@@ -119,7 +119,7 @@ describe('XML document should not use deprecated elements', () => {
         expect(result[0].message).toContain(`The ${attribute} attribute of <${element}> is deprecated`)
       }
     })
-    test('reports each occurrence', async () => {
+    test('reports each attribute once, with a count and the first use', async () => {
       const doc = await parseDoc(`<middle>
         <section title="Introduction"><t>x</t>
           <section title="Background"><t>x</t></section>
@@ -127,30 +127,24 @@ describe('XML document should not use deprecated elements', () => {
         <section title="Security Considerations"><t>x</t></section>
       </middle>`)
       const result = await detectDeprecatedAttributes(doc)
-      expect(result.map(r => r.path)).toEqual([
-        'rfc.middle.section[0]._attr.title',
-        'rfc.middle.section[0].section._attr.title',
-        'rfc.middle.section[1]._attr.title'
-      ])
-      expect(result[0].message).toBe('The title attribute of <section> is deprecated (title="Introduction"). Instead, use a <name> child element.')
+      expect(result.map(r => r.path)).toEqual(['rfc.middle.section[0]._attr.title'])
+      expect(result[0].message).toBe('The title attribute of <section> is deprecated and is used 3 times (first: title="Introduction"). Instead, use a <name> child element.')
     })
     test('references title in nested and flat layouts', async () => {
       const nested = await parseDoc(`<back><references title="References">
         <references title="Normative References"><reference anchor="RFC2119"/></references>
         <references><name>Informative References</name><reference anchor="RFC8174"/></references>
       </references></back>`)
-      expect((await detectDeprecatedAttributes(nested)).map(r => r.path)).toEqual([
-        'rfc.back.references._attr.title',
-        'rfc.back.references.references[0]._attr.title'
-      ])
+      const nestedResult = await detectDeprecatedAttributes(nested)
+      expect(nestedResult.map(r => r.path)).toEqual(['rfc.back.references._attr.title'])
+      expect(nestedResult[0].message).toContain('is used 2 times')
       const flat = await parseDoc(`<back>
         <references title="Normative References"><reference anchor="RFC2119"/></references>
         <references title="Informative References"><reference anchor="RFC8174"/></references>
       </back>`)
-      expect((await detectDeprecatedAttributes(flat)).map(r => r.path)).toEqual([
-        'rfc.back.references[0]._attr.title',
-        'rfc.back.references[1]._attr.title'
-      ])
+      const flatResult = await detectDeprecatedAttributes(flat)
+      expect(flatResult.map(r => r.path)).toEqual(['rfc.back.references[0]._attr.title'])
+      expect(flatResult[0].message).toContain('is used 2 times')
     })
     test('attributes that are not deprecated', async () => {
       const doc = await parseDoc(`<front><title>Test</title></front>${inSection(`
