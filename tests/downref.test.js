@@ -181,6 +181,31 @@ function nestedReferences (name, entries) {
 }
 
 /**
+ * Parse a v2 XML draft, as written by hand or by kramdown-rfc, with the given
+ * DOCTYPE internal subset and <back> content
+ *
+ * @param {string} entities Entity declarations of the internal subset
+ * @param {string} back Content of the <back> element
+ * @returns {Promise<Object>} Parsed document
+ */
+async function parseV2XML (entities, back) {
+  const { doc } = await parse(`<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE rfc SYSTEM "rfc2629.dtd" [
+${entities}
+]>
+<?rfc toc="yes"?>
+<rfc category="std" docName="draft-test-references-00" ipr="trust200902">
+  <front><title>Test</title></front>
+  <middle><section title="Introduction"><t>Text.</t></section></middle>
+  <back>
+${back}
+  </back>
+</rfc>
+`, 'draft-test-references-00.xml')
+  return doc
+}
+
+/**
  * Parse a TXT draft whose introduction cites the given anchors and whose
  * references section has the given normative and informative entries
  *
@@ -319,6 +344,20 @@ describe('validateDownrefs', () => {
       ]
       await expect(validateDownrefs(await parseXMLBack(nestedReferences('Normative References', entry)), { mode: MODES.NORMAL })).resolves.toEqual(expected)
       await expect(validateDownrefs(await parseXMLBack(`<references><name>Normative References</name>${entry}</references>`), { mode: MODES.NORMAL })).resolves.toEqual(expected)
+    })
+
+    test('normative reference pulled in by an <?rfc include?> instruction in a v2 section', async () => {
+      const doc = await parseV2XML('', `<references title="Normative References">
+      <?rfc include="reference.RFC.7322"?>
+    </references>`)
+
+      await expect(validateDownrefs(doc, { mode: MODES.NORMAL })).resolves.toEqual([
+        new ValidationError(
+          'POSSIBLE_DOWNREF',
+          'RFC 7322 status can\'t be fetched. Reference is possible downref',
+          { ref: 'https://www.rfc-editor.org/info/bcp97' }
+        )
+      ])
     })
 
     test('invalid XML ref for a draft', async () => {
@@ -590,6 +629,33 @@ describe('validateNormativeReferences', () => {
       ])
     })
 
+    test('normative references pulled in by an external entity and by xi:include', async () => {
+      const doc = await parseV2XML(
+        '<!ENTITY RFC4086 SYSTEM "https://bib.ietf.org/public/rfc/bibxml/reference.RFC.4086.xml">',
+        `<references title="Normative References">
+      &RFC4086;
+      <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.4087.xml"/>
+    </references>
+    <references title="Informative References">
+      <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.5087.xml"/>
+    </references>`
+      )
+
+      const result = await validateNormativeReferences(doc, { mode: MODES.NORMAL })
+      expect(result).toEqual([
+        new ValidationError(
+          'OBSOLETE_REFERENCE',
+          'RFC 4087 is obsolete and has been replaced by: RFC9000.',
+          { ref: 'https://authors.ietf.org/en/required-content#references' }
+        ),
+        new ValidationComment(
+          'UNDEFINED_STATUS',
+          'RFC 4086 does not have a defined status or could not be fetched.',
+          { ref: 'https://www.rfc-editor.org/info/rfc4086' }
+        )
+      ])
+    })
+
     test('normative reference with unknown status', async () => {
       const doc = cloneDeep(baseXMLDoc)
       set(doc, 'data.rfc.back.references.references', [
@@ -648,6 +714,17 @@ describe('validateUnclassifiedReferences', () => {
       const result = await validateUnclassifiedReferences(doc, { mode: MODES.NORMAL })
       expect(result).toContainError('OBSOLETE_REFERENCE', ValidationError)
       await expect(validateUnclassifiedReferences(await parseXMLBack(nestedReferences('Normative References', '<reference anchor="RFC4087"><front/></reference>')), { mode: MODES.NORMAL })).resolves.toHaveLength(0)
+    })
+
+    test('unclassified reference to an obsolete RFC pulled in by xi:include in a <referencegroup>', async () => {
+      const doc = await parseXMLBack(`<references><name>References</name>
+        <referencegroup anchor="STD99">
+          <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.4087.xml"/>
+        </referencegroup>
+      </references>`)
+
+      const result = await validateUnclassifiedReferences(doc, { mode: MODES.NORMAL })
+      expect(result).toContainError('OBSOLETE_REFERENCE', ValidationError)
     })
 
     test('FORGIVE_CHECKLIST mode for an obsolete unclassified RFC', async () => {
@@ -830,6 +907,22 @@ describe('Validating published as a RFC draft references', () => {
 
     test('should return warning for drafts published as RFCs in a parsed single nested references section', async () => {
       const doc = await parseXMLBack(nestedReferences('Informative References', '<reference anchor="draft-ietf-published-as-rfc"><front/></reference>'))
+
+      const result = await validatePublishedDraftReferences(doc, { mode: MODES.NORMAL })
+      expect(result).toEqual([
+        new ValidationWarning(
+          'INVALID_STATE_FOR_DRAFT',
+          'The draft reference draft-ietf-published-as-rfc is already published as an RFC and should not be referenced as a draft.',
+          { ref: 'https://datatracker.ietf.org/doc/draft-ietf-published-as-rfc' }
+        )
+      ])
+    })
+
+    test('should return warning for drafts published as RFCs pulled in by an external entity', async () => {
+      const doc = await parseV2XML(
+        '<!ENTITY I-D.ietf-published-as-rfc SYSTEM "https://bib.ietf.org/public/rfc/bibxml3/reference.I-D.ietf-published-as-rfc.xml">',
+        '<references title="Informative References">&I-D.ietf-published-as-rfc;</references>'
+      )
 
       const result = await validatePublishedDraftReferences(doc, { mode: MODES.NORMAL })
       expect(result).toEqual([
@@ -1120,6 +1213,20 @@ describe('validateReferenceForStale (XML)', () => {
         'OUTDATED_DRAFT',
         'The draft reference draft-ietf-bess-rfc7432bis-10 is stale. Its latest revision is -14.',
         { ref: 'https://datatracker.ietf.org/doc/draft-ietf-bess-rfc7432bis' }
+      )
+    ])
+  })
+
+  test('OUTDATED_DRAFT for a draft pulled in by xi:include', async () => {
+    const doc = await parseXMLBack(nestedReferences('Informative References', `
+      <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="https://bib.ietf.org/public/rfc/bibxml3/reference.I-D.ietf-stale.xml"/>`))
+
+    const res = await validateReferenceForStale(doc, { mode: MODES.NORMAL })
+    expect(res).toEqual([
+      new ValidationWarning(
+        'OUTDATED_DRAFT',
+        'The draft reference draft-ietf-stale is stale. draft-ietf-stale was replaced by draft-ietf-newer, whose latest revision is -03.',
+        { ref: 'https://datatracker.ietf.org/doc/draft-ietf-stale' }
       )
     ])
   })
