@@ -3,6 +3,8 @@ import { toContainError, ValidationError, ValidationWarning } from '../lib/helpe
 import { validateFilename, validateDocName } from '../lib/modules/filename.mjs'
 import { baseTXTDoc, baseXMLDoc } from './fixtures/base-doc.mjs'
 import { cloneDeep, set, repeat } from 'lodash-es'
+import { CANONICAL_TXT } from './generators/doc-txt.js'
+import { parse } from '../lib/parsers/txt.mjs'
 
 expect.extend({
   toContainError
@@ -49,6 +51,26 @@ describe('filename base name matches the name declared in the document', () => {
       const doc = { ...cloneDeep(baseTXTDoc), filename: 'draft-ietf-abcd-01.txt' }
       set(doc, 'data.slug', 'draft-ietf-abcd-02')
       await expect(validateDocName(doc)).resolves.toContainError('FILENAME_DOCNAME_MISMATCH')
+    })
+    test('matching name written with its .txt extension', async () => {
+      const filename = 'draft-ietf-beep-boop-01.txt'
+      const doc = await parse(CANONICAL_TXT.replace('draft-ietf-beep-boop-01', 'draft-ietf-beep-boop-01.txt'), filename)
+      await expect(validateDocName(doc)).resolves.toHaveLength(0)
+    })
+    test('matching name followed by an author name on the same line', async () => {
+      const filename = 'draft-ietf-beep-boop-01.txt'
+      const doc = await parse(CANONICAL_TXT.replace('draft-ietf-beep-boop-01', 'draft-ietf-beep-boop-01          A. Author'), filename)
+      await expect(validateDocName(doc)).resolves.toHaveLength(0)
+    })
+    test('non-matching name in the document', async () => {
+      const filename = 'draft-ietf-beep-boop-02.txt'
+      const doc = await parse(CANONICAL_TXT, filename)
+      await expect(validateDocName(doc)).resolves.toContainError('FILENAME_DOCNAME_MISMATCH')
+    })
+    test('no name in the document', async () => {
+      const filename = 'draft-ietf-beep-boop-01.txt'
+      const doc = await parse(CANONICAL_TXT.replace('draft-ietf-beep-boop-01', ''), filename)
+      await expect(validateDocName(doc)).resolves.toHaveLength(0)
     })
   })
   describe('XML Document Type', () => {
