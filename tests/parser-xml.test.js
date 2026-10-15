@@ -162,6 +162,26 @@ describe('XML parser should handle processing instructions', () => {
   })
 })
 
+describe('XML parser should keep the raw text', () => {
+  test('body is the text as given, before clean-up', async () => {
+    const text = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE rfc [
+<!ENTITY RFC2119 SYSTEM "https://bib.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml">
+]>
+<?rfc toc="yes"?>
+<rfc docName="draft-ietf-beep-boop-00">
+  <front><title>Test</title></front>
+  <middle><?line 12?><section><name>Intro</name><t>Text</t></section></middle>
+  <back><references title="Normative References">&RFC2119;</references></back>
+</rfc>`
+    const { doc, nits } = await parse(text, 'draft-ietf-beep-boop-00.xml')
+    expect(doc.body).toBe(text)
+    // -> <?line?> instructions are stripped, and left to validateLinePI to report
+    expect(doc.data.rfc.middle.section.name).toBe('Intro')
+    expect(nits.map(n => n.name)).not.toContain('LINE_PI')
+  })
+})
+
 describe('XML parser should determine the document kind', () => {
   test('unexpected seriesInfo name', async () => {
     const { doc, nits } = await parse(`<?xml version="1.0" encoding="UTF-8"?>

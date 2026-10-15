@@ -738,9 +738,36 @@ describe('document should have valid security author sections', () => {
         ...generateAuthorSection(),
         organization: ''
       })
-      await expect(validateAuthorSection(doc)).resolves.toContainError('EMPTY_AUTHOR_ORGANIZATION', ValidationWarning)
-      await expect(validateAuthorSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('EMPTY_AUTHOR_ORGANIZATION', ValidationWarning)
-      await expect(validateAuthorSection(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+      await expect(validateAuthorSection(doc)).resolves.toContainError('EMPTY_AUTHOR_ORGANIZATION', ValidationComment)
+      await expect(validateAuthorSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('EMPTY_AUTHOR_ORGANIZATION', ValidationComment)
+      await expect(validateAuthorSection(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('EMPTY_AUTHOR_ORGANIZATION', ValidationComment)
+    })
+    test('author section with empty organization (parsed XML)', async () => {
+      const { doc } = await parse('<rfc version="3"><front><author fullname="John Doe"><organization/></author></front></rfc>', 'draft-test-author-00.xml')
+      for (const mode of [MODES.NORMAL, MODES.FORGIVE_CHECKLIST, MODES.SUBMISSION]) {
+        const result = await validateAuthorSection(doc, { mode })
+        expect(result).toHaveLength(1)
+        expect(result).toContainError('EMPTY_AUTHOR_ORGANIZATION', ValidationComment)
+      }
+    })
+    test('author section with an organization that only has attributes', async () => {
+      const { doc } = await parse('<rfc version="3"><front><author fullname="John Doe"><organization abbrev="ACME"/></author></front></rfc>', 'draft-test-author-00.xml')
+      await expect(validateAuthorSection(doc)).resolves.toContainError('EMPTY_AUTHOR_ORGANIZATION', ValidationComment)
+    })
+    test('author section with an organization that has attributes and text', async () => {
+      const { doc } = await parse('<rfc version="3"><front><author><organization abbrev="ACME">ACME Corp</organization></author></front></rfc>', 'draft-test-author-00.xml')
+      await expect(validateAuthorSection(doc)).resolves.toHaveLength(0)
+    })
+    test('author section with a numeric organization', async () => {
+      const { doc } = await parse('<rfc version="3"><front><author><organization>3</organization></author></front></rfc>', 'draft-test-author-00.xml')
+      await expect(validateAuthorSection(doc)).resolves.toHaveLength(0)
+    })
+    test('author section with no fullname + empty organization', async () => {
+      const { doc } = await parse('<rfc version="3"><front><author><organization> </organization></author></front></rfc>', 'draft-test-author-00.xml')
+      await expect(validateAuthorSection(doc)).resolves.toContainError('MISSING_AUTHOR_FULLNAME', ValidationWarning)
+      await expect(validateAuthorSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('MISSING_AUTHOR_FULLNAME', ValidationWarning)
+      const result = await validateAuthorSection(doc, { mode: MODES.SUBMISSION })
+      expect(result.map(r => r.name)).toEqual(['EMPTY_AUTHOR_ORGANIZATION'])
     })
     test('author section with no org + empty fullname', async () => {
       const doc = cloneDeep(baseXMLDoc)
@@ -775,19 +802,11 @@ describe('document should have valid security author sections', () => {
       await expect(validateAuthorSection(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
     test('author section with editor role', async () => {
-      const doc = cloneDeep(baseXMLDoc)
-      set(doc, 'data.rfc.front.author', {
-        ...generateAuthorSection(),
-        role: 'editor'
-      })
+      const { doc } = await parse('<rfc version="3"><front><author fullname="John Doe" role="editor"><organization>ACME</organization></author></front></rfc>', 'draft-test-author-00.xml')
       await expect(validateAuthorSection(doc)).resolves.toHaveLength(0)
     })
     test('author section with incorrect role', async () => {
-      const doc = cloneDeep(baseXMLDoc)
-      set(doc, 'data.rfc.front.author', {
-        ...generateAuthorSection(),
-        role: 'emperor'
-      })
+      const { doc } = await parse('<rfc version="3"><front><author fullname="John Doe" role="emperor"><organization>ACME</organization></author></front></rfc>', 'draft-test-author-00.xml')
       await expect(validateAuthorSection(doc)).resolves.toContainError('INVALID_AUTHOR_ROLE', ValidationWarning)
       await expect(validateAuthorSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('INVALID_AUTHOR_ROLE', ValidationWarning)
       await expect(validateAuthorSection(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
