@@ -1333,6 +1333,16 @@ describe('The document does not appear to be ragged-right', () => {
       ])
     )
   })
+
+  test.each(['Internet-Draft', 'Internet Draft', 'INTERNET-DRAFT', 'INTERNET DRAFT'])('The "%s" header line is not taken for ragged-right text', async (indicator) => {
+    const txt = `
+      ${metaTXTBlock.replace(/^Internet-Draft .*$/m, `${indicator}                                     individual`)}
+      ${introductionTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.linesWithSpaces).toHaveLength(0)
+  })
 })
 
 describe('Abstract section is numbered', () => {
@@ -2428,6 +2438,59 @@ describe('doesn\'t say INTERNET DRAFT in the upper left of the first page', () =
     const result = await parse(txt, 'txt')
 
     expect(result.data.contains.idIndication).toBeTruthy()
+  })
+
+  test('Say INTERNET DRAFT on the very first line of the document', async () => {
+    const txt = `
+      ${metaTXTBlock.replace(/^idr .*\n/m, '')}
+    `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.header.authors[0].name).toBe('J. Haas')
+    expect(result.data.contains.idIndication).toBeTruthy()
+    expect(result.docKind).toBe('draft')
+  })
+
+  test.each(['Internet Draft', 'INTERNET-DRAFT', 'INTERNET DRAFT', 'internet-draft', 'Internet-Drafts'])('Say INTERNET DRAFT spelled "%s"', async (indicator) => {
+    const txt = `
+      ${metaTXTBlock.replace('Internet-Draft', indicator)}
+    `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.contains.idIndication).toBeTruthy()
+    expect(result.docKind).toBe('draft')
+  })
+
+  test('Say INTERNET DRAFT run into a long organization name', async () => {
+    const txt = `
+      ${metaTXTBlock.replace(/^Internet-Draft .*$/m, 'Internet-DraftChina Academy of Information and Communications Technology')}
+    `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.contains.idIndication).toBeTruthy()
+  })
+
+  test('Doesn\'t take an RFC header for an INTERNET DRAFT', async () => {
+    const txt = `
+Internet Engineering Task Force (IETF)                         Z. Zhang
+Request for Comments: 9999                                      J. Haas
+Category: Standards Track                              Juniper Networks
+ISSN: 2070-1721                                                K. Patel
+                                                                 Arrcus
+                                                           January 2025
+
+
+            Extended Communities Derived from Route Targets
+`
+
+    const result = await parse(txt, 'test-document.txt')
+
+    expect(result.data.contains.idIndication).toBeFalsy()
+    expect(result.data.header.rfcNumber).toBe('9999')
+    expect(result.docKind).toBe('rfc')
   })
 })
 
