@@ -1293,6 +1293,80 @@ describe('Parse document slug', () => {
     const result = await parse(txt, 'txt')
     expect(result.data.slug).toBe(null)
   })
+
+  test('Parse document slug written with its .txt extension', async () => {
+    const txt = `
+      ${metaTXTBlock.replace('draft-ietf-idr-rt-derived-community-05', 'draft-ietf-idr-rt-derived-community-05.txt')}
+      ${tableOfContentsTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.slug).toBe('draft-ietf-idr-rt-derived-community-05')
+  })
+
+  test('Parse document slug sharing its line with other header values', async () => {
+    // draft-diaz-lzip-14 and draft-dejong-remotestorage-27
+    const lzip = await parse(`
+Internet Engineering Task Force (IETF)                           A. Diaz
+INTERNET-DRAFT  draft-diaz-lzip-14                           GNU Project
+Category: Informational                                        July 2026
+Expiration date: 2027-01-20
+
+
+      Lzip Compressed Format and the 'application/lzip' Media Type
+`, 'txt')
+    expect(lzip.data.slug).toBe('draft-diaz-lzip-14')
+
+    const remoteStorage = await parse(`
+INTERNET DRAFT                                      Michiel B. de Jong
+Document: draft-dejong-remotestorage-27                  (independent)
+                                                             F. Kooman
+                                                         (independent)
+                                                              S. Kippe
+Intended Status: Proposed Standard                       (independent)
+Expires: 18 December 2026                                 12 June 2026
+
+
+                          remoteStorage 1.0
+`, 'txt')
+    expect(remoteStorage.data.slug).toBe('draft-dejong-remotestorage-27')
+  })
+
+  test('Parse document slug followed by an author name on the same line', async () => {
+    const txt = `
+      ${metaTXTBlock.replace('draft-ietf-idr-rt-derived-community-05', 'draft-ietf-idr-rt-derived-community-05          Z. Zhang')}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.slug).toBe('draft-ietf-idr-rt-derived-community-05')
+  })
+
+  test('Parse document slug after an Obsoletes header naming an earlier draft', async () => {
+    // draft-reilly-mws-01
+    const result = await parse(`
+Independent Submission                                 L.J. Reilly Jr.
+Internet-Draft                REM Technologies & Consulting, LLC
+Obsoletes: draft-reilly-mws-00 (if approved)
+Intended status: Informational                           20 August 2026
+Expires: 21 February 2027
+
+      Machine-Web Symbiosis (MWS): An Architecture for Autonomous
+          Agent Maintenance of Web Permanence and Integrity
+                         draft-reilly-mws-01
+
+Abstract
+`, 'txt')
+    expect(result.data.slug).toBe('draft-reilly-mws-01')
+  })
+
+  test('Parse document slug without a revision', async () => {
+    const txt = `
+      ${metaTXTBlock.replace('draft-ietf-idr-rt-derived-community-05', 'draft-ietf-idr-rt-derived-community.txt')}
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.slug).toBe('draft-ietf-idr-rt-derived-community')
+  })
 })
 
 describe('The document does not appear to be ragged-right', () => {
