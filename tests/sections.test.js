@@ -1381,6 +1381,58 @@ describe('validateReferencesInText', () => {
       }
     })
 
+    describe('RFC 8792 folding header', () => {
+      const references = `<references><name>Informative References</name>
+        <reference anchor="RFC2119"/>
+        <reference anchor="RFC8174"/>
+        <reference anchor="RFC8792"><front><title>Handling Long Lines</title></front><seriesInfo name="RFC" value="8792"/></reference>
+        <reference anchor="LONG-LINES"><front><title>Handling Long Lines</title></front><seriesInfo name="RFC" value="8792"/></reference>
+      </references>`
+      const unusedWarning = (ref) => new ValidationWarning(
+        'REFERENCE_NOT_USED',
+        `The reference ${ref} is listed in the References section but is not mentioned in the document text.`,
+        { ref: 'https://authors.ietf.org/en/required-content#references' }
+      )
+      const parseWithFigure = async (figure) => {
+        const { doc } = await parse(`<rfc version="3">
+          <middle><section><name>Example</name><t>See <xref target="RFC2119"/>.</t>${figure}</section></middle>
+          <back>${references}</back>
+        </rfc>`, 'draft-test-references-00.xml')
+        return doc
+      }
+
+      test('should treat RFC 8792 as used when the folding header is in <sourcecode>', async () => {
+        const doc = await parseWithFigure(`<sourcecode type="json">
+=============== NOTE: '\\' line wrapping per RFC 8792 ================
+
+{"key": "a very long \\
+  value"}
+</sourcecode>`)
+        await expect(validateReferencesInText(doc)).resolves.toEqual([unusedWarning('RFC8174')])
+      })
+
+      test('should treat RFC 8792 as used when the folding header is in <artwork> CDATA', async () => {
+        const doc = await parseWithFigure(`<artwork><![CDATA[
+NOTE: '\\\\' line wrapping per RFC 8792
+
+a very long \\
+\\line
+]]></artwork>`)
+        await expect(validateReferencesInText(doc)).resolves.toEqual([unusedWarning('RFC8174')])
+      })
+
+      test('should still report RFC 8792 as unused without the folding header', async () => {
+        const doc = await parseWithFigure(`<sourcecode type="json">
+{"key": "RFC 8792 is mentioned here but this is not a folding header"}
+</sourcecode>`)
+        await expect(validateReferencesInText(doc)).resolves.toEqual([
+          unusedWarning('RFC8174'),
+          unusedWarning('RFC8792'),
+          unusedWarning('LONG-LINES')
+        ])
+      })
+    })
+
     test('should handle empty references in an XML document', async () => {
       const xmlDoc = {
         type: 'xml',
