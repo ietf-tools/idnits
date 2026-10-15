@@ -57,6 +57,98 @@ afterAll(() => {
   vi.restoreAllMocks()
 })
 
+// Excerpt from draft-bg-onions-update-network-service-models-01: unpaginated, so its table of
+// contents has no page numbers and no dot leaders
+const unpaginatedDraftTXT = `Network Working Group                                      O. G. D. Dios
+Internet-Draft                                                Telefonica
+Intended status: Informational                                S. Barguil
+Expires: 7 January 2027                                            Nokia
+                                                             6 July 2026
+
+
+           An Update of Service and Network YANG Data Models
+          draft-bg-onions-update-network-service-models-01
+
+Abstract
+
+   Service & Network data models have been implemented in recent years
+   to facilitate the deployment of connectivity services such as Layer 2
+   and Layer 3 VPN services in provider networks.
+
+Table of Contents
+
+   1.  Introduction
+   2.  Conventions and Definitions
+   3.  Service and Network YANG Data Models in the IETF
+   4.  Observations and new requirements
+     4.1.  Enhancements to LxSM and LxNM
+       4.1.1.  L3NM Enhancements
+       4.1.2.  ## L2NM Enhancements
+     4.2.  New Functionalities Required to Fully Support Connectivity
+           Services
+     4.3.  Status of the Intended Network Service
+     4.4.  Summary
+   5.  Security Considerations
+   6.  IANA Considerations
+   7.  References
+     7.1.  Normative References
+     7.2.  Informative References
+   Acknowledgments
+   Authors' Addresses
+
+1.  Introduction
+
+   Service and Network YANG data models [RFC8199][RFC8309] such as the
+   Layer 3 Network Model (L3NM) [RFC9182] and the Layer 2 Network Model
+   (L2NM) [RFC9291] have been implemented to automate the deployment of
+   VPN services by providers.
+
+5.  Security Considerations
+
+   TODO Security
+
+6.  IANA Considerations
+
+   This document has no IANA actions.
+
+7.  References
+
+7.1.  Normative References
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119,
+              DOI 10.17487/RFC2119, March 1997,
+              <https://www.rfc-editor.org/rfc/rfc2119>.
+
+7.2.  Informative References
+
+   [RFC4364]  Rosen, E. and Y. Rekhter, "BGP/MPLS IP Virtual Private
+              Networks (VPNs)", RFC 4364, DOI 10.17487/RFC4364, February
+              2006, <https://www.rfc-editor.org/rfc/rfc4364>.
+
+Acknowledgments
+
+   This documents is based on the issues compiled in Github lxnm
+   repository.
+
+Authors' Addresses
+
+   Oscar Gonzalez de Dios
+   Telefonica
+   Email: oscar.gonzalezdedios@telefonica.com
+`
+
+/**
+ * First non-blank line after the table of contents found by the parser
+ *
+ * @param {string} txt Parsed text
+ * @param {Object} toc Table of contents markers
+ * @returns {string} The line
+ */
+function lineAfterToc (txt, toc) {
+  return txt.split(/\r?\n/).slice(toc.end).find(line => line.trim())
+}
+
 describe('A possible code comment is detected outside of a marked code block', () => {
   test('The comment is detected and marked as a possible code comment out of code block', async () => {
     const txt = `
@@ -334,6 +426,12 @@ describe('References (if any present) are not categorized as Normative or Inform
     expect(result.data.content.references).toEqual(
       expect.arrayContaining(['3. Normative References', '2. Informative References'])
     )
+  })
+  test('Table of contents of an unpaginated document does not open the References section', async () => {
+    const result = await parse(unpaginatedDraftTXT, 'txt')
+    const referencesTitles = result.data.content.references.filter(line => /^(?:\d+\.\s+)?(?:(?:Normative|Informative)\s+)?References$/i.test(line))
+    expect(referencesTitles).toEqual(['7.  References'])
+    expect(lineAfterToc(unpaginatedDraftTXT, result.data.markers.toc)).toBe('1.  Introduction')
   })
 })
 
@@ -2342,11 +2440,11 @@ ${abstractTXTBlock}
     expect(result.data.header.expiresHasDay).toBe(hasDay)
   })
 
-  test('Indented header Expires line with trailing whitespace is parsed', async () => {
+  test.each([['\n'], ['\r\n']])('Indented header Expires line with trailing whitespace is parsed (line end %j)', async (lineEnd) => {
     const txt = `
 ${metaTXTBlock.replace('Expires: 8 September 2023                                      K. Patel', '  Expires: November 2026 ')}
 ${abstractTXTBlock}
-`.replace(/\n/g, '\r\n')
+`.replace(/\n/g, lineEnd)
 
     const result = await parse(txt, 'txt')
     expect(result.data.header.expires.toISODate()).toEqual('2026-11-01')
@@ -2822,6 +2920,121 @@ Author's Address
     const result = await parse(txt, 'txt')
     expect(result.data.possibleIssues.unexpectedIndentation).toHaveLength(1)
     expect(result.data.possibleIssues.unexpectedIndentation[0].name).toMatch(/Author's Addresses/)
+  })
+
+  test('Table of contents of an unpaginated document has no unexpected indentation', async () => {
+    const result = await parse(unpaginatedDraftTXT, 'txt')
+    expect(result.data.possibleIssues.unexpectedIndentation).toHaveLength(0)
+  })
+
+  test('Table of contents across a page break with CRLF line ends has no unexpected indentation', async () => {
+    // Excerpt from draft-dunbar-agent-attachment-01: CRLF line ends, and a running header without a date
+    const txt = `Network Working Group                                   L. Dunbar
+Internet Draft                                          Futurewei
+Intended status: Informational                       K. Majumdar
+Expires: November 1, 2026                              Oracle
+
+                                                      May 1, 2026
+
+
+                     Agent Attachment Protocol
+                  draft-dunbar-agent-attachment-01
+
+Abstract
+   This document describes the Agent Attachment Protocol (AAP)
+   that enables AI agents to establish attachment to an edge
+   node and derive communication and attachment-related
+   properties.
+
+Table of Contents
+
+   1. Introduction..............................................3
+   2. Conventions used in this document.........................4
+   3. Problem Statement.........................................5
+   4. Use Cases.................................................6
+      4.1. Smart Factory Control Agent..........................7
+      4.2. Private 5G/6G Service Agent..........................7
+
+
+Dunbar, et al.           Expires Dec 1, 2026            [Page 2]
+\f
+Internet-Draft             Agent-Attachment
+
+
+      6.5. Exposure of Attachment Properties...................16
+   7. Use of Attachment State (Informative)....................16
+   8. Attachment State Maintenance and Teardown................19
+   9. Security Considerations..................................20
+   10. Manageability Considerations............................22
+   11. IANA Considerations.....................................22
+   12. References..............................................23
+      12.1. Normative References...............................23
+      12.2. Informative References.............................23
+   13. Acknowledgments.........................................23
+   Appendix A:.................................................23
+
+1. Introduction
+
+  The Agent Attachment Protocol (AAP) defines a mechanism for
+  agents to establish attachment to an edge node and to derive
+  communication and attachment-related properties associated
+  with that attachment.
+`.replace(/\n/g, '\r\n')
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.markers.toc.start).toBe(18)
+    expect(lineAfterToc(txt, result.data.markers.toc)).toBe('1. Introduction')
+    expect(result.data.possibleIssues.unexpectedIndentation).toHaveLength(0)
+  })
+
+  test('Table of contents ends at the first entry repeated as an indented section title', async () => {
+    // Excerpt from draft-cheng-rtgwg-srv6-multihome-egress-protection-12, whose section titles are indented
+    const txt = `rtgwg Working Group                                            W. Cheng
+Internet-Draft                                                  W.Jiang
+Intended status: Experimental                              China Mobile
+Expires:January 26, 2027                                         C. Lin
+                                                   New H3C Technologies
+                                                          July 23, 2026
+
+
+
+              SRv6 Egress Protection in Multi-homed scenario
+           draft-cheng-rtgwg-srv6-multihome-egress-protection-12
+
+
+Abstract
+
+   This document describes a SRv6 egress node protection mechanism in
+   multi-homed scenarios.
+
+Table of Contents
+
+
+   1. Introduction...................................................2
+   2. Terminology....................................................3
+   6. Security Considerations.......................................10
+   7. IANA Considerations...........................................10
+   8. References....................................................11
+   Authors' Addresses...............................................13
+
+
+
+   1. Introduction
+
+   The fast protection of a transit node of a Segment Routing (SR) path
+   or tunnel is described in [I-D.ietf-rtgwg-segment-routing-ti-lfa].
+
+   6. Security Considerations
+
+   This document does not introduce any new security considerations.
+`
+
+    const result = await parse(txt, 'txt')
+    expect(lineAfterToc(txt, result.data.markers.toc)).toBe('   1. Introduction')
+    expect(result.data.possibleIssues.unexpectedIndentation.map(({ name, line }) => ({ name, line }))).toEqual([
+      { name: 'Introduction', line: 31 },
+      { name: 'Security Considerations', line: 36 }
+    ])
   })
 
   test('Indented Overview section with numeric prefix should trigger unexpected indentation', async () => {
