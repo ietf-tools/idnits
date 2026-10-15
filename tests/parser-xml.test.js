@@ -174,8 +174,11 @@ describe('XML parser should keep the raw text', () => {
   <middle><?line 12?><section><name>Intro</name><t>Text</t></section></middle>
   <back><references title="Normative References">&RFC2119;</references></back>
 </rfc>`
-    const { doc } = await parse(text, 'draft-ietf-beep-boop-00.xml')
+    const { doc, nits } = await parse(text, 'draft-ietf-beep-boop-00.xml')
     expect(doc.body).toBe(text)
+    // -> <?line?> instructions are stripped, and left to validateLinePI to report
+    expect(doc.data.rfc.middle.section.name).toBe('Intro')
+    expect(nits.map(n => n.name)).not.toContain('LINE_PI')
   })
 })
 
