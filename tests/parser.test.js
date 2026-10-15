@@ -1170,6 +1170,54 @@ describe('Parsing document intended status', () => {
 })
 
 describe('Parsing document date', () => {
+  test('Parses document date after a blank line in the header', async () => {
+    // draft-acee-idr-lldp-peer-discovery-22: the right column carries on after a whitespace-only line
+    const result = await parse(`
+Network Working Group                                          A. Lindem
+Internet-Draft                                                  K. Patel
+Intended status: Standards Track                             Arrcus, Inc
+Expires: 17 December 2026                                       S. Zandi
+${' '.repeat(72)}
+                                                                 J. Haas
+                                                                     HPE
+                                                                   X. Xu
+                                                            China Mobile
+                                                            15 June 2026
+
+
+       BGP Logical Link Discovery Protocol (LLDP) Peer Discovery
+                 draft-acee-idr-lldp-peer-discovery-22
+
+Abstract
+`, 'txt')
+
+    expect(result.data.header.date).toEqual({ day: 15, month: 'June', year: 2026 })
+    expect(result.data.header.authors.map(author => author.name)).toEqual(['A. Lindem', 'K. Patel', 'S. Zandi', 'J. Haas', 'X. Xu'])
+    expect(result.data.title).toBe('BGP Logical Link Discovery Protocol (LLDP) Peer Discovery')
+  })
+
+  test('Ends the header at a title that starts like a header field', async () => {
+    // draft-dnsop-rfc6303-bis-03
+    const result = await parse(`
+DNSOP                                                   T. Wicinski, Ed.
+Internet-Draft                                               6 July 2026
+Obsoletes: 9818 (if approved)
+Updates: 6603, 6890 (if approved)
+Intended status: Best Current Practice
+Expires: 7 January 2027
+
+
+Updates to Locally Served DNS Zones and IP Special-Purpose Address Space
+                               Registries
+                       draft-dnsop-rfc6303-bis-03
+
+Abstract
+`, 'txt')
+
+    expect(result.data.header.date).toEqual({ day: 6, month: 'July', year: 2026 })
+    expect(result.data.title).toBe('Updates to Locally Served DNS Zones and IP Special-Purpose Address Space')
+  })
+
   test('Parses document date correctly', async () => {
     const txt = `
       ${metaTXTBlock}
@@ -1357,6 +1405,28 @@ Expires: 21 February 2027
 Abstract
 `, 'txt')
     expect(result.data.slug).toBe('draft-reilly-mws-01')
+  })
+
+  test('Parse document slug and title below a running header on the first line', async () => {
+    // draft-coetzee-oauth-spt-txn-tokens-00
+    const result = await parse(`Internet-Draft                SPT-Txn Tokens                  March 2026
+
+
+OAuth Working Group (individual submission)                R. J. Coetzee
+Internet-Draft                                  Violet Sky Security SEZC
+Intended status: Experimental                               19 July 2026
+Expires: 20 January 2027
+
+
+      Transaction-Bound Authorization Tokens for Software and AI Agents
+                 draft-coetzee-oauth-spt-txn-tokens-00
+
+Abstract
+`, 'txt')
+
+    expect(result.data.slug).toBe('draft-coetzee-oauth-spt-txn-tokens-00')
+    expect(result.data.title).toBe('Transaction-Bound Authorization Tokens for Software and AI Agents')
+    expect(result.data.header.authors[0].name).toBe('R. J. Coetzee')
   })
 
   test('Parse document slug without a revision', async () => {
@@ -2183,6 +2253,27 @@ describe('Missing acceptable paragraph calling out 6 month validity', () => {
 })
 
 describe('Parsing expires line', () => {
+  test('Parsing expires line after a blank line in the header', async () => {
+    // draft-urien-tls-im-trusted-exporter-00, with its trailing spaces and CRLF line ends
+    const result = await parse(`
+  TLS Working Group                                            P. Urien
+  Internet Draft                                          Telecom Paris
+  Intended status: Experimental                              Ethertrust
+${' '.repeat(72)}
+                                                            28 May 2026
+  Expires: November 2026
+
+                    TLS 1.3 Identity Module Trusted Exporter
+                   draft-urien-tls-im-trusted-exporter-00.txt
+
+
+Abstract
+`.replace(/\n/g, ' \r\n'), 'txt')
+
+    expect(result.data.header.expires.toISODate()).toEqual('2026-11-01')
+    expect(result.data.title).toBe('TLS 1.3 Identity Module Trusted Exporter')
+  })
+
   test('Parsing expires line', async () => {
     const txt = `
       ${metaTXTBlock}
