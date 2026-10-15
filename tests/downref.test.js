@@ -1003,6 +1003,54 @@ describe('validateInformativeReferences', () => {
       })
     )
   })
+
+  test('informative reference to an obsolete RFC pulled in by an <?rfc include?> instruction (XML)', async () => {
+    const doc = await parseV2XML('', `<references title="Normative References">
+      <?rfc include='https://xml.resource.org/public/rfc/bibxml/reference.RFC.4087.xml'?>
+    </references>
+    <references title="Informative References">
+      <reference anchor="IANA-IPFIX" target="https://www.iana.org/assignments/ipfix/ipfix.xhtml">
+        <front><title>IANA IPFIX Entities Registry</title><author/><date/></front>
+      </reference>
+      <?rfc include='https://xml.resource.org/public/rfc/bibxml/reference.RFC.5086.xml'?>
+      <?rfc include='https://xml.resource.org/public/rfc/bibxml/reference.RFC.5087.xml'?>
+    </references>`)
+
+    const result = await validateInformativeReferences(doc, { mode: MODES.NORMAL })
+    expect(result).toEqual([
+      new ValidationError(
+        'OBSOLETE_REFERENCE',
+        'RFC 5087 is obsolete and has been replaced by: RFC9000, RFC9001.',
+        { ref: 'https://authors.ietf.org/en/required-content#references' }
+      )
+    ])
+  })
+
+  test('informative reference to an obsolete RFC in a nested v3 section (XML)', async () => {
+    const doc = await parseXMLBack(nestedReferences('Informative References', `
+      <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.5087.xml"/>`))
+
+    const result = await validateInformativeReferences(doc, { mode: MODES.FORGIVE_CHECKLIST })
+    expect(result).toEqual([
+      new ValidationWarning(
+        'OBSOLETE_REFERENCE',
+        'RFC 5087 is obsolete and has been replaced by: RFC9000, RFC9001.',
+        { ref: 'https://authors.ietf.org/en/required-content#references' }
+      )
+    ])
+  })
+
+  test('commented-out includes are not informative references (XML)', async () => {
+    const doc = await parseV2XML(
+      '<!ENTITY RFC5087 SYSTEM "https://bib.ietf.org/public/rfc/bibxml/reference.RFC.5087.xml">',
+      `<references title="Informative References">
+      <!-- <?rfc include="reference.RFC.5087"?> &RFC5087; -->
+      <?rfc include="reference.RFC.5086"?>
+    </references>`
+    )
+
+    await expect(validateInformativeReferences(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
+  })
 })
 
 describe('validateReferenceForStale (TXT)', () => {
