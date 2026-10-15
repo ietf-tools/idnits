@@ -4,6 +4,8 @@ import { toContainError, ValidationWarning, ValidationError, ValidationComment }
 import { baseXMLDoc, baseTXTDoc } from './fixtures/base-doc.mjs'
 import { cloneDeep, set } from 'lodash-es'
 import { parse } from '../lib/parsers/xml.mjs'
+import { parse as parseTXT } from '../lib/parsers/txt.mjs'
+import { CANONICAL_TXT } from './generators/doc-txt.js'
 import { validateDownrefs, validateInformativeReferences, validateNormativeReferences, validateUnclassifiedReferences, validatePublishedDraftReferences, validateReferenceForStale } from '../lib/modules/downref.mjs'
 import { setupServer } from 'msw/node'
 import { http, HttpResponse, passthrough } from 'msw'
@@ -178,6 +180,36 @@ function nestedReferences (name, entries) {
   return `<references><name>References</name><references><name>${name}</name>${entries}</references></references>`
 }
 
+/**
+ * Parse a TXT draft whose introduction cites the given anchors and whose
+ * references section has the given normative and informative entries
+ *
+ * @param {Object} opts
+ * @param {string[]} [opts.cited] Anchors cited in the introduction, e.g. '[FOO]'
+ * @param {string[]} [opts.normative] Anchors listed under Normative References
+ * @param {string[]} [opts.informative] Anchors listed under Informative References
+ * @returns {Promise<Object>} Parsed document
+ */
+async function parseTXTReferences ({ cited = [], normative = [], informative = [] }) {
+  const entries = anchors => anchors.map(anchor => `   ${anchor.padEnd(10)} Example, "A reference that is not an RFC", 2025.`).join('\n\n')
+  const txt = `${CANONICAL_TXT}
+1.  Introduction
+
+   This document uses ${cited.join(' and ') || 'nothing'}.
+
+2.  References
+
+2.1.  Normative References
+
+${entries(normative)}
+
+2.2.  Informative References
+
+${entries(informative)}
+`
+  return parseTXT(txt, 'draft-ietf-beep-boop-01.txt')
+}
+
 describe('validateDownrefs', () => {
   describe('TXT Document Type', () => {
     test('valid references with no downrefs', async () => {
@@ -216,6 +248,36 @@ describe('validateDownrefs', () => {
       const result = await validateDownrefs(doc, { mode: MODES.FORGIVE_CHECKLIST })
       expect(result).toHaveLength(1)
       expect(result).toContainError('POSSIBLE_DOWNREF', ValidationWarning)
+    })
+
+    test('unused informative reference is not a possible downref', async () => {
+      const doc = await parseTXTReferences({ informative: ['[UNUSED]'] })
+
+      const result = await validateDownrefs(doc, { mode: MODES.NORMAL })
+      expect(result).toHaveLength(0)
+    })
+
+    test('used informative reference is not a possible downref', async () => {
+      const doc = await parseTXTReferences({ cited: ['[USED]'], informative: ['[USED]'] })
+
+      const result = await validateDownrefs(doc, { mode: MODES.NORMAL })
+      expect(result).toHaveLength(0)
+    })
+
+    test('unused normative reference is still a possible downref', async () => {
+      const doc = await parseTXTReferences({ normative: ['[NORM]'], informative: ['[UNUSED]'] })
+
+      const result = await validateDownrefs(doc, { mode: MODES.NORMAL })
+      expect(result).toHaveLength(1)
+      expect(result).toContainError('POSSIBLE_DOWNREF', ValidationError)
+      expect(result[0].message).toContain('[NORM]')
+    })
+
+    test('used normative reference is still not a possible downref', async () => {
+      const doc = await parseTXTReferences({ cited: ['[NORM]'], normative: ['[NORM]'] })
+
+      const result = await validateDownrefs(doc, { mode: MODES.NORMAL })
+      expect(result).toHaveLength(0)
     })
   })
 
