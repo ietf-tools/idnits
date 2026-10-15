@@ -366,6 +366,20 @@ describe('XML document should not contain <CODE BEGINS> tags', () => {
     await expect(validateCodeBlocks(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('MISSING_SOURCECODE_TAG', ValidationWarning)
     await expect(validateCodeBlocks(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
   })
+  test('paths of <CODE BEGINS> findings', async () => {
+    const { doc } = await parse(`<rfc version="3"><middle><section><name>Code</name>
+      <t>Intro</t>
+      <sourcecode>&lt;CODE BEGINS&gt; file "a.yang"</sourcecode>
+    </section><section><name>More</name>
+      <t>First</t>
+      <t>&lt;CODE BEGINS&gt;</t>
+    </section></middle></rfc>`, 'draft-test.xml')
+    const result = await validateCodeBlocks(doc)
+    expect(result.map(r => [r.name, r.path])).toEqual([
+      ['UNNECESSARY_CODE_BEGINS', 'rfc.middle.section[0].sourcecode'],
+      ['MISSING_SOURCECODE_TAG', 'rfc.middle.section[1].t[1]']
+    ])
+  })
 })
 
 describe('XML document should not contain text document refs', () => {
@@ -387,6 +401,16 @@ describe('XML document should not contain text document refs', () => {
     await expect(validateTextLikeRefs(doc)).resolves.toContainError('TEXT_DOC_REF', ValidationWarning)
     await expect(validateTextLikeRefs(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('TEXT_DOC_REF', ValidationWarning)
     await expect(validateTextLikeRefs(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+  })
+  test('paths of text document refs', async () => {
+    const { doc } = await parse(`<rfc version="3"><middle><section><name>Introduction</name>
+      <t>See [RFC1234].</t>
+    </section><section><name>Details</name>
+      <t>First</t>
+      <t>See [2].</t>
+    </section></middle></rfc>`, 'draft-test.xml')
+    const result = await validateTextLikeRefs(doc)
+    expect(result.map(r => r.path)).toEqual(['rfc.middle.section[0].t', 'rfc.middle.section[1].t[1]'])
   })
 })
 
