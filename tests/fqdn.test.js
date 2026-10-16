@@ -188,6 +188,25 @@ describe('document should have valid FQDN mentions', () => {
       const result = await validateFQDNs(doc, { mode: MODES.NORMAL, offline: true })
       expect(result).toHaveLength(0)
     })
+    test('an email address broken mid-word is reported as such, not as a domain', async () => {
+      // From draft-ietf-scitt-architecture-20: xml2rfc broke "iesg@ietf.org" to fit the 72-column line
+      const doc = await parseTXT(`
+   Person and email address to contact for further information:  iesg@ie
+      tf.org
+   Intended usage:  COMMON
+      `, 'draft-ietf-scitt-architecture-20.txt')
+
+      const expected = [
+        new ValidationWarning('TOKEN_SPLIT_ACROSS_LINES', 'Email address "iesg@ietf.org" is broken mid-word across lines 2 and 3 ("iesg@ie" / "tf.org"). Avoid putting the address where it cannot fit on the line: in XML, for example, use <dl newline="true"> so that it starts a line of its own.', {
+          ref: 'https://authors.ietf.org/en/rfcxml-vocabulary#dl',
+          lines: [{ line: 2, pos: 66 }],
+          text: 'iesg@ietf.org'
+        })
+      ]
+      await expect(validateFQDNs(doc, { mode: MODES.NORMAL, offline: true })).resolves.toEqual(expected)
+      await expect(validateFQDNs(doc, { mode: MODES.FORGIVE_CHECKLIST, offline: true })).resolves.toEqual(expected)
+      await expect(validateFQDNs(doc, { mode: MODES.SUBMISSION, offline: true })).resolves.toHaveLength(0)
+    })
   })
 
   describe('XML Document Type', () => {
