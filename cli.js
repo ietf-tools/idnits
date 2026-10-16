@@ -12,6 +12,7 @@ import { gte } from 'semver'
 import { Listr, ListrDefaultRendererLogLevels } from 'listr2'
 import { checkNits, getAllValidations, getDocType, labelFindings } from './lib/index.mjs'
 import { getModeByName } from './lib/config/modes.mjs'
+import { DATATRACKER_URL_ENV, DEFAULT_DATATRACKER_URL, DEFAULT_RFCEDITOR_URL, RFCEDITOR_URL_ENV, getDatatrackerUrl, getRfcEditorUrl, normalizeBaseUrl, setRemoteUrls } from './lib/config/remote.mjs'
 
 // Check Node.js version
 if (!gte(process.version, '18.0.0')) {
@@ -32,6 +33,11 @@ const argv = yargs(hideBin(process.argv))
     [`$0 -m submission -y ${DateTime.now().year} draft-ietf-abcd-01.xml`, ''],
     ['$0 https://www.rfc-editor.org/rfc/rfc2549', '']
   ])
+  .option('datatracker-url', {
+    describe: `Base URL of the Datatracker used for remote lookups (overrides ${DATATRACKER_URL_ENV}, default ${DEFAULT_DATATRACKER_URL})`,
+    coerce: val => normalizeBaseUrl(val, '--datatracker-url'),
+    type: 'string'
+  })
   .option('fail-on', {
     describe: 'Exit with code 2 if there is at least one nit of the given severity or higher (errors > warnings > comments).',
     choices: ['errors', 'warnings', 'comments'],
@@ -81,6 +87,11 @@ const argv = yargs(hideBin(process.argv))
     default: 'pretty',
     type: 'string'
   })
+  .option('rfceditor-url', {
+    describe: `Base URL of the RFC Editor site used for remote lookups (overrides ${RFCEDITOR_URL_ENV}, default ${DEFAULT_RFCEDITOR_URL})`,
+    coerce: val => normalizeBaseUrl(val, '--rfceditor-url'),
+    type: 'string'
+  })
   .option('solarized', {
     default: false,
     describe: 'Use alternate colors for a solarized light themed terminal',
@@ -108,6 +119,16 @@ const argv = yargs(hideBin(process.argv))
   .parse()
 
 const chalk = (argv.color === false) ? new Chalk({ level: 0 }) : new Chalk()
+
+// Set the base URLs of remote lookups, checking those from the environment too
+try {
+  setRemoteUrls({ datatracker: argv.datatrackerUrl, rfcEditor: argv.rfceditorUrl })
+  getDatatrackerUrl()
+  getRfcEditorUrl()
+} catch (err) {
+  console.error(chalk.redBright(err.message))
+  process.exit(1)
+}
 
 if (argv.output === 'pretty') {
   console.log(chalk.bgGray.white('▄'.repeat(64)))
