@@ -1476,6 +1476,24 @@ describe('validateReferencesInText', () => {
       const result = await validateReferencesInText(doc)
       expect(result).toEqual([])
     })
+
+    // From draft-ietf-ccamp-yang-otn-slicing-12
+    test('should return a comment for an RFC Editor placeholder in a TXT document', async () => {
+      const doc = await parseTXT(`${CANONICAL_TXT}
+           | tet      | ietf-te-topology           | [RFC8795] |
+           +----------+----------------------------+-----------+
+           | ietf-nss | ietf-network-slice-service | [RFCVVVV] |
+           +----------+----------------------------+-----------+
+`, 'draft-ietf-ccamp-yang-otn-slicing-12.txt')
+
+      const result = await validateReferencesInText(doc)
+
+      expect(result).toContainEqual(new ValidationComment(
+        'PLACEHOLDER_REFERENCE',
+        'Document has [RFCVVVV], a placeholder reference; the RFC Editor will replace it.',
+        { ref: 'https://authors.ietf.org/en/required-content#references' }
+      ))
+    })
   })
 
   describe('XML documents', () => {
