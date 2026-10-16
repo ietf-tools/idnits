@@ -4,6 +4,7 @@ import { toContainError, ValidationComment, ValidationWarning } from '../lib/hel
 import { validateFQDNs } from '../lib/modules/fqdn.mjs'
 import { baseXMLDoc } from './fixtures/base-doc.mjs'
 import { parse } from '../lib/parsers/xml.mjs'
+import { parse as parseTXT } from '../lib/parsers/txt.mjs'
 import { cloneDeep, set } from 'lodash-es'
 
 expect.extend({
@@ -175,6 +176,17 @@ describe('document should have valid FQDN mentions', () => {
           text: 'invalid.not-example.com'
         })
       ])
+    })
+    test('the continuation of a wrapped URL is no domain mention', async () => {
+      // From draft-bichot-msync-20: the URL of a reference wraps after "rfc-"
+      const doc = await parseTXT(`
+   [RFC2236] W. Fenner, "Internet Group Management Protocol, Version 2",
+              RFC 2236, November 1997, <https://www.rfc-
+              editor.org/info/rfc2236>
+      `, 'draft-bichot-msync-20.txt')
+
+      const result = await validateFQDNs(doc, { mode: MODES.NORMAL, offline: true })
+      expect(result).toHaveLength(0)
     })
   })
 
