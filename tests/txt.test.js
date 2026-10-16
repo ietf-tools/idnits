@@ -1,4 +1,6 @@
-import { describe, expect, test } from 'vitest'
+import { afterAll, afterEach, beforeAll, describe, expect, test } from 'vitest'
+import { setupServer } from 'msw/node'
+import { http, HttpResponse } from 'msw'
 import { MODES } from '../lib/config/modes.mjs'
 import { toContainError, ValidationError, ValidationWarning, ValidationComment } from '../lib/helpers/error.mjs'
 import {
@@ -31,7 +33,8 @@ import {
   validateCopyrightDate,
   validateLicenseDeclarations,
   validateCopyrightSection,
-  validateTableOfContentsAndDocumentPages
+  validateTableOfContentsAndDocumentPages,
+  validateStream
 } from '../lib/modules/txt.mjs'
 import { baseTXTDoc } from './fixtures/base-doc.mjs'
 import { abstractTXTBlock, introductionTXTBlock, metaTXTBlock } from './fixtures/txt-blocks/section-blocks.mjs'
@@ -1175,5 +1178,124 @@ describe('Validate ID indicator', () => {
         { ref: 'https://authors.ietf.org/en/drafting-in-plaintext#checklist' }
       )
     ])
+  })
+})
+
+describe('The stream named in an RFC header should match Datatracker', () => {
+  const requests = []
+  const server = setupServer(
+    http.get('https://datatracker.ietf.org/api/v1/doc/document/rfc9180/', () => {
+      return HttpResponse.json({ stream: '/api/v1/name/streamname/irtf/' })
+    }),
+    http.get('https://datatracker.ietf.org/api/v1/doc/document/rfc9720/', () => {
+      return HttpResponse.json({ stream: '/api/v1/name/streamname/editorial/' })
+    }),
+    http.get('https://datatracker.ietf.org/api/v1/doc/document/rfc9998/', () => {
+      return HttpResponse.json({ stream: null })
+    }),
+    http.get('https://datatracker.ietf.org/api/v1/doc/document/rfc9999/', () => {
+      return HttpResponse.json({ stream: '/api/v1/name/streamname/iab/' })
+    }),
+    http.all('*', () => {
+      return new HttpResponse(null, { status: 404 })
+    })
+  )
+  server.events.on('request:start', ({ request }) => { requests.push(request.url) })
+
+  beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
+  afterEach(() => {
+    server.resetHandlers()
+    requests.length = 0
+  })
+  afterAll(() => server.close())
+
+  // First-page header of RFC 9180, with the first line and RFC number replaceable
+  function rfcHeader (source = 'Internet Research Task Force (IRTF)', number = '9180') {
+    return `
+
+
+${source.padEnd(63)}R. Barnes
+Request for Comments: ${number.padEnd(43)}Cisco
+Category: Informational                                     K. Bhargavan
+ISSN: 2070-1721                                                  B. Lipp
+                                                                   Inria
+                                                           February 2022
+
+
+                      Hybrid Public Key Encryption
+
+Abstract
+
+   This document describes a scheme for hybrid public key encryption
+   (HPKE).
+
+Status of This Memo
+
+   This document is not an Internet Standards Track specification; it is
+   published for informational purposes.
+`
+  }
+
+  test('accepts an RFC whose header names the stream Datatracker has', async () => {
+    const doc = await parse(rfcHeader(), 'rfc9180.txt')
+    for (const mode of Object.values(MODES)) {
+      await expect(validateStream(doc, { mode })).resolves.toHaveLength(0)
+    }
+    expect(requests).toContain('https://datatracker.ietf.org/api/v1/doc/document/rfc9180/')
+  })
+
+  test('accepts the Editorial Stream header line', async () => {
+    const doc = await parse(rfcHeader('Editorial Stream', '9720'), 'rfc9720.txt')
+    await expect(validateStream(doc)).resolves.toHaveLength(0)
+  })
+
+  test('reports a header stream that differs from Datatracker by mode', async () => {
+    const doc = await parse(rfcHeader('Internet Engineering Task Force (IETF)', '9999'), 'rfc9999.txt')
+    const result = await validateStream(doc)
+    expect(result).toEqual([
+      new ValidationError(
+        'SUBMISSION_TYPE_UNEXPECTED',
+        'The header names the IETF stream ("Internet Engineering Task Force (IETF)"), but Datatracker has this RFC in the IAB stream.',
+        { ref: 'https://www.rfc-editor.org/rfc/rfc7841.html', lines: [{ line: 4, pos: 1 }] }
+      )
+    ])
+    await expect(validateStream(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('SUBMISSION_TYPE_UNEXPECTED', ValidationWarning)
+    await expect(validateStream(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('SUBMISSION_TYPE_UNEXPECTED', ValidationError)
+  })
+
+  test('reports an RFC Datatracker has no stream for by mode', async () => {
+    const doc = await parse(rfcHeader('Independent Submission', '9998'), 'rfc9998.txt')
+    await expect(validateStream(doc)).resolves.toContainError('SUBMISSION_TYPE_UNEXPECTED', ValidationError)
+    await expect(validateStream(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('SUBMISSION_TYPE_UNEXPECTED', ValidationWarning)
+    await expect(validateStream(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('SUBMISSION_TYPE_UNEXPECTED', ValidationComment)
+  })
+
+  test('skips the comparison when offline', async () => {
+    const doc = await parse(rfcHeader('Internet Engineering Task Force (IETF)', '9999'), 'rfc9999.txt')
+    await expect(validateStream(doc, { offline: true })).resolves.toHaveLength(0)
+    expect(requests).toHaveLength(0)
+  })
+
+  test('reports nothing for an RFC unknown to Datatracker', async () => {
+    const doc = await parse(rfcHeader('Internet Engineering Task Force (IETF)', '9997'), 'rfc9997.txt')
+    await expect(validateStream(doc)).resolves.toHaveLength(0)
+  })
+
+  test('reports nothing for a header line that names no stream', async () => {
+    // As in RFCs published before RFC 5741
+    const doc = await parse(rfcHeader('Network Working Group', '9999'), 'rfc9999.txt')
+    await expect(validateStream(doc)).resolves.toHaveLength(0)
+    expect(requests).toHaveLength(0)
+  })
+
+  test('reports nothing for a draft, whatever its name', async () => {
+    const doc = await parse(`
+${metaTXTBlock.replace(/^idr +/m, left => 'Internet Architecture Board'.padEnd(left.length)).replace(/draft-[a-z0-9-]+-[0-9]{2}/, 'draft-irtf-cfrg-foo-00')}
+${abstractTXTBlock}
+`, 'draft-irtf-cfrg-foo-00.txt')
+    expect(doc.docKind).toEqual('draft')
+    expect(doc.data.slug).toEqual('draft-irtf-cfrg-foo-00')
+    await expect(validateStream(doc)).resolves.toHaveLength(0)
+    expect(requests).toHaveLength(0)
   })
 })
