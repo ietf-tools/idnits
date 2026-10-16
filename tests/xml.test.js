@@ -366,6 +366,20 @@ describe('XML document should not contain <CODE BEGINS> tags', () => {
     await expect(validateCodeBlocks(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('MISSING_SOURCECODE_TAG', ValidationWarning)
     await expect(validateCodeBlocks(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
   })
+  test('paths of <CODE BEGINS> findings', async () => {
+    const { doc } = await parse(`<rfc version="3"><middle><section><name>Code</name>
+      <t>Intro</t>
+      <sourcecode>&lt;CODE BEGINS&gt; file "a.yang"</sourcecode>
+    </section><section><name>More</name>
+      <t>First</t>
+      <t>&lt;CODE BEGINS&gt;</t>
+    </section></middle></rfc>`, 'draft-test.xml')
+    const result = await validateCodeBlocks(doc)
+    expect(result.map(r => [r.name, r.path])).toEqual([
+      ['UNNECESSARY_CODE_BEGINS', 'rfc.middle.section[0].sourcecode'],
+      ['MISSING_SOURCECODE_TAG', 'rfc.middle.section[1].t[1]']
+    ])
+  })
 })
 
 describe('XML document should not contain text document refs', () => {
@@ -387,6 +401,16 @@ describe('XML document should not contain text document refs', () => {
     await expect(validateTextLikeRefs(doc)).resolves.toContainError('TEXT_DOC_REF', ValidationWarning)
     await expect(validateTextLikeRefs(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('TEXT_DOC_REF', ValidationWarning)
     await expect(validateTextLikeRefs(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+  })
+  test('paths of text document refs', async () => {
+    const { doc } = await parse(`<rfc version="3"><middle><section><name>Introduction</name>
+      <t>See [RFC1234].</t>
+    </section><section><name>Details</name>
+      <t>First</t>
+      <t>See [2].</t>
+    </section></middle></rfc>`, 'draft-test.xml')
+    const result = await validateTextLikeRefs(doc)
+    expect(result.map(r => r.path)).toEqual(['rfc.middle.section[0].t', 'rfc.middle.section[1].t[1]'])
   })
 })
 
@@ -520,28 +544,98 @@ describe('Validate IETF-TLP boilerplate for XML documents', () => {
     await expect(validateXMLBoilerplate(doc)).resolves.toHaveLength(0)
   })
 
-  test('Unnecessary boilerplate text detected', async () => {
-    const doc = cloneDeep(baseXMLDoc)
-    set(doc, 'data.rfc.front.t', 'This Internet-Draft is submitted in full conformance with the provisions of BCP 78 and BCP 79.')
-    await expect(validateXMLBoilerplate(doc)).resolves.toContainError('UNNECESSARY_BOILERPLATE_TEXT', ValidationWarning)
-  })
+  describe('boilerplate text outside <boilerplate>', () => {
+    const parseDoc = async (middle, { front = '', back = '', name = 'draft-test-boilerplate-00' } = {}) => {
+      const { doc } = await parse(`<?xml version="1.0" encoding="UTF-8"?>
+<rfc version="3" ipr="trust200902" docName="${name}">
+  <front><title>Test</title>${front}</front>
+  <middle><section><name>Introduction</name><t>Text</t>${middle}</section></middle>
+  <back>${back}</back>
+</rfc>`, `${name}.xml`)
+      return doc
+    }
+    const boilerplateFindings = async (doc, opts) => (await validateXMLBoilerplate(doc, opts)).filter(r => r.name === 'UNNECESSARY_BOILERPLATE_TEXT')
 
-  test('Multiple boilerplate texts detected', async () => {
-    const doc = cloneDeep(baseXMLDoc)
-    set(doc, 'data.rfc.front.t', 'This Internet-Draft is submitted in full conformance with the provisions of BCP 78 and BCP 79. Copyright (c) 2025 IETF Trust and the persons identified as the document authors. All rights reserved.')
-    await expect(validateXMLBoilerplate(doc)).resolves.toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ name: 'UNNECESSARY_BOILERPLATE_TEXT' }),
-        expect.objectContaining({ name: 'UNNECESSARY_BOILERPLATE_TEXT' })
-      ])
-    )
-  })
-
-  test('No boilerplate or ipr issues in a clean document', async () => {
-    const doc = cloneDeep(baseXMLDoc)
-    set(doc, 'data.rfc._attr.ipr', 'trust200902')
-    set(doc, 'data.rfc.front.t', 'This is a clean document without boilerplate.')
-    await expect(validateXMLBoilerplate(doc)).resolves.toHaveLength(0)
+    test('phrase wrapped across lines', async () => {
+      const doc = await parseDoc(`<t>This Internet-Draft is submitted in full conformance with the
+        provisions of BCP 78 and BCP 79.</t>`)
+      const result = await validateXMLBoilerplate(doc)
+      expect(result).toHaveLength(1)
+      expect(result).toContainError('UNNECESSARY_BOILERPLATE_TEXT', ValidationWarning)
+      expect(result[0].path).toBe('rfc.middle.section.t[1]')
+      expect(result[0].message).toContain('"This Internet-Draft is submitted in full conformance"')
+    })
+    test('phrase split by inline markup, with curly quotes and odd case', async () => {
+      const doc = await parseDoc(`<t>Copyright (c) 2025 <eref target="https://trustee.ietf.org/">IETF Trust</eref> and the
+        persons identified as the <em>document authors</em>.</t>
+        <t>&#8220;Internet-Drafts are draft documents valid for a MAXIMUM of six months&#8221;</t>`)
+      const result = await boilerplateFindings(doc)
+      expect(result.map(r => r.path)).toEqual(['rfc.middle.section.t[1]', 'rfc.middle.section.t[2]'])
+    })
+    test('one warning for an element with several phrases', async () => {
+      const doc = await parseDoc(`<t>Internet-Drafts are working documents of the Internet Engineering Task
+        Force (IETF). Internet-Drafts are draft documents valid for a maximum of six months.</t>`)
+      const result = await boilerplateFindings(doc)
+      expect(result).toHaveLength(1)
+      expect(result[0].path).toBe('rfc.middle.section.t[1]')
+      expect(result[0].message).toContain('"Internet-Drafts are working documents of the Internet Engineering Task Force", "Internet-Drafts are draft documents valid for a maximum of six months"')
+    })
+    test('phrase in a <blockquote> and in a list', async () => {
+      const doc = await parseDoc(`<blockquote><t>Information about the current status of this document, any errata,
+        and how to provide feedback on it may be obtained at <eref target="https://www.rfc-editor.org/info/rfc9999"/>.</t></blockquote>
+        <ul><li>First</li><li>Code Components extracted from this document must include Revised BSD License text as
+        described in Section 4.e of the Trust Legal Provisions</li></ul>`)
+      const result = await boilerplateFindings(doc)
+      expect(result.map(r => r.path)).toEqual(['rfc.middle.section.blockquote.t', 'rfc.middle.section.ul.li[1]'])
+    })
+    test('phrase in an RFC, in every mode', async () => {
+      const doc = await parseDoc('<t>This document is not an Internet Standards Track specification; it is published for informational purposes.</t>', {
+        front: '<seriesInfo name="RFC" value="9999"/>',
+        name: 'rfc9999'
+      })
+      expect(doc.docKind).toBe('rfc')
+      for (const mode of Object.values(MODES)) {
+        const result = await boilerplateFindings(doc, { mode })
+        expect(result).toHaveLength(1)
+        expect(result).toContainError('UNNECESSARY_BOILERPLATE_TEXT', ValidationWarning)
+      }
+    })
+    test('phrase in <front><boilerplate> or a <reference>', async () => {
+      const doc = await parseDoc('', {
+        front: `<boilerplate><section anchor="status-of-memo"><name>Status of This Memo</name>
+          <t>This Internet-Draft is submitted in full conformance with the provisions of BCP 78 and BCP 79.</t></section></boilerplate>`,
+        back: `<references><name>Informative References</name>
+          <reference anchor="ID-GUIDELINES" target="https://www.ietf.org/standards/ids/guidelines/"><front>
+            <title>Internet-Drafts are working documents of the Internet Engineering Task Force</title>
+            <author><organization>IETF</organization></author><date/></front>
+            <annotation>Internet-Drafts are draft documents valid for a maximum of six months.</annotation></reference>
+        </references>`
+      })
+      await expect(boilerplateFindings(doc)).resolves.toHaveLength(0)
+    })
+    test('cited title of the Trust Legal Provisions', async () => {
+      const doc = await parseDoc(`<t>This document is subject to <xref target="BCP78"/> and the IETF Trust's Legal Provisions
+        Relating to IETF Documents <xref target="TLP"/>.</t>`, {
+        back: `<references><name>Informative References</name>
+          <reference anchor="TLP" target="https://trustee.ietf.org/license-info"><front>
+            <title>Legal Provisions Relating to IETF Documents</title>
+            <author><organization>IETF Trust</organization></author><date/></front></reference>
+        </references>`
+      })
+      await expect(boilerplateFindings(doc)).resolves.toHaveLength(0)
+    })
+    test('prose about the boilerplate', async () => {
+      const doc = await parseDoc(`<t>A proposal is an Internet-Draft (which must be submitted in full conformance with the
+        provisions of <xref target="BCP78"/> and <xref target="BCP79"/>).</t>
+        <t>Code components extracted from this document must include the following license text.</t>
+        <t>However, this document is not an Internet Standards Track specification, and it does not
+        represent the consensus of the IETF.</t>`)
+      await expect(boilerplateFindings(doc)).resolves.toHaveLength(0)
+    })
+    test('no boilerplate or ipr issues in a clean document', async () => {
+      const doc = await parseDoc('<t>This is a clean document without boilerplate.</t>')
+      await expect(validateXMLBoilerplate(doc)).resolves.toHaveLength(0)
+    })
   })
 })
 
@@ -670,21 +764,12 @@ describe('Validate IETF-TLP boilerplate for XML documents', () => {
   })
 
   test('Unnecessary boilerplate text detected', async () => {
-    const doc = cloneDeep(baseXMLDoc)
-    set(doc, 'data.rfc.front.t', 'This Internet-Draft is submitted in full conformance with the provisions of BCP 78 and BCP 79.')
-    await expect(validateXMLBoilerplate(doc)).resolves.toContainError('UNNECESSARY_BOILERPLATE_TEXT', ValidationWarning)
-    await expect(validateXMLBoilerplate(doc)).resolves.toContainError('MISSING_IPR_ATTRIBUTE', ValidationError)
-  })
-
-  test('Multiple boilerplate texts detected', async () => {
-    const doc = cloneDeep(baseXMLDoc)
-    set(doc, 'data.rfc.front.t', 'This Internet-Draft is submitted in full conformance with the provisions of BCP 78 and BCP 79. Copyright (c) 2025 IETF Trust and the persons identified as the document authors. All rights reserved.')
-    await expect(validateXMLBoilerplate(doc)).resolves.toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ name: 'UNNECESSARY_BOILERPLATE_TEXT' }),
-        expect.objectContaining({ name: 'UNNECESSARY_BOILERPLATE_TEXT' })
-      ])
-    )
+    const { doc } = await parse(`<rfc version="3" docName="draft-test-00"><front><title>Test</title>
+      <t>This Internet-Draft is submitted in full conformance with the provisions of BCP 78 and BCP 79.</t></front></rfc>`, 'draft-test-00.xml')
+    const result = await validateXMLBoilerplate(doc)
+    expect(result).toContainError('UNNECESSARY_BOILERPLATE_TEXT', ValidationWarning)
+    expect(result).toContainError('MISSING_IPR_ATTRIBUTE', ValidationError)
+    expect(result.find(r => r.name === 'UNNECESSARY_BOILERPLATE_TEXT').path).toBe('rfc.front.t')
   })
 
   test('No boilerplate or ipr issues in a clean document', async () => {
