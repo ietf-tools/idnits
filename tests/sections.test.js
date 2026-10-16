@@ -435,6 +435,56 @@ describe('document should have a valid introduction section', () => {
       set(doc, 'data.rfc.middle.section[0].section', [{ name: 'Background', t: 'Some background.' }])
       await expect(validateIntroductionSection(doc)).resolves.toHaveLength(0)
     })
+    test('introduction section with <artset>, <contact> and <author> children', async () => {
+      const { doc } = await parse(`<rfc version="3"><middle>
+        <section><name>Other</name><t>Text.</t></section>
+        <section anchor="s"><name>Introduction</name>
+          <t>Text.</t>
+          <artset>
+            <artwork type="svg"><svg xmlns="http://www.w3.org/2000/svg"/></artwork>
+            <artwork type="ascii-art">+---+</artwork>
+          </artset>
+          <t>Thanks to <contact fullname="Jane Doe"/>.</t>
+          <contact fullname="John Doe"><organization>Example</organization></contact>
+          <author fullname="Alice Doe" initials="A." surname="Doe"/>
+          <section><name>More</name><t>Text.</t></section>
+        </section>
+      </middle></rfc>`, 'draft-test-sections-00.xml')
+      await expect(validateIntroductionSection(doc)).resolves.toHaveLength(0)
+    })
+    test('introduction section with text outside of any element', async () => {
+      const { doc } = await parse(`<rfc version="3"><middle>
+        <section anchor="s"><name>Introduction</name>
+          Stray text.
+          <t>Text.</t>
+        </section>
+      </middle></rfc>`, 'draft-test-sections-00.xml')
+      const result = await validateIntroductionSection(doc)
+      expect(result).toHaveLength(1)
+      expect(result[0].name).toBe('INVALID_INTRODUCTION_SECTION_CHILD')
+      expect(result[0].message).toContain('contains text outside of any element')
+      expect(result[0].path).toBe('rfc.middle.section[0]')
+    })
+    test('introduction section children not allowed by the grammar are named', async () => {
+      const { doc } = await parse(`<rfc version="3"><middle>
+        <section><name>Other</name><t>Text.</t></section>
+        <section anchor="s"><name>Introduction</name>
+          <t>Text.</t>
+          <list><t>Item.</t></list>
+          <t>More text.</t>
+          <list><t>Item.</t></list>
+          <note><t>A note.</t></note>
+        </section>
+      </middle></rfc>`, 'draft-test-sections-00.xml')
+      const result = await validateIntroductionSection(doc)
+      expect(result).toHaveLength(2)
+      expect(result.map(e => e.name)).toEqual(['INVALID_INTRODUCTION_SECTION_CHILD', 'INVALID_INTRODUCTION_SECTION_CHILD'])
+      expect(result[0].message).toContain('contains a <list> element')
+      expect(result[0].message).toContain('<artset>')
+      expect(result[0].path).toBe('rfc.middle.section[1].list')
+      expect(result[1].message).toContain('contains a <note> element')
+      expect(result[1].path).toBe('rfc.middle.section[1].note')
+    })
     test('introduction section with line processing instructions', async () => {
       const { doc } = await parse(`<rfc version="3"><middle>
 <?line 40?>
@@ -609,6 +659,43 @@ describe('document should have a valid security considerations section', () => {
       set(doc, 'data.rfc.middle.section[0].t', 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.')
       set(doc, 'data.rfc.middle.section[0].section', [{ name: 'Threat Model', t: 'Some threats.' }])
       await expect(validateSecurityConsiderationsSection(doc)).resolves.toHaveLength(0)
+    })
+    test('security considerations section with <artset>, <contact> and <author> children', async () => {
+      const { doc } = await parse(`<rfc version="3"><middle>
+        <section><name>Other</name><t>Text.</t></section>
+        <section anchor="s"><name>Security Considerations</name>
+          <t>Text.</t>
+          <artset>
+            <artwork type="svg"><svg xmlns="http://www.w3.org/2000/svg"/></artwork>
+            <artwork type="ascii-art">+---+</artwork>
+          </artset>
+          <t>Thanks to <contact fullname="Jane Doe"/>.</t>
+          <contact fullname="John Doe"><organization>Example</organization></contact>
+          <author fullname="Alice Doe" initials="A." surname="Doe"/>
+          <section><name>More</name><t>Text.</t></section>
+        </section>
+      </middle></rfc>`, 'draft-test-sections-00.xml')
+      await expect(validateSecurityConsiderationsSection(doc)).resolves.toHaveLength(0)
+    })
+    test('security considerations section children not allowed by the grammar are named', async () => {
+      const { doc } = await parse(`<rfc version="3"><middle>
+        <section><name>Other</name><t>Text.</t></section>
+        <section anchor="s"><name>Security Considerations</name>
+          <t>Text.</t>
+          <list><t>Item.</t></list>
+          <t>More text.</t>
+          <list><t>Item.</t></list>
+          <note><t>A note.</t></note>
+        </section>
+      </middle></rfc>`, 'draft-test-sections-00.xml')
+      const result = await validateSecurityConsiderationsSection(doc)
+      expect(result).toHaveLength(2)
+      expect(result.map(e => e.name)).toEqual(['INVALID_SECURITY_CONSIDERATIONS_SECTION_CHILD', 'INVALID_SECURITY_CONSIDERATIONS_SECTION_CHILD'])
+      expect(result[0].message).toContain('contains a <list> element')
+      expect(result[0].message).toContain('<artset>')
+      expect(result[0].path).toBe('rfc.middle.section[1].list')
+      expect(result[1].message).toContain('contains a <note> element')
+      expect(result[1].path).toBe('rfc.middle.section[1].note')
     })
     test('security considerations section with slugifiedName, title attribute or as single section', async () => {
       for (const middle of [
@@ -1195,6 +1282,43 @@ describe('document should have a valid IANA considerations section', () => {
       set(doc, 'data.rfc.middle.section[0].t', 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.')
       set(doc, 'data.rfc.middle.section[0].section', [{ name: 'New Registries', t: 'Some registries.' }])
       await expect(validateIANAConsiderationsSection(doc)).resolves.toHaveLength(0)
+    })
+    test('IANA considerations section with <artset>, <contact> and <author> children', async () => {
+      const { doc } = await parse(`<rfc version="3"><middle>
+        <section><name>Other</name><t>Text.</t></section>
+        <section anchor="s"><name>IANA Considerations</name>
+          <t>Text.</t>
+          <artset>
+            <artwork type="svg"><svg xmlns="http://www.w3.org/2000/svg"/></artwork>
+            <artwork type="ascii-art">+---+</artwork>
+          </artset>
+          <t>Thanks to <contact fullname="Jane Doe"/>.</t>
+          <contact fullname="John Doe"><organization>Example</organization></contact>
+          <author fullname="Alice Doe" initials="A." surname="Doe"/>
+          <section><name>More</name><t>Text.</t></section>
+        </section>
+      </middle></rfc>`, 'draft-test-sections-00.xml')
+      await expect(validateIANAConsiderationsSection(doc)).resolves.toHaveLength(0)
+    })
+    test('IANA considerations section children not allowed by the grammar are named', async () => {
+      const { doc } = await parse(`<rfc version="3"><middle>
+        <section><name>Other</name><t>Text.</t></section>
+        <section anchor="s"><name>IANA Considerations</name>
+          <t>Text.</t>
+          <list><t>Item.</t></list>
+          <t>More text.</t>
+          <list><t>Item.</t></list>
+          <note><t>A note.</t></note>
+        </section>
+      </middle></rfc>`, 'draft-test-sections-00.xml')
+      const result = await validateIANAConsiderationsSection(doc)
+      expect(result).toHaveLength(2)
+      expect(result.map(e => e.name)).toEqual(['INVALID_IANA_CONSIDERATIONS_SECTION_CHILD', 'INVALID_IANA_CONSIDERATIONS_SECTION_CHILD'])
+      expect(result[0].message).toContain('contains a <list> element')
+      expect(result[0].message).toContain('<artset>')
+      expect(result[0].path).toBe('rfc.middle.section[1].list')
+      expect(result[1].message).toContain('contains a <note> element')
+      expect(result[1].path).toBe('rfc.middle.section[1].note')
     })
     test('IANA considerations section with slugifiedName, title attribute or as single section', async () => {
       for (const middle of [
