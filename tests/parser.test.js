@@ -700,6 +700,40 @@ describe('Parsing FQRN', () => {
     const result = await parse(txt, 'txt')
     expect(result.data.extractedElements.fqdnDomains).toEqual(['starlinkisp.net'])
   })
+
+  test('Takes an email address broken mid-word at the end of a full line as one address', async () => {
+    // From draft-ietf-scitt-architecture-20: xml2rfc broke "iesg@ietf.org" to fit the 72-column line
+    const txt = `
+   Person and email address to contact for further information:  iesg@ie
+      tf.org
+   Intended usage:  COMMON
+    `
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.splitEmailAddresses).toEqual([
+      { address: 'iesg@ietf.org', parts: ['iesg@ie', 'tf.org'], line: 2, pos: 66 }
+    ])
+    expect(result.data.extractedElements.fqdnDomains).toEqual([])
+  })
+
+  test('Does not join an email address that is whole or not at the end of a full line', async () => {
+    // From draft-drake-email-hardware-attestation-02, draft-ietf-calext-vcard4-bis-00,
+    // draft-morrison-identity-attributed-commits-03 and draft-ietf-vcon-vcon-core-04 (a line folded by hand)
+    const txt = `
+   wsmbt, which holds the handle "crusty", sending as crusty@mailpal.com
+   from a Windows 10 host with an Intel firmware TPM (PTT).  Mode 1 is
+
+   template, defined in the sections below, is sent to vcarddav@ietf.org
+   and iana@iana.org.  Within two weeks, the designated expert is
+
+   value ~release@example.org corresponds to alter:~release@example.org.
+   The zone is taken from org-scope alone and never from the spelling of
+
+           On Friday, September 23, 2022, 9:44:40 PM UTC, Bob <b@exa
+           mple.com> wrote:  \\r\\n \\r\\n Alice:Please find the image a
+    `
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.splitEmailAddresses).toEqual([])
+  })
 })
 
 describe('Parsing IPs', () => {
