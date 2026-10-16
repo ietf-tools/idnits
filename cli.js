@@ -10,7 +10,7 @@ import { readFile } from 'node:fs/promises'
 import { DateTime } from 'luxon'
 import { gte } from 'semver'
 import { Listr, ListrDefaultRendererLogLevels } from 'listr2'
-import { checkNits, getAllValidations, labelFindings } from './lib/index.mjs'
+import { checkNits, getAllValidations, getDocType, labelFindings } from './lib/index.mjs'
 import { getModeByName } from './lib/config/modes.mjs'
 
 // Check Node.js version
@@ -183,7 +183,7 @@ try {
 
   // Validate document using task processor
   if (argv.output === 'pretty' && argv.progress) {
-    const validations = getAllValidations(docPathObj.base.endsWith('.xml') ? 'xml' : 'txt')
+    const validations = getAllValidations(getDocType(docPathObj.base))
     const tasks = new Listr(
       validations.map(valGroup => ({
         title: valGroup.title,

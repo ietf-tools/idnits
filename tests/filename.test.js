@@ -5,6 +5,7 @@ import { MODES } from '../lib/config/modes.mjs'
 import { CANONICAL_TXT } from './generators/doc-txt.js'
 import { parse } from '../lib/parsers/txt.mjs'
 import { parse as parseXML } from '../lib/parsers/xml.mjs'
+import { getDocType } from '../lib/index.mjs'
 
 expect.extend({
   toContainError
@@ -67,6 +68,19 @@ describe('filename is split into base name and extension', () => {
   test('xml2rfc --v2v3 output', () => {
     expect(splitFilename('draft-ietf-abcd-01.v2v3.xml')).toEqual({ base: 'draft-ietf-abcd-01', ext: 'xml' })
     expect(splitFilename('draft-ietf-abcd-01.v2v3.txt')).toEqual({ base: 'draft-ietf-abcd-01.v2v3', ext: 'txt' })
+  })
+})
+
+describe('document type follows the filename extension, in either case', () => {
+  test.each([
+    ['draft-ietf-abcd-01.xml', 'xml'],
+    ['draft-ietf-abcd-01.XML', 'xml'],
+    ['draft-ietf-abcd-01.v2v3.xml', 'xml'],
+    ['draft-ietf-abcd-01.txt', 'txt'],
+    ['draft-ietf-abcd-01.TXT', 'txt'],
+    ['draft-ietf-abcd-01', 'txt']
+  ])('%s', (filename, type) => {
+    expect(getDocType(filename)).toBe(type)
   })
 })
 
