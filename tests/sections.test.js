@@ -1123,31 +1123,65 @@ describe('document should have valid references sections', () => {
       await expect(validateReferencesSection(await parseWithReferences('Informative References'))).resolves.toHaveLength(0)
     })
 
-    test('Should throw an error when reference content has two or more section titles', async () => {
-      const doc = {
-        type: 'txt',
-        data: {
-          markers: { references: { start: 100 } },
-          content: {
-            references: [
-              '2. Normative References',
-              '[RFC4360] Sangli, S., "BGP Extended Communities Attribute", RFC 4360, February 2006.',
-              '3. Informative References',
-              '[RFC4360] Sangli, S., "BGP Extended Communities Attribute", RFC 4360, February 2006.'
-            ]
-          }
-        },
-        body: `
-        7. References
-        [RFC4360] Sangli, S., "BGP Extended Communities Attribute", RFC 4360, February 2006.
-        3. Informative References
-        [RFC4360] Sangli, S., "BGP Extended Communities Attribute", RFC 4360, February 2006.
-        `
-      }
-      await expect(validateReferencesSection(doc, { mode: MODES.NORMAL })).resolves.toContainError(
-        'MULTIPLE_REFERENCES_SECTION_TITLES',
-        ValidationError
-      )
+    describe('references split into separate sections', () => {
+      const entry = `   [RFC4360]  Sangli, S., "BGP Extended Communities Attribute",
+              RFC 4360, February 2006.
+`
+      const parseWithBack = (back) => parseTXT(`${CANONICAL_TXT}
+1.  Introduction
+
+   This document uses [RFC4360].
+
+${back}`, '')
+      const warning = new ValidationWarning('MULTIPLE_REFERENCES_SECTION_TITLES', 'References should be one section with Normative and Informative subsections (RFC 7322, Section 4.8.6).', {
+        ref: 'https://www.rfc-editor.org/rfc/rfc7322.html#section-4.8.6'
+      })
+
+      test('top-level Normative and Informative References sections', async () => {
+        const doc = await parseWithBack(`2.  Normative References
+
+${entry}
+3.  Informative References
+
+${entry}`)
+        await expect(validateReferencesSection(doc)).resolves.toEqual([warning])
+        await expect(validateReferencesSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toEqual([warning])
+        await expect(validateReferencesSection(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+      })
+      test('an empty References section before the one holding the references', async () => {
+        const doc = await parseWithBack(`2.  References
+
+3.  References
+
+3.1.  Normative References
+
+${entry}`)
+        await expect(validateReferencesSection(doc)).resolves.toEqual([warning])
+      })
+      test('unnumbered References section with unnumbered subsections', async () => {
+        const doc = await parseWithBack(`References
+
+Normative References
+
+${entry}
+Informative References
+
+${entry}`)
+        await expect(validateReferencesSection(doc)).resolves.toHaveLength(0)
+      })
+      test('indented References lines are not section titles', async () => {
+        const doc = await parseWithBack(`2.  References
+
+2.1.  Normative References
+
+${entry}
+   The registration template has these fields:
+
+   References
+      A citation for the specification.
+`)
+        await expect(validateReferencesSection(doc)).resolves.toHaveLength(0)
+      })
     })
   })
 
