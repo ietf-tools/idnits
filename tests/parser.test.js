@@ -652,6 +652,54 @@ describe('Parsing FQRN', () => {
     const result = await parse(txt, 'txt')
     expect(result.data.extractedElements.fqdnDomains).toEqual([])
   })
+
+  test('Ignores the continuation of a URL wrapped onto the next lines', async () => {
+    // From draft-bichot-msync-20, draft-ietf-jsonschema-json-schema-03 and draft-ietf-mlcodec-test-battery-00
+    const txt = `
+   [RFC2236] W. Fenner, "Internet Group Management Protocol, Version 2",
+              RFC 2236, November 1997, <https://www.rfc-
+              editor.org/info/rfc2236>
+
+   https://json-schema.org/draft/2020-12/meta/core (https://json-
+   schema.org/draft/2020-12/meta/core).
+
+              "Benchmarking Neural Speech Codec Intelligibility with
+              SITool", INTERSPEECH 2025, 2025, <https://www.isca-
+              archive.org/interspeech_2025/
+              leschanowsky25_interspeech.pdf>.
+    `
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.fqdnDomains).toEqual([])
+  })
+
+  test('Extracts a domain on the line after a URL that ends', async () => {
+    // From draft-ietf-rpp-requirements-04
+    const txt = `
+              Nottingham, M., "Building Protocols with HTTP", BCP 56,
+              RFC 9205, DOI 10.17487/RFC9205, June 2022,
+              <https://www.rfc-editor.org/info/rfc9205>.
+
+   [OpenAPI]  openapis.org, "OpenAPI Specification", 2025,
+              <https://www.openapis.org/>.
+    `
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.fqdnDomains).toEqual(['openapis.org'])
+  })
+
+  test('Lists a domain once whatever its case', async () => {
+    // From draft-iab-ip-geo-workshop-report-04
+    const txt = `
+   [PAN]      Pan, J. and J. Zhao, "GeoFeed in the wild: A case study on
+              StarlinkISP.net", November 2025,
+              <https://www.ietf.org/slides/slides-ipgeows-paper-geofeed-
+              in-the-wild-a-case-study-on-starlinkispnet-00.pdf>.
+
+   *  J.  Pan, J.  Zhao: GeoFeed in the wild: A case study on
+      StarlinkISP.net [PAN]
+    `
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.fqdnDomains).toEqual(['starlinkisp.net'])
+  })
 })
 
 describe('Parsing IPs', () => {
