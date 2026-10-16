@@ -6,12 +6,18 @@ import { toContainError, ValidationComment, ValidationError, ValidationWarning }
 import {
   checkDatatrackerStream,
   fetchDatatrackerStream,
+  getDocumentStream,
   parseDatatrackerStream,
   streamDisplayName,
   streamFromDraftName,
   streamFromHeaderSource,
   submissionTypeToStream
 } from '../lib/helpers/stream.mjs'
+import { parse as parseTxt } from '../lib/parsers/txt.mjs'
+import { parse as parseXml } from '../lib/parsers/xml.mjs'
+import { txtStreamDraft, txtStreamRfc, xmlStreamDoc } from './fixtures/stream-docs.mjs'
+
+const requests = []
 
 const server = setupServer(
   http.get('https://datatracker.ietf.org/api/v1/doc/document/draft-foo-bar/', () => {
@@ -19,6 +25,15 @@ const server = setupServer(
   }),
   http.get('https://datatracker.ietf.org/api/v1/doc/document/draft-foo-nostream/', () => {
     return HttpResponse.json({ stream: null })
+  }),
+  http.get('https://datatracker.ietf.org/api/v1/doc/document/draft-smith-foo-bar/', () => {
+    return HttpResponse.json({ stream: '/api/v1/name/streamname/ise/' })
+  }),
+  http.get('https://datatracker.ietf.org/api/v1/doc/document/draft-iab-foo-nostream/', () => {
+    return HttpResponse.json({ stream: null })
+  }),
+  http.get('https://datatracker.ietf.org/api/v1/doc/document/rfc9990/', () => {
+    return HttpResponse.json({ stream: '/api/v1/name/streamname/irtf/' })
   }),
   http.all('*', () => {
     return new HttpResponse(null, { status: 404 })
@@ -29,8 +44,13 @@ expect.extend({
   toContainError
 })
 
+server.events.on('request:start', ({ request }) => { requests.push(request.url) })
+
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
-afterEach(() => server.resetHandlers())
+afterEach(() => {
+  server.resetHandlers()
+  requests.length = 0
+})
 afterAll(() => server.close())
 
 describe('submissionTypeToStream', () => {
@@ -142,5 +162,50 @@ describe('checkDatatrackerStream', () => {
     ])
     await expect(checkDatatrackerStream('draft-foo-nostream', 'ietf', { ...opts, mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('SUBMISSION_TYPE_UNEXPECTED', ValidationWarning)
     await expect(checkDatatrackerStream('draft-foo-nostream', 'ietf', { ...opts, mode: MODES.SUBMISSION })).resolves.toContainError('SUBMISSION_TYPE_UNEXPECTED', ValidationComment)
+  })
+})
+
+describe('getDocumentStream', () => {
+  const xml = async (opts, filename = 'draft-smith-foo-bar-02.xml') => (await parseXml(xmlStreamDoc(opts), filename)).doc
+
+  test('takes a non-IETF submissionType of an XML draft as is', async () => {
+    const doc = await xml({ docName: 'draft-ietf-foo-bar-02', submissionType: 'independent' })
+    await expect(getDocumentStream(doc)).resolves.toEqual('ise')
+    expect(requests).toHaveLength(0)
+  })
+  test('asks Datatracker about an XML draft declaring or defaulting to IETF', async () => {
+    await expect(getDocumentStream(await xml())).resolves.toEqual('ise')
+    await expect(getDocumentStream(await xml({ submissionType: 'IETF' }))).resolves.toEqual('ise')
+    expect(requests).toContain('https://datatracker.ietf.org/api/v1/doc/document/draft-smith-foo-bar/')
+  })
+  test('falls back to the name prefix of an XML draft', async () => {
+    await expect(getDocumentStream(await xml({ docName: 'draft-ietf-foo-bar-02', submissionType: 'IETF' }))).resolves.toEqual('ietf')
+    await expect(getDocumentStream(await xml({ docName: 'draft-iab-foo-nostream-00' }))).resolves.toEqual('iab')
+    await expect(getDocumentStream(await xml({ docName: 'draft-smith-foo-unknown-00' }))).resolves.toBeNull()
+  })
+  test('only uses the name prefix when offline', async () => {
+    await expect(getDocumentStream(await xml(), { offline: true })).resolves.toBeNull()
+    await expect(getDocumentStream(await xml({ docName: 'draft-ietf-foo-bar-02' }), { offline: true })).resolves.toEqual('ietf')
+    expect(requests).toHaveLength(0)
+  })
+  test('takes any submissionType of an XML RFC, or asks Datatracker by number', async () => {
+    await expect(getDocumentStream(await xml({ number: '9991', submissionType: 'IETF' }, 'rfc9991.xml'))).resolves.toEqual('ietf')
+    await expect(getDocumentStream(await xml({ number: '9990' }, 'rfc9990.xml'))).resolves.toEqual('irtf')
+    await expect(getDocumentStream(await xml({ number: '9991' }, 'rfc9991.xml'))).resolves.toBeNull()
+  })
+  test('asks Datatracker about a text draft, then uses its name prefix', async () => {
+    const draft = name => parseTxt(txtStreamDraft(name), `${name}.txt`)
+    await expect(getDocumentStream(await draft('draft-smith-foo-bar-02'))).resolves.toEqual('ise')
+    await expect(getDocumentStream(await draft('draft-iab-foo-nostream-00'))).resolves.toEqual('iab')
+    await expect(getDocumentStream(await draft('draft-ietf-foo-bar-02'))).resolves.toEqual('ietf')
+    await expect(getDocumentStream(await draft('draft-smith-foo-unknown-00'))).resolves.toBeNull()
+  })
+  test('takes the header stream of a text RFC, or asks Datatracker by number', async () => {
+    const rfc = (source, number) => parseTxt(txtStreamRfc(source, number), `rfc${number}.txt`)
+    await expect(getDocumentStream(await rfc('Independent Submission', '9991'))).resolves.toEqual('ise')
+    expect(requests).toHaveLength(0)
+    await expect(getDocumentStream(await rfc('Network Working Group', '9990'))).resolves.toEqual('irtf')
+    await expect(getDocumentStream(await rfc('Network Working Group', '9991'))).resolves.toBeNull()
+    await expect(getDocumentStream(await rfc('Network Working Group', '9990'), { offline: true })).resolves.toBeNull()
   })
 })

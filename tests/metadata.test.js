@@ -14,6 +14,8 @@ import { DateTime } from 'luxon'
 import { abstractTXTBlock } from './fixtures/txt-blocks/section-blocks.mjs'
 import { setupServer } from 'msw/node'
 import { http, HttpResponse } from 'msw'
+import { parse as parseTxt } from '../lib/parsers/txt.mjs'
+import { txtStreamDraft, txtStreamRfc, xmlStreamDoc } from './fixtures/stream-docs.mjs'
 
 expect.extend({
   toContainError
@@ -38,15 +40,35 @@ export const mockRestHandlers = [
   http.get('https://datatracker.ietf.org/api/v1/doc/document/draft-ietf-beep-biip/', () => {
     return HttpResponse.json({ rev: '02' })
   }),
+  http.get('https://datatracker.ietf.org/api/v1/doc/document/draft-smith-foo-bar/', () => {
+    return HttpResponse.json({ stream: '/api/v1/name/streamname/ise/' })
+  }),
+  http.get('https://datatracker.ietf.org/api/v1/doc/document/rfc1111/', () => {
+    return HttpResponse.json({ stream: '/api/v1/name/streamname/ietf/' })
+  }),
+  http.get('https://datatracker.ietf.org/api/v1/doc/document/rfc2222/', () => {
+    return HttpResponse.json({ stream: '/api/v1/name/streamname/ise/' })
+  }),
+  http.get('https://datatracker.ietf.org/api/v1/doc/document/rfc791/', () => {
+    return HttpResponse.json({ stream: '/api/v1/name/streamname/legacy/' })
+  }),
+  http.get('https://datatracker.ietf.org/api/v1/doc/document/rfc3333/', () => {
+    return HttpResponse.json({ stream: null })
+  }),
   http.all('*', () => {
     return new HttpResponse(null, { status: 404 })
   })
 ]
 
 const server = setupServer(...mockRestHandlers)
+const requests = []
+server.events.on('request:start', ({ request }) => { requests.push(request.url) })
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
-afterEach(() => server.resetHandlers())
+afterEach(() => {
+  server.resetHandlers()
+  requests.length = 0
+})
 afterAll(() => server.close())
 
 describe('document should have valid date', () => {
@@ -620,8 +642,8 @@ describe('document should have valid obsoletes / updates references', () => {
         obsoletes: '1235, 2345'
       })
       set(doc, 'data.rfc.front.abstract.t', 'This document obsoletes RFC 1234 and 2345.')
-      await expect(validateObsoleteUpdateRef(doc)).resolves.toContainError('OBSOLETES_OSOLETED_RFC', ValidationWarning)
-      await expect(validateObsoleteUpdateRef(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('OBSOLETES_OSOLETED_RFC', ValidationWarning)
+      await expect(validateObsoleteUpdateRef(doc)).resolves.toContainError('OBSOLETES_OBSOLETED_RFC', ValidationWarning)
+      await expect(validateObsoleteUpdateRef(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('OBSOLETES_OBSOLETED_RFC', ValidationWarning)
       await expect(validateObsoleteUpdateRef(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
     test('obsoletes several already obsoleted RFCs', async () => {
@@ -631,7 +653,7 @@ describe('document should have valid obsoletes / updates references', () => {
       })
       set(doc, 'data.rfc.front.abstract.t', 'This document obsoletes RFC 1235 and 1264.')
       const result = await validateObsoleteUpdateRef(doc)
-      expect(result.filter(r => r.name === 'OBSOLETES_OSOLETED_RFC')).toHaveLength(2)
+      expect(result.filter(r => r.name === 'OBSOLETES_OBSOLETED_RFC')).toHaveLength(2)
       await expect(validateObsoleteUpdateRef(doc)).resolves.toEqual(result)
     })
     test('updates a non-existant RFC', async () => {
@@ -650,8 +672,8 @@ describe('document should have valid obsoletes / updates references', () => {
         updates: '1235, 2345'
       })
       set(doc, 'data.rfc.front.abstract.t', 'This document updates RFC 1234 and 2345.')
-      await expect(validateObsoleteUpdateRef(doc)).resolves.toContainError('UPDATES_OSOLETED_RFC', ValidationWarning)
-      await expect(validateObsoleteUpdateRef(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('UPDATES_OSOLETED_RFC', ValidationWarning)
+      await expect(validateObsoleteUpdateRef(doc)).resolves.toContainError('UPDATES_OBSOLETED_RFC', ValidationWarning)
+      await expect(validateObsoleteUpdateRef(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('UPDATES_OBSOLETED_RFC', ValidationWarning)
       await expect(validateObsoleteUpdateRef(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
     test('updates an already updated RFC', async () => {
@@ -801,5 +823,85 @@ describe('TXT Document Type', () => {
     await expect(validateVersion(doc)).resolves.toHaveLength(0)
     await expect(validateVersion(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
     await expect(validateVersion(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('UNEXPECTED_DOC_VERSION', ValidationWarning)
+  })
+})
+
+describe('document should not obsolete or update RFCs of another stream without notice', () => {
+  const crossStream = result => result.filter(r => r.name === 'CROSS_STREAM_OBSOLETES_UPDATES')
+  const xml = async (opts, filename = 'draft-smith-foo-bar-02.xml') => (await parse(xmlStreamDoc(opts), filename)).doc
+
+  test('reports an RFC of another stream in every mode', async () => {
+    // Defaults to IETF, but Datatracker has the draft in the ISE stream
+    const doc = await xml({ obsoletes: '1111', updates: '2222' })
+    const result = crossStream(await validateObsoleteUpdateRef(doc))
+    expect(result).toEqual([
+      new ValidationWarning('CROSS_STREAM_OBSOLETES_UPDATES', 'This document (Independent Submission stream) attempts to obsolete RFC 1111, an RFC from another stream (IETF). Specific rules may apply to this process, and you will need sign-off from both stream heads before this document can proceed.', {
+        ref: 'https://authors.ietf.org/en/rfcxml-vocabulary#obsoletes',
+        path: 'rfc.obsoletes'
+      })
+    ])
+    for (const mode of [MODES.FORGIVE_CHECKLIST, MODES.SUBMISSION]) {
+      expect(crossStream(await validateObsoleteUpdateRef(doc, { mode }))).toEqual(result)
+    }
+  })
+  test('runs only the cross-stream check in submission mode', async () => {
+    const doc = await xml({ obsoletes: '1111', updates: '1235' })
+    await expect(validateObsoleteUpdateRef(doc)).resolves.toContainError('UPDATES_OBSOLETED_RFC', ValidationWarning)
+    const result = await validateObsoleteUpdateRef(doc, { mode: MODES.SUBMISSION })
+    expect(result.map(r => r.name)).toEqual(['CROSS_STREAM_OBSOLETES_UPDATES'])
+  })
+  test('reports nothing for RFCs of the same stream', async () => {
+    const doc = await xml({ docName: 'draft-ietf-foo-bar-02', obsoletes: '1111', updates: '1111' })
+    expect(crossStream(await validateObsoleteUpdateRef(doc))).toHaveLength(0)
+    const ise = await xml({ docName: 'draft-ietf-foo-bar-02', submissionType: 'independent', updates: '2222' })
+    expect(crossStream(await validateObsoleteUpdateRef(ise))).toHaveLength(0)
+  })
+  test('reports an RFC of a known stream as a comment when the document stream is unknown', async () => {
+    const doc = await xml({ docName: 'draft-smith-foo-unknown-00', updates: '2222' })
+    expect(crossStream(await validateObsoleteUpdateRef(doc))).toEqual([
+      new ValidationComment('CROSS_STREAM_OBSOLETES_UPDATES', 'This document attempts to update RFC 2222, which is in the Independent Submission stream. If this document is not in that stream, specific rules may apply to this process, and you will need sign-off from both stream heads before this document can proceed.', {
+        ref: 'https://authors.ietf.org/en/rfcxml-vocabulary#updates',
+        path: 'rfc.updates'
+      })
+    ])
+  })
+  test('reports a Legacy RFC as a comment whatever the document stream', async () => {
+    const doc = await xml({ submissionType: 'IAB', obsoletes: '791' })
+    expect(crossStream(await validateObsoleteUpdateRef(doc))).toEqual([
+      new ValidationComment('CROSS_STREAM_OBSOLETES_UPDATES', 'This document attempts to obsolete RFC 791, which is in the Legacy stream (published before the current RFC streams were defined). Check whether specific rules apply to this process.', {
+        ref: 'https://authors.ietf.org/en/rfcxml-vocabulary#obsoletes',
+        path: 'rfc.obsoletes'
+      })
+    ])
+    const unknown = await xml({ docName: 'draft-smith-foo-unknown-00', obsoletes: '791' })
+    await expect(validateObsoleteUpdateRef(unknown)).resolves.toContainError('CROSS_STREAM_OBSOLETES_UPDATES', ValidationComment)
+  })
+  test('ignores RFCs Datatracker has no stream for or doesn\'t know', async () => {
+    const doc = await xml({ obsoletes: '3333', updates: '4444' })
+    expect(crossStream(await validateObsoleteUpdateRef(doc))).toHaveLength(0)
+  })
+  test('makes no request when offline', async () => {
+    const doc = await xml({ obsoletes: '1111', updates: '2222' })
+    await validateObsoleteUpdateRef(doc, { offline: true })
+    await expect(validateObsoleteUpdateRef(doc, { offline: true, mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+    expect(requests).toHaveLength(0)
+  })
+  test('checks the Obsoletes: and Updates: lines of a text draft', async () => {
+    const doc = await parseTxt(txtStreamDraft('draft-ietf-foo-bar-02', { obsoletes: '1111', updates: '2222' }), 'draft-ietf-foo-bar-02.txt')
+    expect(crossStream(await validateObsoleteUpdateRef(doc))).toEqual([
+      new ValidationWarning('CROSS_STREAM_OBSOLETES_UPDATES', 'This document (IETF stream) attempts to update RFC 2222, an RFC from another stream (Independent Submission). Specific rules may apply to this process, and you will need sign-off from both stream heads before this document can proceed.', {
+        ref: 'https://authors.ietf.org/en/rfcxml-vocabulary#updates',
+        lines: [{ line: 7, pos: 1 }]
+      })
+    ])
+  })
+  test('takes the stream of a text RFC from its header', async () => {
+    const doc = await parseTxt(txtStreamRfc('Independent Submission', '9991', { obsoletes: '1111', updates: '2222' }), 'rfc9991.txt')
+    expect(crossStream(await validateObsoleteUpdateRef(doc, { mode: MODES.FORGIVE_CHECKLIST }))).toEqual([
+      new ValidationWarning('CROSS_STREAM_OBSOLETES_UPDATES', 'This document (Independent Submission stream) attempts to obsolete RFC 1111, an RFC from another stream (IETF). Specific rules may apply to this process, and you will need sign-off from both stream heads before this document can proceed.', {
+        ref: 'https://authors.ietf.org/en/rfcxml-vocabulary#obsoletes',
+        lines: [{ line: 6, pos: 1 }]
+      })
+    ])
   })
 })
