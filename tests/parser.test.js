@@ -1273,6 +1273,160 @@ describe('Parsing references with categorization', () => {
       expect.arrayContaining(['1234'])
     )
   })
+
+  // From draft-abinabraham-vrrp-unicast-03
+  test('Classifies references in top-level Normative and Informative References sections', async () => {
+    const txt = `${metaTXTBlock}
+13.  Acknowledgements
+
+   The authors thank Acee Lindem for his work on RFC 9568 and draft-
+   ietf-rtgwg-vrrp-rfc8347bis, which provide the foundation for this
+   extension, and for comments that clarified the underlying link model
+   during the presentation at IETF 126.
+
+14.  Normative References
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119,
+              DOI 10.17487/RFC2119, March 1997,
+              <https://www.rfc-editor.org/info/rfc2119>.
+
+   [RFC9568]  Lindem, A. and A. Dogra, "Virtual Router Redundancy
+              Protocol (VRRP) Version 3 for IPv4 and IPv6", RFC 9568,
+              DOI 10.17487/RFC9568, April 2024,
+              <https://www.rfc-editor.org/info/rfc9568>.
+
+15.  Informative References
+
+   [I-D.ietf-rtgwg-vrrp-rfc8347bis]
+              Lindem, A., "A YANG Data Model for the Virtual Router
+              Redundancy Protocol (VRRP)", Work in Progress, Internet-
+              Draft, draft-ietf-rtgwg-vrrp-rfc8347bis-15, 13 February
+              2026, <https://datatracker.ietf.org/doc/draft-ietf-rtgwg-
+              vrrp-rfc8347bis/>.
+
+   [RFC7942]  Sheffer, Y. and A. Farrel, "Improving Awareness of Running
+              Code: The Implementation Status Section", BCP 205,
+              RFC 7942, DOI 10.17487/RFC7942, July 2016,
+              <https://www.rfc-editor.org/info/rfc7942>.
+
+
+
+Dogra, et al.             Expires 15 March 2027                [Page 12]
+\f
+Internet-Draft                Unicast VRRP                September 2026
+
+
+   [RFC8347]  Liu, X., Ed., Kyparlis, A., Parikh, R., Lindem, A., and M.
+              Zhang, "A YANG Data Model for the Virtual Router
+              Redundancy Protocol (VRRP)", RFC 8347,
+              DOI 10.17487/RFC8347, March 2018,
+              <https://www.rfc-editor.org/info/rfc8347>.
+
+Authors' Addresses
+
+   Aditya Dogra
+   Cisco Systems
+   Email: addogra@cisco.com
+`
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.extractedElements.referenceSectionRfc).toEqual([
+      { value: '2119', subsection: 'normative_references' },
+      { value: '9568', subsection: 'normative_references' },
+      { value: '7942', subsection: 'informative_references' },
+      { value: '8347', subsection: 'informative_references' }
+    ])
+    expect(result.data.extractedElements.draftStatusReferences).toEqual([
+      { value: 'draft-ietf-rtgwg-vrrp-rfc8347bis', subsection: 'informative_references' }
+    ])
+    expect(result.data.extractedElements.nonReferenceSectionRfc).toContain('9568')
+  })
+
+  // From draft-wkumari-not-a-draft-26
+  test('Classifies references in an unnumbered Normative References section following an appendix', async () => {
+    const txt = `${metaTXTBlock}
+   Note that feline intervention may cause significant packet loss when
+   utilizing [RFC1149].  This may be mitigated using [RFC2549].
+
+7.  Acknowledgements
+
+   The author wishes to thank the ancient elders of Zorb for explaining
+   this history to him.
+
+Appendix A.  Changes / Author Notes.
+
+   {RFC Editor: Please remove this section before publication }
+
+   From -00 to -01.
+
+   *  Integrated comments from Erik Muller (who, apparently, is a true
+      believer).  Erik also provided updated Security Considerations
+      text, referencing the IANA.
+
+Normative References
+
+   [RFC1149]  Waitzman, D., "Standard for the transmission of IP
+              datagrams on avian carriers", RFC 1149,
+              DOI 10.17487/RFC1149, April 1990,
+              <https://www.rfc-editor.org/rfc/rfc1149>.
+
+   [RFC2549]  Waitzman, D., "IP over Avian Carriers with Quality of
+              Service", RFC 2549, DOI 10.17487/RFC2549, April 1999,
+              <https://www.rfc-editor.org/rfc/rfc2549>.
+
+Author's Address
+
+   Warren Kumari
+   Email: warren@kumari.net
+`
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.extractedElements.referenceSectionRfc).toEqual([
+      { value: '1149', subsection: 'normative_references' },
+      { value: '2549', subsection: 'normative_references' }
+    ])
+  })
+
+  // From draft-ietf-spring-sr-policy-group-01
+  test('Classifies references in subsections numbered without a trailing dot', async () => {
+    const txt = `${metaTXTBlock}
+11. Security Considerations
+
+   This document does not introduce any security considerations.
+
+12. References
+
+12.1 Normative References
+
+   [RFC2119] Bradner, S., "Key words for use in RFCs to Indicate
+             Requirement Levels", BCP 14, RFC 2119, DOI
+             10.17487/RFC2119, March 1997, <https://www.rfc-
+             editor.org/info/rfc2119>.
+
+   [RFC8402] Filsfils, C., Ed., Previdi, S., Ed., Ginsberg, L.,
+             Decraene, B., Litkowski, S., and R. Shakir, "Segment
+             Routing Architecture", RFC 8402, DOI 10.17487/RFC8402,
+             July 2018, <https://www.rfc-editor.org/info/rfc8402>.
+
+12.2 Informative References
+
+   [RFC7942] Sheffer, Y. and A. Farrel, "Improving Awareness of Running
+             Code: The Implementation Status Section", BCP 205, RFC
+             7942, DOI 10.17487/RFC7942, July 2016, <https://www.rfc-
+             editor.org/info/rfc7942>.
+`
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.extractedElements.referenceSectionRfc).toEqual([
+      { value: '2119', subsection: 'normative_references' },
+      { value: '8402', subsection: 'normative_references' },
+      { value: '7942', subsection: 'informative_references' }
+    ])
+  })
 })
 
 describe('License validation for documents containing code blocks', () => {
@@ -2074,6 +2228,84 @@ describe('Reference is declared, but not used in the document', () => {
     const result = await parse(txt, 'txt')
     expect(result.data.extractedElements.referenceSectionRfc).toHaveLength(0)
     expect(result.data.extractedElements.referenceSectionDraftReferences).toHaveLength(0)
+  })
+
+  // From draft-vauban-x402-pqc-receipts-01
+  test('Detects a reference label cited in parentheses', async () => {
+    const txt = `${metaTXTBlock}
+   This document defines a two-axis post-quantum cryptographic
+   discipline for x402 receipts that addresses the long-term integrity
+   gap.  The first axis applies at the proof-system layer : the stark-
+   vauban-pay-v1 variant of [STARK-RECEIPTS] uses Stwo Circle STARK M31
+   ([STWO]), a hash-based proving system whose soundness rests on the
+   collision and second-preimage resistance of cryptographic hash
+   functions rather than on algebraic hardness assumptions broken by
+   Shor's algorithm.
+
+Informative References
+
+   [STWO]     "Stwo Circle STARK Prover (StarkWare Industries)", n.d.,
+              <https://github.com/starkware-libs/stwo>.
+`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.nonReferenceSectionDraftReferences).toEqual(['[STARK-RECEIPTS]', '[STWO]'])
+    expect(result.data.extractedElements.referenceSectionDraftReferences).toEqual([
+      { value: '[STWO]', subsection: 'informative_references' }
+    ])
+  })
+
+  // From draft-aevum-agentcard-00
+  test('Does not take a character class in parentheses as a reference label', async () => {
+    const txt = `${metaTXTBlock}
+   1.   agent_id MUST be exactly 26 characters drawn from the Crockford
+        Base32 alphabet ([0-9A-HJKMNP-TV-Z]).
+`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.nonReferenceSectionDraftReferences).not.toContain('[0-9A-HJKMNP-TV-Z]')
+  })
+
+  // From draft-sergeev-claim-boundaries-01
+  test('Takes a declared reference label only from the start of a reference entry', async () => {
+    const txt = `${metaTXTBlock}
+   confidence as to that foundation" [HAMILTON].  The load-bearing
+
+16.  Informative References
+
+   [HAMILTON] Court of Appeal (Criminal Division), England and Wales,
+              "Hamilton & Ors v Post Office Ltd", [2021] EWCA Crim 577,
+              paragraphs 136-137, 23 April 2021,
+              <https://caselaw.nationalarchives.gov.uk/ewca/
+              crim/2021/577>.
+`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.referenceSectionDraftReferences).toEqual([
+      { value: '[HAMILTON]', subsection: 'informative_references' }
+    ])
+  })
+
+  // From draft-sharif-attp-01
+  test('Takes a declared reference label from a bulleted reference entry', async () => {
+    const txt = `${metaTXTBlock}
+17.  References
+
+17.1.  Normative References
+
+   *  [FIPS186-5] National Institute of Standards and Technology,
+      "Digital Signature Standard (DSS)", FIPS PUB 186-5, 2023.
+
+17.2.  Informative References
+
+   *  [OWASP-AISVS] OWASP, "AI Security Verification Standard", 2026.
+`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.referenceSectionDraftReferences).toEqual([
+      { value: '[FIPS186-5]', subsection: 'normative_references' },
+      { value: '[OWASP-AISVS]', subsection: 'informative_references' }
+    ])
   })
 })
 
