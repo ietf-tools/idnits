@@ -811,6 +811,38 @@ describe('document should have valid security author sections', () => {
       await expect(validateAuthorSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('INVALID_AUTHOR_ROLE', ValidationWarning)
       await expect(validateAuthorSection(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
+    describe('author names in a non-Latin script', () => {
+      const parseAuthor = async (attrs) => {
+        const { doc } = await parse(`<rfc version="3"><front><author ${attrs}><organization>ACME</organization></author></front></rfc>`, 'draft-test-author-00.xml')
+        return doc
+      }
+      test('non-Latin fullname without asciiFullname', async () => {
+        for (const fullname of ['张三', 'Ελένη Παπαδοπούλου', 'Иван Петров', '김철수', 'Zhang San (张三)']) {
+          const doc = await parseAuthor(`fullname="${fullname}"`)
+          await expect(validateAuthorSection(doc)).resolves.toContainError('MISSING_LATIN_AUTHOR_NAME', ValidationError)
+          await expect(validateAuthorSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('MISSING_LATIN_AUTHOR_NAME', ValidationWarning)
+          await expect(validateAuthorSection(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('MISSING_LATIN_AUTHOR_NAME', ValidationWarning)
+        }
+      })
+      test('non-Latin fullname given as character references', async () => {
+        const doc = await parseAuthor('fullname="&#x5F20;&#x4E09;"')
+        const result = await validateAuthorSection(doc)
+        expect(result).toContainError('MISSING_LATIN_AUTHOR_NAME', ValidationError)
+        expect(result[0].path).toBe('rfc.front.author[0].fullname')
+      })
+      test('non-Latin fullname with asciiFullname', async () => {
+        const doc = await parseAuthor('fullname="张三" asciiFullname="Zhang San"')
+        for (const mode of [MODES.NORMAL, MODES.FORGIVE_CHECKLIST, MODES.SUBMISSION]) {
+          await expect(validateAuthorSection(doc, { mode })).resolves.toHaveLength(0)
+        }
+      })
+      test('Latin fullnames with diacritics', async () => {
+        for (const fullname of ['Hans Müller', 'Łukasz Ćwik', 'Ştefan Ţurcanu', 'Bjørn Åsmund', 'Đorđe Nguyễn', 'Seán O\'Brien', 'Kaʻiulani Kawānanakoa']) {
+          const doc = await parseAuthor(`fullname="${fullname}"`)
+          await expect(validateAuthorSection(doc)).resolves.toHaveLength(0)
+        }
+      })
+    })
   })
 })
 
