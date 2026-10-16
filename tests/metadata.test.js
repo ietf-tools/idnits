@@ -620,8 +620,8 @@ describe('document should have valid obsoletes / updates references', () => {
         obsoletes: '1235, 2345'
       })
       set(doc, 'data.rfc.front.abstract.t', 'This document obsoletes RFC 1234 and 2345.')
-      await expect(validateObsoleteUpdateRef(doc)).resolves.toContainError('OBSOLETES_OSOLETED_RFC', ValidationWarning)
-      await expect(validateObsoleteUpdateRef(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('OBSOLETES_OSOLETED_RFC', ValidationWarning)
+      await expect(validateObsoleteUpdateRef(doc)).resolves.toContainError('OBSOLETES_OBSOLETED_RFC', ValidationWarning)
+      await expect(validateObsoleteUpdateRef(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('OBSOLETES_OBSOLETED_RFC', ValidationWarning)
       await expect(validateObsoleteUpdateRef(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
     test('obsoletes several already obsoleted RFCs', async () => {
@@ -631,7 +631,7 @@ describe('document should have valid obsoletes / updates references', () => {
       })
       set(doc, 'data.rfc.front.abstract.t', 'This document obsoletes RFC 1235 and 1264.')
       const result = await validateObsoleteUpdateRef(doc)
-      expect(result.filter(r => r.name === 'OBSOLETES_OSOLETED_RFC')).toHaveLength(2)
+      expect(result.filter(r => r.name === 'OBSOLETES_OBSOLETED_RFC')).toHaveLength(2)
       await expect(validateObsoleteUpdateRef(doc)).resolves.toEqual(result)
     })
     test('updates a non-existant RFC', async () => {
@@ -650,8 +650,8 @@ describe('document should have valid obsoletes / updates references', () => {
         updates: '1235, 2345'
       })
       set(doc, 'data.rfc.front.abstract.t', 'This document updates RFC 1234 and 2345.')
-      await expect(validateObsoleteUpdateRef(doc)).resolves.toContainError('UPDATES_OSOLETED_RFC', ValidationWarning)
-      await expect(validateObsoleteUpdateRef(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('UPDATES_OSOLETED_RFC', ValidationWarning)
+      await expect(validateObsoleteUpdateRef(doc)).resolves.toContainError('UPDATES_OBSOLETED_RFC', ValidationWarning)
+      await expect(validateObsoleteUpdateRef(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('UPDATES_OBSOLETED_RFC', ValidationWarning)
       await expect(validateObsoleteUpdateRef(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
     test('updates an already updated RFC', async () => {
