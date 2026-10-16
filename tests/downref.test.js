@@ -1560,3 +1560,58 @@ ${entry('draft-ietf-missing-01', 'C')}
     await expect(runTask(doc, 'draftrefs')).resolves.toHaveLength(0)
   })
 })
+
+describe('Remote lookups are shared by the checks of a run', () => {
+  const runAll = async (doc) => {
+    const tasks = getAllValidations(doc.type).flatMap(group => group.tasks).filter(task => ['downrefs', 'normrefs', 'draftrefs', 'referenceStale'].includes(task.key))
+    return Promise.all(tasks.map(task => task.task({ doc, options: { mode: MODES.NORMAL } })))
+  }
+  const countRequests = () => {
+    const counts = {}
+    server.use(http.get(/^https:\/\/(datatracker\.ietf\.org|www\.rfc-editor\.org)\//, ({ request }) => {
+      const path = new URL(request.url).pathname
+      counts[path] = (counts[path] ?? 0) + 1
+      return path === '/doc/draft-ietf-counted/doc.json'
+        ? HttpResponse.json({ state: 'Active', rev_history: [{ rev: '01', name: 'draft-ietf-counted' }] })
+        : HttpResponse.json({ status: 'Proposed Standard' })
+    }))
+    return counts
+  }
+
+  test('each draft and RFC is fetched once per document (TXT)', async () => {
+    const counts = countRequests()
+    const doc = await parseTXT(`${CANONICAL_TXT}
+1.  Introduction
+
+   This document cites [RFC8888] and [I-D.ietf-counted].
+
+2.  Normative References
+
+   [RFC8888]  Example, A., "Example", RFC 8888, DOI 10.17487/RFC8888,
+              January 2020, <https://www.rfc-editor.org/info/rfc8888>.
+
+   [I-D.ietf-counted]
+              Example, A., "Example", Work in Progress, Internet-Draft,
+              draft-ietf-counted-01, 2 January 2025,
+              <https://datatracker.ietf.org/doc/html/draft-ietf-counted-01>.
+`, 'draft-ietf-beep-boop-01.txt')
+    await runAll(doc)
+    expect(counts['/doc/draft-ietf-counted/doc.json']).toBe(1)
+    expect(counts['/rfc/rfc8888.json']).toBe(1)
+
+    // -> A new run fetches fresh data
+    await runAll(cloneDeep(doc))
+    expect(counts['/doc/draft-ietf-counted/doc.json']).toBe(2)
+  })
+
+  test('each draft and RFC is fetched once per document (XML)', async () => {
+    const counts = countRequests()
+    const doc = await parseXMLBack(`<references><name>Normative References</name>
+      <reference anchor="RFC8888"><front><title>T</title></front><seriesInfo name="RFC" value="8888"/></reference>
+      <reference anchor="I-D.ietf-counted"><front><title>T</title></front><seriesInfo name="Internet-Draft" value="draft-ietf-counted-01"/></reference>
+    </references>`)
+    await runAll(doc)
+    expect(counts['/doc/draft-ietf-counted/doc.json']).toBe(1)
+    expect(counts['/rfc/rfc8888.json']).toBe(1)
+  })
+})
