@@ -29,6 +29,21 @@ describe('input does not include invalid control chars', () => {
     await expect(validateContent('abc\tdef\tgeh', { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('TABS_NOT_ALLOWED', ValidationWarning)
     await expect(validateContent('abc\tdef\tgeh', { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
   })
+  test('tabs are listed with their position', async () => {
+    const [result] = await validateContent('abc\tdef\n\tgeh')
+    expect(result.message).toBe('Document contains 2 tabs. Remove or replace them with spaces.')
+    expect(result.lines).toEqual([{ line: 1, pos: 3 }, { line: 2, pos: 0 }])
+    const [many] = await validateContent('\t'.repeat(25))
+    expect(many.message).toContain('25 tabs')
+    expect(many.lines).toHaveLength(20)
+  })
+  test('tabs in XML are left to validateTabs', async () => {
+    for (const mode of [MODES.NORMAL, MODES.FORGIVE_CHECKLIST, MODES.SUBMISSION]) {
+      await expect(validateContent('<rfc>\t</rfc>', { mode, type: 'xml' })).resolves.toHaveLength(0)
+    }
+    await expect(validateContent('<rfc>\t\b</rfc>', { type: 'xml' })).resolves.toContainError('INVALID_CTRL_CODES', ValidationError)
+    await expect(validateContent('<rfc>\t\b</rfc>', { type: 'xml' })).resolves.toHaveLength(1)
+  })
   test('invalid 0B char', async () => {
     await expect(validateContent('abc\vdef')).resolves.toContainError('INVALID_CTRL_CODES', ValidationError)
     await expect(validateContent('abc\vdef', { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('INVALID_CTRL_CODES', ValidationWarning)
@@ -71,17 +86,18 @@ describe('non-ASCII characters should follow draft-rswg-rfc7997bis', () => {
   test('zero width space and word joiner are line-break hints in XML', async () => {
     const xml = await decode('<?xml version="1.0" encoding="UTF-8"?>\n<rfc>\n<t>address\u2060/port long\u200Bidentifier</t>\n<t>\u202Eabc\u202C d\ufeffef</t>\n</rfc>')
     for (const mode of ALL_MODES) {
-      const result = await validateContent(xml, { mode })
+      const result = await validateContent(xml, { mode, type: 'xml' })
       expect(result.map(r => r.message).join(' ')).not.toMatch(/U\+200B|U\+2060/)
       // -> Bidi controls and a misplaced byte order mark are still reported
       expect(result.filter(r => r.name === 'NON_DISPLAYABLE_CHARACTER')).toHaveLength(3)
     }
-    for (const start of ['<rfc version="3">', '\ufeff<!-- comment -->\n<rfc>']) {
-      await expect(validateContent(await decode(`${start}\n<t>a\u200Bb\u2060c</t>`))).resolves.toHaveLength(0)
+    // -> The document type is given, not guessed from how the document starts
+    for (const start of ['<rfc version="3">', '\ufeff<!-- comment -->\n<rfc>', 'Network Working Group']) {
+      await expect(validateContent(await decode(`${start}\n<t>a\u200Bb\u2060c</t>`), { type: 'xml' })).resolves.toHaveLength(0)
     }
-    // -> Text documents, including one starting with "<", still report them
-    for (const start of ['Network Working Group', '<Network Working Group>']) {
-      const result = await validateContent(await decode(`${start}\na\u200Bb\u2060c`))
+    // -> Text documents, including one starting with "<" or an XML declaration, still report them
+    for (const start of ['Network Working Group', '<Network Working Group>', '<?xml version="1.0"?>']) {
+      const result = await validateContent(await decode(`${start}\na\u200Bb\u2060c`), { type: 'txt' })
       expect(result.filter(r => r.name === 'NON_DISPLAYABLE_CHARACTER').map(r => r.lines)).toEqual([[{ line: 2, pos: 1 }], [{ line: 2, pos: 3 }]])
     }
   })

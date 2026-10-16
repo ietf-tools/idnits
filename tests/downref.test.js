@@ -7,6 +7,7 @@ import { parse } from '../lib/parsers/xml.mjs'
 import { parse as parseTXT } from '../lib/parsers/txt.mjs'
 import { CANONICAL_TXT } from './generators/doc-txt.js'
 import { validateDownrefs, validateInformativeReferences, validateNormativeReferences, validateUnclassifiedReferences, validatePublishedDraftReferences, validateReferenceForStale } from '../lib/modules/downref.mjs'
+import { getAllValidations } from '../lib/index.mjs'
 import { setupServer } from 'msw/node'
 import { http, HttpResponse, passthrough } from 'msw'
 
@@ -1220,20 +1221,15 @@ describe('validateReferenceForStale (TXT)', () => {
     expect(res).toHaveLength(0)
   })
 
-  test('UNDEFINED_STATE when no rev_history', async () => {
+  test('nothing when no rev_history', async () => {
     const doc = cloneDeep(baseTXTDoc)
     set(doc, 'data.extractedElements.draftStatusReferences', [
       { value: 'draft-ietf-missing-01', subsection: 'normative_references' }
     ])
 
     const res = await validateReferenceForStale(doc, { mode: MODES.NORMAL })
-    expect(res).toEqual([
-      new ValidationWarning(
-        'UNDEFINED_STATE',
-        'The draft reference draft-ietf-missing does not have a defined state or could not be fetched.',
-        { ref: 'https://datatracker.ietf.org/doc/draft-ietf-missing' }
-      )
-    ])
+    // -> Reported by validatePublishedDraftReferences only
+    expect(res).toEqual([])
   })
 
   test('OUTDATED_DRAFT when there is a newer version', async () => {
@@ -1363,20 +1359,15 @@ describe('validateReferenceForStale (XML)', () => {
     expect(res).toHaveLength(0)
   })
 
-  test('UNDEFINED_STATE when no rev_history in XML', async () => {
+  test('nothing when no rev_history in XML', async () => {
     const doc = cloneDeep(baseXMLDoc)
     set(doc, 'data.rfc.back.references.references', [
       { name: 'Normative references', reference: [{ _attr: { anchor: 'draft-ietf-missing-01' }, seriesInfo: [{ _attr: { name: 'Internet-Draft', value: 'draft-ietf-missing-01' } }] }] }
     ])
 
     const res = await validateReferenceForStale(doc, { mode: MODES.NORMAL })
-    expect(res).toEqual([
-      new ValidationWarning(
-        'UNDEFINED_STATE',
-        'The draft reference draft-ietf-missing does not have a defined state or could not be fetched.',
-        { ref: 'https://datatracker.ietf.org/doc/draft-ietf-missing' }
-      )
-    ])
+    // -> Reported by validatePublishedDraftReferences only
+    expect(res).toEqual([])
   })
 
   test('OUTDATED_DRAFT when XML draft is stale', async () => {
@@ -1448,5 +1439,124 @@ describe('validateReferenceForStale (XML)', () => {
 
     const res = await validateReferenceForStale(doc, { mode: MODES.SUBMISSION })
     expect(res).toHaveLength(0)
+  })
+})
+
+describe('Draft references are checked for both document types', () => {
+  const findTask = (docType) => getAllValidations(docType).flatMap(group => group.tasks.map(task => ({ group: group.key, ...task }))).find(task => task.key === 'draftrefs')
+
+  test('registered with the common validations', () => {
+    expect(findTask('txt').group).toBe('common')
+    expect(findTask('xml').group).toBe('common')
+  })
+
+  test('XML document', async () => {
+    const { doc } = await parse(`<rfc version="3" docName="draft-test-draftrefs-00"><back><references><name>Informative References</name>
+      <reference anchor="I-D.ietf-published-as-rfc"><front><title>Published</title></front><seriesInfo name="Internet-Draft" value="draft-ietf-published-as-rfc-01"/></reference>
+    </references></back></rfc>`, 'draft-test-draftrefs-00.xml')
+    const result = await findTask('xml').task({ doc, options: { mode: MODES.NORMAL } })
+    expect(result).toEqual([
+      new ValidationWarning(
+        'INVALID_STATE_FOR_DRAFT',
+        'The draft reference draft-ietf-published-as-rfc is already published as an RFC and should not be referenced as a draft.',
+        { ref: 'https://datatracker.ietf.org/doc/draft-ietf-published-as-rfc' }
+      )
+    ])
+  })
+})
+
+describe('Draft references of published RFCs and drafts that cannot be fetched', () => {
+  const runTask = async (doc, key) => {
+    const task = getAllValidations(doc.type).flatMap(group => group.tasks).find(task => task.key === key)
+    return task.task({ doc, options: { mode: MODES.NORMAL } })
+  }
+  const runDraftChecks = async (doc) => [...await runTask(doc, 'draftrefs'), ...await runTask(doc, 'referenceStale')]
+
+  const parseXMLDraftRefs = async (rfcAttrs) => {
+    const reference = (name, anchor) => `<reference anchor="${anchor}"><front><title>T</title></front><seriesInfo name="Internet-Draft" value="${name}"/></reference>`
+    const { doc } = await parse(`<rfc version="3" docName="draft-test-draftrefs-00"${rfcAttrs}><back>
+      <references><name>Normative References</name>${reference('draft-ietf-published-as-rfc-01', 'A')}${reference('draft-ietf-missing-01', 'B')}</references>
+      <references><name>Informative References</name>${reference('draft-ietf-missing-02', 'C')}</references>
+    </back></rfc>`, 'draft-test-draftrefs-00.xml')
+    return doc
+  }
+
+  const parseTXTDraftRefs = async (rfcNumber) => {
+    const header = rfcNumber
+      ? `
+Internet Engineering Task Force (IETF)                         A. Author
+Request for Comments: ${rfcNumber}                                      Example
+Category: Standards Track                                    August 2026
+ISSN: 2070-1721
+
+
+                          Example Protocol
+
+Abstract
+
+   This document describes an example.
+`
+      : CANONICAL_TXT
+    const entry = (name, anchor) => `   [${anchor}]  Example, A., "Example", Work in Progress, Internet-Draft,
+              ${name}, 2 January 2025,
+              <https://datatracker.ietf.org/doc/html/${name}>.`
+    const txt = `${header}
+1.  Introduction
+
+   This document cites [A], [B] and [C].
+
+2.  References
+
+2.1.  Normative References
+
+${entry('draft-ietf-published-as-rfc-01', 'A')}
+
+${entry('draft-ietf-missing-01', 'B')}
+
+2.2.  Informative References
+
+${entry('draft-ietf-missing-01', 'C')}
+`
+    return parseTXT(txt, rfcNumber ? `rfc${rfcNumber}.txt` : 'draft-ietf-beep-boop-01.txt')
+  }
+
+  const expected = [
+    new ValidationWarning(
+      'INVALID_STATE_FOR_DRAFT',
+      'The draft reference draft-ietf-published-as-rfc is already published as an RFC and should not be referenced as a draft.',
+      { ref: 'https://datatracker.ietf.org/doc/draft-ietf-published-as-rfc' }
+    ),
+    new ValidationWarning(
+      'UNDEFINED_STATE',
+      'The draft reference draft-ietf-missing does not have a defined state or could not be fetched.',
+      { ref: 'https://datatracker.ietf.org/doc/draft-ietf-missing' }
+    )
+  ]
+
+  test('a draft that cannot be fetched is reported once (XML)', async () => {
+    await expect(runDraftChecks(await parseXMLDraftRefs(''))).resolves.toEqual(expected)
+  })
+
+  test('a draft that cannot be fetched is reported once (TXT)', async () => {
+    const doc = await parseTXTDraftRefs()
+    expect(doc.data.extractedElements.draftStatusReferences).toHaveLength(3)
+    await expect(runDraftChecks(doc)).resolves.toEqual(expected)
+  })
+
+  test('not checked for a published RFC (XML)', async () => {
+    const doc = await parseXMLDraftRefs(' number="9999" prepTime="2026-01-01T00:00:00"')
+    await expect(runTask(doc, 'draftrefs')).resolves.toHaveLength(0)
+  })
+
+  test('checked for an RFC Editor working copy (XML)', async () => {
+    const doc = await parseXMLDraftRefs(' number="9999"')
+    await expect(runTask(doc, 'draftrefs')).resolves.toEqual(expected)
+  })
+
+  test('not checked for a published RFC (TXT)', async () => {
+    const doc = await parseTXTDraftRefs('9999')
+    expect(doc.docKind).toBe('rfc')
+    expect(doc.data.extractedElements.draftStatusReferences).toHaveLength(3)
+    await expect(runTask(doc, 'draftrefs')).resolves.toHaveLength(0)
   })
 })
