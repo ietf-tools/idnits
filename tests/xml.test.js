@@ -1,8 +1,8 @@
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'vitest'
 import { MODES } from '../lib/config/modes.mjs'
 import { toContainError, ValidationError, ValidationWarning, ValidationComment } from '../lib/helpers/error.mjs'
-import { labelFindings } from '../lib/helpers/location.mjs'
-import { detectDeprecatedElements, detectDeprecatedAttributes, validateCodeBlocks, validateTextLikeRefs, validateIprAttribute, validatePreptimeAttribute, detectPrepToolOutput, validateSubmissionType, validateTabs, validateLinePI, validateXMLBoilerplate } from '../lib/modules/xml.mjs'
+import { addXmlSourceLines, labelFindings } from '../lib/helpers/location.mjs'
+import { detectDeprecatedElements, detectDeprecatedAttributes, validateCodeBlocks, validateTextLikeRefs, validateIprAttribute, validatePreptimeAttribute, detectPrepToolOutput, validateSubmissionType, validateTabs, validateLinePI, validateXMLBoilerplate, validateArtworkSize } from '../lib/modules/xml.mjs'
 import { parse } from '../lib/parsers/xml.mjs'
 import { baseXMLDoc } from './fixtures/base-doc.mjs'
 import { cloneDeep, set } from 'lodash-es'
@@ -580,6 +580,154 @@ describe('Tabs in XML documents', () => {
     const result = await validateTabs(doc)
     labelFindings(result, doc)
     expect(result[0].label).toBe('Section 1 (Introduction), source code')
+  })
+})
+
+describe('Size of <artwork> and <sourcecode>', () => {
+  const ALL_MODES = [MODES.NORMAL, MODES.FORGIVE_CHECKLIST, MODES.SUBMISSION]
+  const parseDoc = async (body, version = '3') => {
+    const { doc } = await parse(`<rfc${version ? ` version="${version}"` : ''}>\n<middle>\n<section><name>Introduction</name>\n${body}\n</section>\n</middle>\n</rfc>`, 'draft-test-artwork-00.xml')
+    return doc
+  }
+  const art = (width, tag = 'artwork', attrs = '') => `<${tag}${attrs}>\n${'x'.repeat(width)}\n</${tag}>`
+  const wide = async (body, version) => (await validateArtworkSize(await parseDoc(body, version))).filter(r => r.name === 'ARTWORK_TOO_WIDE').map(r => r.path)
+
+  test('lines that fit', async () => {
+    // -> Indented by 3 in a section, but xml2rfc reduces the indentation of <artwork> that doesn't fit
+    await expect(validateArtworkSize(await parseDoc([art(72), art(69, 'sourcecode'), '<figure>' + art(72) + '</figure>'].join('\n')))).resolves.toHaveLength(0)
+  })
+
+  test('lines too wide, once per element', async () => {
+    const doc = await parseDoc([
+      '<sourcecode type="c">',
+      `${'a'.repeat(70)}`,
+      'short',
+      `${'b'.repeat(75)}   `,
+      `${'c'.repeat(71)}`,
+      '</sourcecode>',
+      `<figure><artwork type="ascii-art">\n${'d'.repeat(73)}\n</artwork></figure>`
+    ].join('\n'))
+    for (const mode of ALL_MODES) {
+      const result = await validateArtworkSize(doc, { mode })
+      expect(result).toHaveLength(2)
+      expect(result).toContainError('ARTWORK_TOO_WIDE', mode === MODES.NORMAL ? ValidationError : ValidationWarning)
+    }
+    const [sourcecode, artwork] = await validateArtworkSize(doc)
+    expect(sourcecode.path).toBe('rfc.middle.section.sourcecode')
+    expect(sourcecode.message).toBe('<sourcecode> has 3 lines too wide for the 72 columns of xml2rfc\'s text output. The widest, line 3 of the sourcecode, is 75 characters long, and xml2rfc indents it by 3 columns there.')
+    expect(artwork.path).toBe('rfc.middle.section.figure.artwork')
+    expect(artwork.message).toBe('<artwork> has 1 line too wide for the 72 columns of xml2rfc\'s text output. The widest, line 1 of the artwork, is 73 characters long.')
+    addXmlSourceLines([sourcecode], doc)
+    expect(sourcecode.lines).toEqual([{ line: 4, pos: 0 }])
+  })
+
+  test('lines measured as xml2rfc renders them', async () => {
+    // -> Tabs expanded to 8-column tab stops, trailing whitespace removed, characters counted
+    //    rather than bytes, leading and trailing newlines removed
+    await expect(wide([
+      `<sourcecode>\tab\t${'x'.repeat(53)}\t \n</sourcecode>`,
+      `<sourcecode>ab\t${'x'.repeat(62)}</sourcecode>`,
+      `<sourcecode>${'é'.repeat(69)}</sourcecode>`,
+      `<sourcecode>${'é'.repeat(70)}</sourcecode>`,
+      `<sourcecode>${'x'.repeat(69)}\u00a0\u00a0</sourcecode>`,
+      `<sourcecode><![CDATA[\n\n${'<'.repeat(69)}]]></sourcecode>`,
+      `<sourcecode>${'&lt;'.repeat(70)}</sourcecode>`
+    ].join('\n'))).resolves.toEqual(['rfc.middle.section.sourcecode[1]', 'rfc.middle.section.sourcecode[3]', 'rfc.middle.section.sourcecode[6]'])
+  })
+
+  test('indentation of lists, quotes and asides', async () => {
+    const cases = [
+      // -> In a list item, by 3 for the list (whatever its indent) and 3 for the art: <artwork> can be outdented
+      [`<ul indent="8"><li><t>Item</t>${art(66, 'sourcecode')}${art(72)}</li></ul>`, []],
+      [`<ol><li><t>Item</t>${art(67, 'sourcecode')}${art(73)}</li></ol>`, ['ol.li.sourcecode', 'ol.li.artwork']],
+      // -> A <figure> is indented by the indent of the list
+      [`<ul indent="8"><li><t>Item</t><figure>${art(61, 'sourcecode')}</figure></li></ul>`, []],
+      [`<ul indent="8"><li><t>Item</t><figure>${art(62, 'sourcecode')}</figure></li></ul>`, ['ul.li.figure.sourcecode']],
+      // -> ... "adaptive" fitting the widest number, a bare list fitting the first word of its last item
+      [`<ol indent="adaptive" type="i">${'<li><t>Item</t></li>'.repeat(7)}<li><t>Item</t><figure>${art(62, 'sourcecode')}</figure></li></ol>`, []],
+      [`<ol indent="adaptive" type="i">${'<li><t>Item</t></li>'.repeat(7)}<li><t>Item</t><figure>${art(63, 'sourcecode')}</figure></li></ol>`, ['ol.li[7].figure.sourcecode']],
+      [`<ol indent="adaptive" type="Step %d:"><li><t>Item</t><figure>${art(61, 'sourcecode')}</figure></li></ol>`, ['ol.li.figure.sourcecode']],
+      [`<ol indent="adaptive" type="a"><li><t>Item</t><figure>${art(66, 'sourcecode')}</figure></li></ol>`, ['ol.li.figure.sourcecode']],
+      [`<ol><li><t>Item</t><figure>${art(65, 'sourcecode')}</figure></li></ol>`, []],
+      [`<ol><li><t>Item</t><figure>${art(66, 'sourcecode')}</figure></li></ol>`, ['ol.li.figure.sourcecode']],
+      // -> In a definition, by 3 (or the indent of the list) and not outdented
+      [`<dl><dt>Term</dt><dd>${art(66)}</dd></dl>`, []],
+      [`<dl><dt>Term</dt><dd>${art(67)}</dd></dl>`, ['dl.dd.artwork']],
+      [`<dl indent="8"><dt>Term</dt><dd><t>Definition</t>${art(62, 'sourcecode')}</dd></dl>`, ['dl.dd.sourcecode']],
+      // -> ... unless it is in a <figure>
+      [`<dl><dt>Term</dt><dd><figure>${art(72)}</figure></dd></dl>`, []],
+      // -> Quotes are indented by 3 and prefixed with "|  ", asides prefixed with "   |  "
+      [`<blockquote>${art(69)}</blockquote>`, []],
+      [`<blockquote>${art(70)}</blockquote>`, ['blockquote.artwork']],
+      [`<blockquote><figure>${art(70)}</figure></blockquote>`, ['blockquote.figure.artwork']],
+      [`<blockquote>${art(63, 'sourcecode')}</blockquote>`, []],
+      [`<blockquote>${art(64, 'sourcecode')}</blockquote>`, ['blockquote.sourcecode']],
+      [`<aside><t>Aside</t>${art(66)}</aside>`, []],
+      [`<aside><t>Aside</t>${art(67)}</aside>`, ['aside.artwork']],
+      [`<aside><t>Aside</t>${art(60, 'sourcecode')}</aside>`, []],
+      [`<aside><t>Aside</t>${art(61, 'sourcecode')}</aside>`, ['aside.sourcecode']],
+      // -> Nested lists
+      [`<ul><li><t>Item</t><dl><dt>Term</dt><dd>${art(63)}</dd></dl></li></ul>`, []],
+      [`<ul><li><t>Item</t><dl><dt>Term</dt><dd>${art(64)}</dd></dl></li></ul>`, ['ul.li.dl.dd.artwork']]
+    ]
+    for (const [body, paths] of cases) {
+      await expect(wide(body), body).resolves.toEqual(paths.map(path => `rfc.middle.section.${path}`))
+    }
+    const [quote] = await validateArtworkSize(await parseDoc(`<blockquote>${art(70)}</blockquote>`))
+    expect(quote.message).toContain('is 70 characters long, and xml2rfc can\'t reduce its indentation below 3 columns there.')
+  })
+
+  test('art not in the text output', async () => {
+    await expect(validateArtworkSize(await parseDoc([
+      `<artwork type="svg"><svg xmlns="http://www.w3.org/2000/svg"><desc>${'x'.repeat(80)}</desc></svg></artwork>`,
+      `<artwork><svg xmlns="http://www.w3.org/2000/svg"><desc>${'x'.repeat(80)}</desc></svg></artwork>`,
+      '<artwork src="https://example.com/art.txt"/>',
+      `<artset><artwork type="svg" src="art.svg"/><artwork type="ascii-art">${'x'.repeat(72)}</artwork><artwork type="ascii-art">${'x'.repeat(80)}</artwork></artset>`,
+      `<table><tbody><tr><td>${art(80)}</td></tr></tbody></table>`
+    ].join('\n')))).resolves.toHaveLength(0)
+  })
+
+  test('v2 documents, as xml2rfc converts them', async () => {
+    const body = [
+      // -> The <figure> leaves the <t>
+      `<t>Text<figure>${art(72)}</figure></t>`,
+      // -> A hanging <list> becomes a <dl>, its <figure> removed if it has no anchor or title
+      `<t><list style="hanging"><t hangText="Term">Definition<figure>${art(67)}</figure></t></list></t>`,
+      `<t><list style="hanging"><t hangText="Term">Definition<figure anchor="fig">${art(72)}</figure></t></list></t>`,
+      `<t><list style="hanging" hangIndent="8"><t hangText="Term"><figure anchor="fig2">${art(65, 'sourcecode')}</figure></t></list></t>`,
+      // -> <artwork> starting with <CODE BEGINS> becomes <sourcecode>, which isn't outdented
+      `<figure><artwork><![CDATA[<CODE BEGINS> file "a.c"\n${'x'.repeat(70)}\n<CODE ENDS>]]></artwork></figure>`,
+      // -> Other lists become <ol> or <ul>, a list without style taking that of the list it is in
+      `<t><list style="numbers"><t>Item<list><t>Item<figure anchor="fig3"><artwork>&lt;CODE BEGINS&gt;\n${'x'.repeat(61)}\n&lt;CODE ENDS&gt;</artwork></figure></t></list></t></list></t>`,
+      `<t><list style="format R%d:"><t>Item<list><t>Item<figure anchor="fig5"><artwork>&lt;CODE BEGINS&gt;\n${'x'.repeat(60)}\n&lt;CODE ENDS&gt;</artwork></figure></t></list></t></list></t>`,
+      `<t><list style="symbols"><t>Item<list><t>Item<figure anchor="fig4"><artwork>&lt;CODE BEGINS&gt;\n${'x'.repeat(64)}\n&lt;CODE ENDS&gt;</artwork></figure></t></list></t></list></t>`
+    ].join('\n')
+    await expect(wide(body, null)).resolves.toEqual([
+      'rfc.middle.section.t[1].list.t.figure.artwork',
+      'rfc.middle.section.t[3].list.t.figure.sourcecode',
+      'rfc.middle.section.figure.artwork',
+      'rfc.middle.section.t[5].list.t.list.t.figure.artwork',
+      'rfc.middle.section.t[6].list.t.list.t.figure.artwork'
+    ])
+    // -> Not converted in a v3 document, where the <artwork> stays <artwork>
+    await expect(wide(body)).resolves.toEqual([])
+  })
+
+  test('art longer than a page', async () => {
+    const lines = (count) => Array.from({ length: count }, (_, idx) => `line ${idx + 1}`).join('\n')
+    const doc = await parseDoc([
+      `<artwork>\n\n${lines(48)}\n\n</artwork>`,
+      `<figure><artwork>${lines(49)}</artwork></figure>`,
+      `<sourcecode>${lines(60)}</sourcecode>`
+    ].join('\n'))
+    for (const mode of ALL_MODES) {
+      const result = await validateArtworkSize(doc, { mode })
+      expect(result).toHaveLength(1)
+      expect(result).toContainError('ARTWORK_TOO_TALL', ValidationComment)
+    }
+    const [result] = await validateArtworkSize(doc)
+    expect(result.path).toBe('rfc.middle.section.figure.artwork')
+    expect(result.message).toBe('<artwork> has 49 lines, more than the 48 lines of a page of xml2rfc\'s paginated text output, so it will be split across pages. Consider splitting it into smaller figures.')
   })
 })
 
