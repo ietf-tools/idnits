@@ -71,17 +71,18 @@ describe('non-ASCII characters should follow draft-rswg-rfc7997bis', () => {
   test('zero width space and word joiner are line-break hints in XML', async () => {
     const xml = await decode('<?xml version="1.0" encoding="UTF-8"?>\n<rfc>\n<t>address\u2060/port long\u200Bidentifier</t>\n<t>\u202Eabc\u202C d\ufeffef</t>\n</rfc>')
     for (const mode of ALL_MODES) {
-      const result = await validateContent(xml, { mode })
+      const result = await validateContent(xml, { mode, type: 'xml' })
       expect(result.map(r => r.message).join(' ')).not.toMatch(/U\+200B|U\+2060/)
       // -> Bidi controls and a misplaced byte order mark are still reported
       expect(result.filter(r => r.name === 'NON_DISPLAYABLE_CHARACTER')).toHaveLength(3)
     }
-    for (const start of ['<rfc version="3">', '\ufeff<!-- comment -->\n<rfc>']) {
-      await expect(validateContent(await decode(`${start}\n<t>a\u200Bb\u2060c</t>`))).resolves.toHaveLength(0)
+    // -> The document type is given, not guessed from how the document starts
+    for (const start of ['<rfc version="3">', '\ufeff<!-- comment -->\n<rfc>', 'Network Working Group']) {
+      await expect(validateContent(await decode(`${start}\n<t>a\u200Bb\u2060c</t>`), { type: 'xml' })).resolves.toHaveLength(0)
     }
-    // -> Text documents, including one starting with "<", still report them
-    for (const start of ['Network Working Group', '<Network Working Group>']) {
-      const result = await validateContent(await decode(`${start}\na\u200Bb\u2060c`))
+    // -> Text documents, including one starting with "<" or an XML declaration, still report them
+    for (const start of ['Network Working Group', '<Network Working Group>', '<?xml version="1.0"?>']) {
+      const result = await validateContent(await decode(`${start}\na\u200Bb\u2060c`), { type: 'txt' })
       expect(result.filter(r => r.name === 'NON_DISPLAYABLE_CHARACTER').map(r => r.lines)).toEqual([[{ line: 2, pos: 1 }], [{ line: 2, pos: 3 }]])
     }
   })
