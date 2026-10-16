@@ -880,3 +880,297 @@ describe('Validate IETF-TLP boilerplate for XML documents', () => {
     await expect(validateXMLBoilerplate(doc)).resolves.toHaveLength(0)
   })
 })
+
+describe('Boilerplate of prepped RFCs', () => {
+  // -> Paragraphs as xml2rfc's prep tool writes them in <front><boilerplate>
+  const STATUS_IETF_STD = [
+    'This is an Internet Standards Track document.',
+    `This document is a product of the Internet Engineering Task Force
+            (IETF).  It represents the consensus of the IETF community.  It has
+            received public review and has been approved for publication by
+            the Internet Engineering Steering Group (IESG).  Further
+            information on Internet Standards is available in Section 2 of 
+            RFC 7841.`,
+    `Information about the current status of this document, any
+            errata, and how to provide feedback on it may be obtained at
+            <eref target="https://www.rfc-editor.org/info/rfc9999" brackets="none"/>.`
+  ]
+  const COPYRIGHT_IETF = [
+    `Copyright (c) 2026 IETF Trust and the persons identified as the
+            document authors. All rights reserved.`,
+    `This document is subject to BCP 78 and the IETF Trust's Legal
+            Provisions Relating to IETF Documents
+            (<eref target="https://trustee.ietf.org/license-info" brackets="none"/>) in effect on the date of
+            publication of this document. Please review these documents
+            carefully, as they describe your rights and restrictions with
+            respect to this document. Code Components extracted from this
+            document must include Revised BSD License text as described in
+            Section 4.e of the Trust Legal Provisions and are provided without
+            warranty as described in the Revised BSD License.`
+  ]
+  const COPYRIGHT_ALT = [
+    COPYRIGHT_IETF[0],
+    `This document is subject to BCP 78 and the IETF Trust's Legal
+            Provisions Relating to IETF Documents
+            (<eref target="https://trustee.ietf.org/license-info" brackets="none"/>) in effect on the date of
+            publication of this document. Please review these documents
+            carefully, as they describe your rights and restrictions with
+            respect to this document.`
+  ]
+  const PRE5378 = `This document may contain material from IETF Documents or IETF
+            Contributions published or made publicly available before November
+            10, 2008. The person(s) controlling the copyright in some of this
+            material may not have granted the IETF Trust the right to allow
+            modifications of such material outside the IETF Standards Process.
+            Without obtaining an adequate license from the person(s)
+            controlling the copyright in such materials, this document may not
+            be modified outside the IETF Standards Process, and derivative
+            works of it may not be created outside the IETF Standards Process,
+            except to format it for publication as an RFC or to translate it
+            into languages other than English.`
+
+  const section = (anchor, name, paragraphs, n) => `
+      <section anchor="${anchor}" numbered="false" removeInRFC="false" toc="exclude" pn="section-boilerplate.${n}">
+        <name slugifiedName="name-${anchor}">${name}</name>
+${paragraphs.map((t, idx) => `        <t indent="0" pn="section-boilerplate.${n}-${idx + 1}">\n            ${t}\n        </t>`).join('\n')}
+      </section>`
+  const parseRfc = async ({
+    attrs = 'ipr="trust200902" category="std" consensus="true" submissionType="IETF"',
+    prepTime = '2026-07-14T13:57:32',
+    workgroup = '<workgroup>rats</workgroup>',
+    date = '<date month="07" year="2026"/>',
+    status = STATUS_IETF_STD,
+    copyright = COPYRIGHT_IETF,
+    boilerplate
+  } = {}) => {
+    const sections = [status && section('status-of-memo', 'Status of This Memo', status, 1), copyright && section('copyright', 'Copyright Notice', copyright, 2)]
+    const { doc } = await parse(`<?xml version="1.0" encoding="UTF-8"?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" ${attrs} docName="draft-ietf-rats-test-23" number="9999" xml:lang="en"${prepTime ? ` prepTime="${prepTime}"` : ''}>
+  <front>
+    <title>Test</title>
+    <seriesInfo name="RFC" value="9999" stream="IETF"/>
+    <author fullname="Test Author"><organization>Test</organization></author>
+    ${date}
+    ${workgroup}
+    <abstract pn="section-abstract"><t indent="0" pn="section-abstract-1">Abstract.</t></abstract>
+    ${boilerplate ?? `<boilerplate>${sections.filter(Boolean).join('')}
+    </boilerplate>`}
+  </front>
+  <middle><section anchor="intro" numbered="true" toc="include" pn="section-1"><name slugifiedName="name-introduction">Introduction</name><t indent="0" pn="section-1-1">Text.</t></section></middle>
+</rfc>`, 'rfc9999.xml')
+    return doc
+  }
+  const findings = async (doc, opts) => (await validateXMLBoilerplate(doc, opts)).filter(r => r.name.startsWith('RFC_'))
+
+  test('boilerplate as xml2rfc generates it, in every mode', async () => {
+    const doc = await parseRfc()
+    expect(doc.docKind).toBe('rfc')
+    for (const mode of Object.values(MODES)) {
+      await expect(validateXMLBoilerplate(doc, { mode })).resolves.toHaveLength(0)
+    }
+  })
+
+  test('paragraph that differs, by mode', async () => {
+    const copyright = [COPYRIGHT_IETF[0], COPYRIGHT_IETF[1].replaceAll('Revised BSD', 'Simplified BSD')]
+    const doc = await parseRfc({ copyright })
+    const result = await findings(doc)
+    expect(result).toHaveLength(1)
+    expect(result).toContainError('RFC_COPYRIGHT_BOILERPLATE_MISMATCH', ValidationError)
+    expect(result[0].path).toBe('rfc.front.boilerplate.section[1].t[1]')
+    expect(result[0].message).toContain('Paragraph 2 of the "Copyright Notice" section differs from the TLP 5.0 text for ipr="trust200902", submissionType="IETF" and a document dated 2026-07-01.')
+    expect(result[0].message).toContain('Expected "...extracted from this document must include Revised BSD License text')
+    expect(result[0].message).toContain('found "...extracted from this document must include Simplified BSD License text')
+
+    const forgiving = await findings(doc, { mode: MODES.FORGIVE_CHECKLIST })
+    expect(forgiving).toHaveLength(1)
+    expect(forgiving).toContainError('RFC_COPYRIGHT_BOILERPLATE_MISMATCH', ValidationWarning)
+    await expect(findings(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+  })
+
+  test('URL of a differing paragraph', async () => {
+    const doc = await parseRfc({ status: [STATUS_IETF_STD[0], STATUS_IETF_STD[1], STATUS_IETF_STD[2].replace('rfc9999', 'rfc9998')] })
+    const result = await findings(doc)
+    expect(result).toHaveLength(1)
+    expect(result).toContainError('RFC_STATUS_BOILERPLATE_MISMATCH', ValidationError)
+    expect(result[0].path).toBe('rfc.front.boilerplate.section[0].t[2]')
+    expect(result[0].message).toContain('submissionType="IETF", category="std", consensus="true"')
+    expect(result[0].message).toContain('https://www.rfc-editor.org/info/rfc9999.", found')
+  })
+
+  test('text of the xml2rfc release that prepped the RFC', async () => {
+    // -> xml2rfc 3.11.0 (2021-10-29) changed "Simplified BSD License" to "Revised BSD License"
+    const copyright = [COPYRIGHT_IETF[0].replace('2026', '2021'), COPYRIGHT_IETF[1].replaceAll('Revised BSD', 'Simplified BSD')]
+    const date = '<date month="10" year="2021"/>'
+    for (const prepTime of ['2021-06-30T10:00:00', '2021-10-29T09:11:22']) {
+      await expect(findings(await parseRfc({ copyright, date, prepTime }))).resolves.toHaveLength(0)
+    }
+    const result = await findings(await parseRfc({ copyright, date, prepTime: '2021-11-09T15:33:13' }))
+    expect(result).toHaveLength(1)
+    expect(result).toContainError('RFC_COPYRIGHT_BOILERPLATE_MISMATCH', ValidationError)
+    // -> Both texts on the day of the release, the new one after
+    await expect(findings(await parseRfc({ copyright: [copyright[0], COPYRIGHT_IETF[1]], date, prepTime: '2021-10-29T11:28:07' }))).resolves.toHaveLength(0)
+    const old = await findings(await parseRfc({ copyright: [copyright[0], COPYRIGHT_IETF[1]], date, prepTime: '2021-06-30T10:00:00' }))
+    expect(old).toHaveLength(1)
+    expect(old[0].message).toContain('TLP 5.0 text of xml2rfc releases before 2021-10-29')
+  })
+
+  test('copyright year and ipr variants', async () => {
+    const wrongYear = await findings(await parseRfc({ date: '<date month="01" year="2027"/>' }))
+    expect(wrongYear).toHaveLength(1)
+    expect(wrongYear[0].path).toBe('rfc.front.boilerplate.section[1].t[0]')
+    expect(wrongYear[0].message).toContain('Expected "Copyright (c) 2027 IETF Trust')
+
+    const pre5378 = 'ipr="pre5378Trust200902" category="std" consensus="true" submissionType="IETF"'
+    await expect(findings(await parseRfc({ attrs: pre5378, copyright: [...COPYRIGHT_IETF, PRE5378] }))).resolves.toHaveLength(0)
+    const missing = await findings(await parseRfc({ attrs: pre5378 }))
+    expect(missing).toHaveLength(1)
+    expect(missing[0].path).toBe('rfc.front.boilerplate.section[1]')
+    expect(missing[0].message).toContain('The "Copyright Notice" section is missing paragraph 3 of the TLP 5.0 text for ipr="pre5378Trust200902"')
+    expect(missing[0].message).toContain('"This document may contain material from IETF Documents or IETF Contributions')
+
+    const extra = await findings(await parseRfc({ copyright: [...COPYRIGHT_IETF, PRE5378] }))
+    expect(extra).toHaveLength(1)
+    expect(extra[0].path).toBe('rfc.front.boilerplate.section[1].t[2]')
+    expect(extra[0].message).toContain('Paragraph 3 of the "Copyright Notice" section is not part of the TLP 5.0 text')
+
+    const noModification = 'ipr="noModificationTrust200902" category="info" submissionType="IAB"'
+    const iab = await parseRfc({
+      attrs: noModification,
+      workgroup: '',
+      status: [
+        'This document is not an Internet Standards Track specification; it is published for informational purposes.',
+        `This document is a product of the Internet Architecture Board
+            (IAB) and represents information that the IAB has deemed valuable
+            to provide for permanent record.  Documents approved for publication
+            by the IAB are not candidates for any level of Internet Standard; see
+            Section 2 of RFC 7841.`,
+        STATUS_IETF_STD[2]
+      ],
+      copyright: [
+        COPYRIGHT_IETF[0],
+        `This document is subject to BCP 78 and the IETF Trust's Legal Provisions Relating to IETF Documents
+            (https://trustee.ietf.org/license-info) in effect on the date of publication of this document.
+            Please review these documents carefully, as they describe your rights and restrictions with respect to this document.`,
+        `This document may not be modified, and derivative works of it may not be created, except to format it for
+            publication as an RFC or to translate it into languages other than English.`
+      ]
+    })
+    // -> consensus defaults to "false", and an <eref> without text is compared as its URL
+    await expect(findings(iab)).resolves.toHaveLength(0)
+  })
+
+  test('status text by stream, category and consensus', async () => {
+    const irtfInfo = (group) => `This document is a product of the Internet Research Task Force
+            (IRTF).  The IRTF publishes the results of Internet-related
+            research and development activities.  These results might not be
+            suitable for deployment.  This RFC represents the consensus of the ${group}
+            Research Group of the Internet Research Task Force (IRTF).
+            Documents approved for publication by the IRSG are not
+            candidates for any level of Internet Standard; see Section 2 of RFC
+            7841.`
+    const infoFirst = 'This document is not an Internet Standards Track specification; it is published for informational purposes.'
+    const irtf = 'ipr="trust200902" category="info" consensus="yes" submissionType="IRTF"'
+    const workgroup = `<workgroup>Crypto
+      Forum</workgroup>`
+    await expect(findings(await parseRfc({ attrs: irtf, workgroup, status: [infoFirst, irtfInfo('Crypto Forum'), STATUS_IETF_STD[2]], copyright: COPYRIGHT_ALT }))).resolves.toHaveLength(0)
+    const wrongGroup = await findings(await parseRfc({ attrs: irtf, workgroup, status: [infoFirst, irtfInfo('Thing-to-Thing'), STATUS_IETF_STD[2]], copyright: COPYRIGHT_ALT }))
+    expect(wrongGroup).toHaveLength(1)
+    expect(wrongGroup[0].message).toContain('consensus="true"')
+    expect(wrongGroup[0].message).toContain('Expected "...This RFC represents the consensus of the Crypto Forum Research Group of the Internet')
+    expect(wrongGroup[0].message).toContain('found "...This RFC represents the consensus of the Thing-to-Thing Research Group of the Internet')
+
+    // -> Without a <workgroup>, the IRTF text doesn't name a group, whatever the consensus
+    const noGroup = await findings(await parseRfc({ attrs: irtf, workgroup: '', status: [infoFirst, irtfInfo('Crypto Forum'), STATUS_IETF_STD[2]], copyright: COPYRIGHT_ALT }))
+    expect(noGroup).toHaveLength(1)
+    expect(noGroup[0].message).toContain('RFC 7841 text for submissionType="IRTF", category="info".')
+    expect(noGroup[0].message).toContain('Expected "...results might not be suitable for deployment. Documents approved for publication by the IRSG are not')
+
+    // -> A standards track document without consensus attribute: "true" is the only value allowed
+    await expect(findings(await parseRfc({ attrs: 'ipr="trust200902" category="std" submissionType="IETF"' }))).resolves.toHaveLength(0)
+    // -> The wrong text for the category
+    const exp = await findings(await parseRfc({ attrs: 'ipr="trust200902" category="exp" consensus="true" submissionType="IETF"' }))
+    expect(exp.map(r => r.path)).toEqual(['rfc.front.boilerplate.section[0].t[0]', 'rfc.front.boilerplate.section[0].t[1]'])
+  })
+
+  test('date of the document', async () => {
+    // -> Month names, as in v2 documents
+    await expect(findings(await parseRfc({ date: '<date day="3" month="Jul" year="2026"/>' }))).resolves.toHaveLength(0)
+    // -> Without a date, the prep tool uses today's
+    const year = String(new Date().getFullYear())
+    await expect(findings(await parseRfc({ date: '', copyright: [COPYRIGHT_IETF[0].replace('2026', year), COPYRIGHT_IETF[1]] }))).resolves.toHaveLength(0)
+    // -> URLs use http before 2017-08-21 (with the text of the xml2rfc release that prepped the RFC)
+    const old = await findings(await parseRfc({ date: '<date month="06" year="2017"/>', prepTime: '2019-12-01T10:00:00', status: null }))
+    expect(old.map(r => r.path)).toEqual(['rfc.front.boilerplate', 'rfc.front.boilerplate.section.t[0]', 'rfc.front.boilerplate.section.t[1]'])
+    expect(old[1].message).toContain('Expected "Copyright (c) 2017 IETF Trust')
+    expect(old[2].message).toContain('Expected "...Provisions Relating to IETF Documents (http://trustee.ietf.org/license-info) in effect')
+    expect(old[2].message).toContain('TLP 5.0 text of xml2rfc releases before 2021-10-29')
+    // -> An invalid date leaves the copyright notice unchecked
+    await expect(findings(await parseRfc({ date: '<date month="13th" year="2026"/>', copyright: ['Copyright'] }))).resolves.toHaveLength(0)
+  })
+
+  test('no expected text where the prep tool would stop', async () => {
+    const copyright = ['Something else']
+    const status = ['Something else']
+    // -> Unknown category or stream, a group name without <workgroup> text, an ipr from before TLP 2.0
+    await expect(findings(await parseRfc({ attrs: 'ipr="trust200902" category="foo" submissionType="IETF"', status }))).resolves.toHaveLength(0)
+    await expect(findings(await parseRfc({ attrs: 'ipr="trust200902" category="info" submissionType="ISE"', status, copyright: COPYRIGHT_ALT }))).resolves.toHaveLength(0)
+    await expect(findings(await parseRfc({ attrs: 'ipr="trust200902" category="info" consensus="true" submissionType="IRTF"', workgroup: '<workgroup/>', status, copyright: COPYRIGHT_ALT }))).resolves.toHaveLength(0)
+    await expect(findings(await parseRfc({ attrs: 'ipr="trust200811" category="std" consensus="true" submissionType="IETF"', copyright }))).resolves.toHaveLength(0)
+    await expect(findings(await parseRfc({ date: '<date month="01" year="2009"/>', status: [STATUS_IETF_STD[0], STATUS_IETF_STD[1], STATUS_IETF_STD[2].replace('https', 'http')], copyright }))).resolves.toHaveLength(0)
+    // -> No consensus value that the prep tool accepts
+    await expect(findings(await parseRfc({ attrs: 'ipr="trust200902" category="std" consensus="false" submissionType="IETF"', status }))).resolves.toHaveLength(0)
+    // -> A value it doesn't accept is replaced by "false"
+    const consensus = await findings(await parseRfc({ attrs: 'ipr="trust200902" category="info" consensus="maybe" submissionType="IETF"' }))
+    expect(consensus[0].message).toContain('category="info", consensus="false"')
+  })
+
+  test('sections found by name', async () => {
+    const boilerplate = `<boilerplate>
+      <section><name>Status of This Memo</name>${STATUS_IETF_STD.map(t => `<t>${t}</t>`).join('')}</section>
+      <section><name>Copyright <em>Notice</em></name>${COPYRIGHT_IETF.map(t => `<t>${t.replace('2026', '2025')}</t>`).join('')}</section>
+    </boilerplate>`
+    const result = await findings(await parseRfc({ boilerplate }))
+    expect(result.map(r => [r.name, r.path])).toEqual([['RFC_COPYRIGHT_BOILERPLATE_MISMATCH', 'rfc.front.boilerplate.section[1].t[0]']])
+  })
+
+  test('missing sections and paragraphs', async () => {
+    const noStatus = await findings(await parseRfc({ status: null }))
+    expect(noStatus).toHaveLength(1)
+    expect(noStatus).toContainError('RFC_STATUS_BOILERPLATE_MISMATCH', ValidationError)
+    expect(noStatus[0].path).toBe('rfc.front.boilerplate')
+    expect(noStatus[0].message).toContain('The <boilerplate> element has no "Status of This Memo" section.')
+
+    const missing = await findings(await parseRfc({ status: [STATUS_IETF_STD[0], STATUS_IETF_STD[2]] }))
+    expect(missing).toHaveLength(1)
+    expect(missing[0].path).toBe('rfc.front.boilerplate.section[0]')
+    expect(missing[0].message).toContain('missing paragraph 2 of the RFC 7841 text')
+  })
+
+  test('prepped RFC without <boilerplate>', async () => {
+    const result = await findings(await parseRfc({ boilerplate: '' }))
+    expect(result).toHaveLength(1)
+    expect(result).toContainError('RFC_BOILERPLATE_MISSING', ValidationError)
+    expect(result[0].path).toBe('rfc.front')
+    const forgiving = await findings(await parseRfc({ boilerplate: '' }), { mode: MODES.FORGIVE_CHECKLIST })
+    expect(forgiving).toContainError('RFC_BOILERPLATE_MISSING', ValidationWarning)
+    await expect(findings(await parseRfc({ boilerplate: '' }), { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+    // -> Not prepped yet, or no boilerplate with ipr="none"
+    await expect(findings(await parseRfc({ boilerplate: '', prepTime: null }))).resolves.toHaveLength(0)
+    await expect(findings(await parseRfc({ boilerplate: '', attrs: 'ipr="none" category="std" consensus="true" submissionType="IETF"' }))).resolves.toHaveLength(0)
+  })
+
+  test('boilerplate of an RFC not prepped yet is that of the current xml2rfc', async () => {
+    const copyright = [COPYRIGHT_IETF[0], COPYRIGHT_IETF[1].replaceAll('Revised BSD', 'Simplified BSD')]
+    const result = await findings(await parseRfc({ copyright, prepTime: null }))
+    expect(result).toHaveLength(1)
+    expect(result).toContainError('RFC_COPYRIGHT_BOILERPLATE_MISMATCH', ValidationError)
+  })
+
+  test('nothing for a draft with a <boilerplate>', async () => {
+    const { doc } = await parse(`<rfc version="3" ipr="trust200902" docName="draft-test-boilerplate-00" category="std">
+  <front><title>Test</title><seriesInfo name="Internet-Draft" value="draft-test-boilerplate-00"/>
+    <boilerplate><section anchor="copyright"><name>Copyright Notice</name><t>Not the copyright notice.</t></section></boilerplate>
+  </front></rfc>`, 'draft-test-boilerplate-00.xml')
+    await expect(findings(doc)).resolves.toHaveLength(0)
+  })
+})
