@@ -1181,7 +1181,7 @@ describe('Validate ID indicator', () => {
   })
 })
 
-describe('The stream named in an RFC header should match Datatracker', () => {
+describe('The stream of a document should match Datatracker', () => {
   const requests = []
   const server = setupServer(
     http.get('https://datatracker.ietf.org/api/v1/doc/document/rfc9180/', () => {
@@ -1195,6 +1195,15 @@ describe('The stream named in an RFC header should match Datatracker', () => {
     }),
     http.get('https://datatracker.ietf.org/api/v1/doc/document/rfc9999/', () => {
       return HttpResponse.json({ stream: '/api/v1/name/streamname/iab/' })
+    }),
+    http.get('https://datatracker.ietf.org/api/v1/doc/document/draft-irtf-cfrg-foo/', () => {
+      return HttpResponse.json({ stream: '/api/v1/name/streamname/irtf/' })
+    }),
+    http.get('https://datatracker.ietf.org/api/v1/doc/document/draft-irtf-cfrg-bar/', () => {
+      return HttpResponse.json({ stream: '/api/v1/name/streamname/ietf/' })
+    }),
+    http.get('https://datatracker.ietf.org/api/v1/doc/document/draft-ietf-idr-nostream/', () => {
+      return HttpResponse.json({ stream: null })
     }),
     http.all('*', () => {
       return new HttpResponse(null, { status: 404 })
@@ -1288,13 +1297,59 @@ Status of This Memo
     expect(requests).toHaveLength(0)
   })
 
-  test('reports nothing for a draft, whatever its name', async () => {
-    const doc = await parse(`
-${metaTXTBlock.replace(/^idr +/m, left => 'Internet Architecture Board'.padEnd(left.length)).replace(/draft-[a-z0-9-]+-[0-9]{2}/, 'draft-irtf-cfrg-foo-00')}
+  // First page of a draft with the given name (in the title block, line 17) and first header line
+  function parseDraft (name, source = 'idr') {
+    return parse(`
+${metaTXTBlock.replace(/^idr +/m, left => source.padEnd(left.length)).replace('draft-ietf-idr-rt-derived-community-05', name)}
 ${abstractTXTBlock}
-`, 'draft-irtf-cfrg-foo-00.txt')
+`, `${name}.txt`)
+  }
+
+  test('accepts a draft whose name implies the stream Datatracker has', async () => {
+    const doc = await parseDraft('draft-irtf-cfrg-foo-03')
     expect(doc.docKind).toEqual('draft')
-    expect(doc.data.slug).toEqual('draft-irtf-cfrg-foo-00')
+    expect(doc.data.slug).toEqual('draft-irtf-cfrg-foo-03')
+    for (const mode of Object.values(MODES)) {
+      await expect(validateStream(doc, { mode })).resolves.toHaveLength(0)
+    }
+    expect(requests).toContain('https://datatracker.ietf.org/api/v1/doc/document/draft-irtf-cfrg-foo/')
+  })
+
+  test('reports a draft whose name implies another stream than Datatracker has by mode', async () => {
+    // The first header line is a working group, not a stream declaration
+    const doc = await parseDraft('draft-irtf-cfrg-bar-00', 'Internet Engineering Task Force')
+    await expect(validateStream(doc)).resolves.toEqual([
+      new ValidationError(
+        'SUBMISSION_TYPE_UNEXPECTED',
+        'The document name implies the IRTF stream (draft-irtf-cfrg-bar-00), but Datatracker has this draft in the IETF stream.',
+        { ref: 'https://authors.ietf.org/naming-your-internet-draft', lines: [{ line: 17, pos: 18 }] }
+      )
+    ])
+    await expect(validateStream(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('SUBMISSION_TYPE_UNEXPECTED', ValidationWarning)
+    await expect(validateStream(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('SUBMISSION_TYPE_UNEXPECTED', ValidationError)
+  })
+
+  test('reports a draft Datatracker has no stream for by mode', async () => {
+    const doc = await parseDraft('draft-ietf-idr-nostream-01')
+    await expect(validateStream(doc)).resolves.toContainError('SUBMISSION_TYPE_UNEXPECTED', ValidationError)
+    await expect(validateStream(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('SUBMISSION_TYPE_UNEXPECTED', ValidationWarning)
+    await expect(validateStream(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('SUBMISSION_TYPE_UNEXPECTED', ValidationComment)
+  })
+
+  test('skips the draft comparison when offline', async () => {
+    const doc = await parseDraft('draft-irtf-cfrg-bar-00')
+    await expect(validateStream(doc, { offline: true })).resolves.toHaveLength(0)
+    expect(requests).toHaveLength(0)
+  })
+
+  test('reports nothing for a draft unknown to Datatracker', async () => {
+    const doc = await parseDraft('draft-iab-unknown-00')
+    await expect(validateStream(doc)).resolves.toHaveLength(0)
+  })
+
+  test('reports nothing for an individual draft, whatever its header says', async () => {
+    const doc = await parseDraft('draft-smith-irtf-foo-00', 'Internet Research Task Force')
+    expect(doc.data.slug).toEqual('draft-smith-irtf-foo-00')
     await expect(validateStream(doc)).resolves.toHaveLength(0)
     expect(requests).toHaveLength(0)
   })

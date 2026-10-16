@@ -66,6 +66,11 @@ describe('streamFromDraftName', () => {
     expect(streamFromDraftName('draft-iab-foo-bar-01')).toEqual('iab')
     expect(streamFromDraftName('draft-irtf-foo-bar')).toEqual('irtf')
   })
+  test('detects the ietf prefix only when asked', () => {
+    expect(streamFromDraftName('draft-ietf-foo-bar-01', { ietf: true })).toEqual('ietf')
+    expect(streamFromDraftName('draft-irtf-foo-bar-01', { ietf: true })).toEqual('irtf')
+    expect(streamFromDraftName('draft-smith-foo-bar-01', { ietf: true })).toBeNull()
+  })
   test('returns null otherwise', () => {
     expect(streamFromDraftName('draft-ietf-foo-bar')).toBeNull()
     expect(streamFromDraftName('draft-smith-iab-bar')).toBeNull()
