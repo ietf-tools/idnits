@@ -1389,6 +1389,44 @@ Author's Address
       { value: '2549', subsection: 'normative_references' }
     ])
   })
+
+  // From draft-ietf-spring-sr-policy-group-01
+  test('Classifies references in subsections numbered without a trailing dot', async () => {
+    const txt = `${metaTXTBlock}
+11. Security Considerations
+
+   This document does not introduce any security considerations.
+
+12. References
+
+12.1 Normative References
+
+   [RFC2119] Bradner, S., "Key words for use in RFCs to Indicate
+             Requirement Levels", BCP 14, RFC 2119, DOI
+             10.17487/RFC2119, March 1997, <https://www.rfc-
+             editor.org/info/rfc2119>.
+
+   [RFC8402] Filsfils, C., Ed., Previdi, S., Ed., Ginsberg, L.,
+             Decraene, B., Litkowski, S., and R. Shakir, "Segment
+             Routing Architecture", RFC 8402, DOI 10.17487/RFC8402,
+             July 2018, <https://www.rfc-editor.org/info/rfc8402>.
+
+12.2 Informative References
+
+   [RFC7942] Sheffer, Y. and A. Farrel, "Improving Awareness of Running
+             Code: The Implementation Status Section", BCP 205, RFC
+             7942, DOI 10.17487/RFC7942, July 2016, <https://www.rfc-
+             editor.org/info/rfc7942>.
+`
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.extractedElements.referenceSectionRfc).toEqual([
+      { value: '2119', subsection: 'normative_references' },
+      { value: '8402', subsection: 'normative_references' },
+      { value: '7942', subsection: 'informative_references' }
+    ])
+  })
 })
 
 describe('License validation for documents containing code blocks', () => {
