@@ -635,6 +635,18 @@ describe('validateNormativeReferences', () => {
         })
       )
     })
+    test('an RFC citing the RFC it obsoletes is not told that RFC is obsolete', async () => {
+      const doc = await parseTXTRfcReferences({ rfcNumber: '10001', normative: ['3901', '4087'], informative: ['5087'] })
+
+      const result = await validateNormativeReferences(doc, { mode: MODES.NORMAL })
+      expect(result).toEqual([
+        new ValidationError(
+          'OBSOLETE_REFERENCE',
+          'RFC 4087 is obsolete and has been replaced by: RFC9000.',
+          { ref: 'https://authors.ietf.org/en/required-content#references' }
+        )
+      ])
+    })
   })
 
   describe('XML Document Type', () => {
@@ -703,6 +715,24 @@ describe('validateNormativeReferences', () => {
           'UNDEFINED_STATUS',
           'RFC 4086 does not have a defined status or could not be fetched.',
           { ref: 'https://www.rfc-editor.org/info/rfc4086' }
+        )
+      ])
+    })
+
+    test('an RFC citing the RFC it obsoletes is not told that RFC is obsolete', async () => {
+      const { doc } = await parse(`<rfc version="3" category="bcp" number="10001" obsoletes="3901"><front><title>Test</title></front><back>
+        <references><name>Normative References</name>
+          <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.3901.xml"/>
+          <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.4087.xml"/>
+        </references>
+      </back></rfc>`, 'rfc10001.xml')
+
+      const result = await validateNormativeReferences(doc, { mode: MODES.NORMAL })
+      expect(result).toEqual([
+        new ValidationError(
+          'OBSOLETE_REFERENCE',
+          'RFC 4087 is obsolete and has been replaced by: RFC9000.',
+          { ref: 'https://authors.ietf.org/en/required-content#references' }
         )
       ])
     })
@@ -776,6 +806,16 @@ describe('validateUnclassifiedReferences', () => {
 
       const result = await validateUnclassifiedReferences(doc, { mode: MODES.NORMAL })
       expect(result).toContainError('OBSOLETE_REFERENCE', ValidationError)
+    })
+
+    test('an RFC citing the RFC it obsoletes is not told that RFC is obsolete', async () => {
+      const { doc } = await parse(`<rfc version="3" category="bcp" number="10001" obsoletes="3901"><front><title>Test</title></front><back>
+        <references><name>References</name>
+          <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.3901.xml"/>
+        </references>
+      </back></rfc>`, 'rfc10001.xml')
+
+      await expect(validateUnclassifiedReferences(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
     })
 
     test('FORGIVE_CHECKLIST mode for an obsolete unclassified RFC', async () => {
