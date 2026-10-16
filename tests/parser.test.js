@@ -2229,6 +2229,31 @@ describe('Reference is declared, but not used in the document', () => {
     expect(result.data.extractedElements.referenceSectionRfc).toHaveLength(0)
     expect(result.data.extractedElements.referenceSectionDraftReferences).toHaveLength(0)
   })
+
+  // From draft-vauban-x402-pqc-receipts-01
+  test('Detects a reference label cited in parentheses', async () => {
+    const txt = `${metaTXTBlock}
+   This document defines a two-axis post-quantum cryptographic
+   discipline for x402 receipts that addresses the long-term integrity
+   gap.  The first axis applies at the proof-system layer : the stark-
+   vauban-pay-v1 variant of [STARK-RECEIPTS] uses Stwo Circle STARK M31
+   ([STWO]), a hash-based proving system whose soundness rests on the
+   collision and second-preimage resistance of cryptographic hash
+   functions rather than on algebraic hardness assumptions broken by
+   Shor's algorithm.
+
+Informative References
+
+   [STWO]     "Stwo Circle STARK Prover (StarkWare Industries)", n.d.,
+              <https://github.com/starkware-libs/stwo>.
+`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.nonReferenceSectionDraftReferences).toEqual(['[STARK-RECEIPTS]', '[STWO]'])
+    expect(result.data.extractedElements.referenceSectionDraftReferences).toEqual([
+      { value: '[STWO]', subsection: 'informative_references' }
+    ])
+  })
 })
 
 describe('Page‐separator handling for split license and RFC headers', () => {
