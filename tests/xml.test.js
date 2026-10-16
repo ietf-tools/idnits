@@ -32,6 +32,15 @@ export const mockRestHandlers = [
   http.get('https://datatracker.ietf.org/api/v1/doc/document/draft-beep-boop6/', () => {
     return HttpResponse.json({ stream: '/api/v1/name/streamname/editorial/' })
   }),
+  http.get('https://datatracker.ietf.org/api/v1/doc/document/draft-beep-boop7/', () => {
+    return HttpResponse.json({ stream: '/api/v1/name/streamname/ietf/' })
+  }),
+  http.get('https://datatracker.ietf.org/api/v1/doc/document/draft-beep-boop8/', () => {
+    return HttpResponse.json({ stream: null })
+  }),
+  http.get('https://datatracker.ietf.org/api/v1/doc/document/rfc9999/', () => {
+    return HttpResponse.json({ stream: '/api/v1/name/streamname/ietf/' })
+  }),
   http.get('https://datatracker.ietf.org/api/v1/doc/document/draft-iab-beep-boop/', () => {
     return HttpResponse.json({ stream: '/api/v1/name/streamname/ietf/' })
   }),
@@ -185,45 +194,132 @@ describe('XML document should not use deprecated elements', () => {
 })
 
 describe('XML document should have a valid ipr attribute', () => {
+  const parseDoc = async (rfcAttrs) => {
+    const { doc } = await parse(`<rfc version="3" docName="draft-test-ipr-00"${rfcAttrs}><front><title>Test</title></front></rfc>`, 'draft-test-ipr-00.xml')
+    return doc
+  }
+
   test('valid ipr value', async () => {
-    const doc = cloneDeep(baseXMLDoc)
-    set(doc, 'data.rfc._attr.ipr', 'trust200902')
-    await expect(validateIprAttribute(doc)).resolves.toHaveLength(0)
+    for (const ipr of ['trust200902', 'pre5378Trust200902']) {
+      await expect(validateIprAttribute(await parseDoc(` ipr="${ipr}"`), { offline: true })).resolves.toHaveLength(0)
+    }
   })
   test('missing ipr attribute', async () => {
-    const doc = cloneDeep(baseXMLDoc)
-    set(doc, 'data.rfc', {})
-    await expect(validateIprAttribute(doc)).resolves.toContainError('MISSING_IPR_ATTRIBUTE', ValidationError)
+    const result = await validateIprAttribute(await parseDoc(''), { offline: true })
+    expect(result).toHaveLength(1)
+    expect(result).toContainError('MISSING_IPR_ATTRIBUTE', ValidationError)
+    expect(result[0].path).toBe('rfc._attr.ipr')
   })
   test('invalid ipr attribute', async () => {
-    const doc = cloneDeep(baseXMLDoc)
-    // -> Empty value
-    set(doc, 'data.rfc._attr.ipr', '')
-    await expect(validateIprAttribute(doc)).resolves.toContainError('INVALID_IPR_VALUE', ValidationWarning)
-    // -> Invalid value
-    set(doc, 'data.rfc._attr.ipr', 'test')
-    await expect(validateIprAttribute(doc)).resolves.toContainError('INVALID_IPR_VALUE', ValidationWarning)
+    for (const ipr of ['', 'test', 'trust200811']) {
+      const result = await validateIprAttribute(await parseDoc(` ipr="${ipr}"`), { offline: true })
+      expect(result).toHaveLength(1)
+      expect(result).toContainError('INVALID_IPR_VALUE', ValidationWarning)
+      expect(result[0].message).toContain(`"${ipr}" is not a valid value`)
+    }
   })
 })
 
-describe('XML stream document should only use allowed ipr values', () => {
-  test('valid ipr value', async () => {
-    const doc = cloneDeep(baseXMLDoc)
-    set(doc, 'data.rfc._attr.ipr', 'trust200902')
-    set(doc, 'data.rfc._attr.submissionType', 'IETF')
-    await expect(validateIprAttribute(doc)).resolves.toHaveLength(0)
+describe('XML document should only use a restricted ipr value outside the IETF stream', () => {
+  const ALL_MODES = [MODES.NORMAL, MODES.FORGIVE_CHECKLIST, MODES.SUBMISSION]
+  const RESTRICTED = ['noModificationTrust200902', 'noDerivativesTrust200902']
+  const parseDoc = async (ipr, docName, submissionType) => {
+    const typeAttr = submissionType ? ` submissionType="${submissionType}"` : ''
+    const { doc } = await parse(`<rfc version="3" ipr="${ipr}" docName="${docName}"${typeAttr}><front><title>Test</title></front></rfc>`, `${docName}.xml`)
+    return doc
+  }
+  const findings = async (ipr, docName, submissionType, opts) => validateIprAttribute(await parseDoc(ipr, docName, submissionType), opts)
+
+  beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
+  afterEach(() => server.resetHandlers())
+  afterAll(() => server.close())
+
+  test('trust200902 in the IETF stream', async () => {
+    for (const mode of ALL_MODES) {
+      await expect(findings('trust200902', 'draft-ietf-beep-boop-01', 'IETF', { mode })).resolves.toHaveLength(0)
+    }
   })
-  test('invalid noModificationTrust200902 ipr attribute', async () => {
-    const doc = cloneDeep(baseXMLDoc)
-    set(doc, 'data.rfc._attr.ipr', 'noModificationTrust200902')
-    set(doc, 'data.rfc._attr.submissionType', 'IETF')
-    await expect(validateIprAttribute(doc)).resolves.toContainError('FORBIDDEN_IPR_VALUE_FOR_STREAM', ValidationError)
+  test('IETF stream on Datatracker', async () => {
+    for (const ipr of RESTRICTED) {
+      for (const submissionType of ['IETF', null]) {
+        // -> draft-beep-boop7 is in the IETF stream on Datatracker, though not named draft-ietf-
+        await expect(findings(ipr, 'draft-beep-boop7-00', submissionType)).resolves.toContainError('FORBIDDEN_IPR_VALUE_FOR_STREAM', ValidationError)
+        await expect(findings(ipr, 'draft-beep-boop7-00', submissionType, { mode: MODES.SUBMISSION })).resolves.toContainError('FORBIDDEN_IPR_VALUE_FOR_STREAM', ValidationError)
+        await expect(findings(ipr, 'draft-beep-boop7-00', submissionType, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('FORBIDDEN_IPR_VALUE_FOR_STREAM', ValidationWarning)
+      }
+    }
+    const [entry] = await findings('noDerivativesTrust200902', 'draft-beep-boop7-00', 'IETF')
+    expect(entry.message).toBe('The ipr attribute "noDerivativesTrust200902" gives the Trust Legal Provisions notice (Section 6.c) that withholds the right to produce derivative works, and an IETF working group can only work on a document that grants that right (RFC 5378, Section 3.3). Datatracker has this draft in the IETF stream, so the notice can\'t be used. Use ipr="trust200902" (or "pre5378Trust200902").')
+    expect(entry.refUrl).toBe('https://www.rfc-editor.org/rfc/rfc5378.html#section-3.3')
+    expect(entry.path).toBe('rfc._attr.ipr')
   })
-  test('invalid noDerivativesTrust200902 ipr attribute', async () => {
-    const doc = cloneDeep(baseXMLDoc)
-    set(doc, 'data.rfc._attr.ipr', 'noDerivativesTrust200902')
-    set(doc, 'data.rfc._attr.submissionType', 'IETF')
-    await expect(validateIprAttribute(doc)).resolves.toContainError('FORBIDDEN_IPR_VALUE_FOR_STREAM', ValidationError)
+  test('Datatracker IETF stream over a declared stream', async () => {
+    // -> Datatracker decides the stream; the disagreement is SUBMISSION_TYPE_UNEXPECTED
+    await expect(findings('noModificationTrust200902', 'draft-beep-boop7-00', 'independent')).resolves.toContainError('FORBIDDEN_IPR_VALUE_FOR_STREAM', ValidationError)
+  })
+  test('draft-ietf- name', async () => {
+    for (const ipr of RESTRICTED) {
+      // -> Online: Datatracker doesn't have the draft or has no stream for it; offline
+      for (const [docName, opts] of [['draft-ietf-beep-boop2-00', {}], ['draft-ietf-beep-boop4-00', {}], ['draft-ietf-beep-boop3-00', { offline: true }]]) {
+        await expect(findings(ipr, docName, null, { ...opts })).resolves.toContainError('FORBIDDEN_IPR_VALUE_FOR_STREAM', ValidationError)
+        await expect(findings(ipr, docName, 'IETF', { ...opts, mode: MODES.SUBMISSION })).resolves.toContainError('FORBIDDEN_IPR_VALUE_FOR_STREAM', ValidationError)
+        await expect(findings(ipr, docName, 'independent', { ...opts, mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('FORBIDDEN_IPR_VALUE_FOR_STREAM', ValidationWarning)
+      }
+    }
+    const [entry] = await findings('noModificationTrust200902', 'draft-ietf-beep-boop2-00', 'IETF')
+    expect(entry.message).toContain('Datatracker puts a draft named draft-ietf-... in the IETF stream, so the notice can\'t be used.')
+  })
+  test('IETF declared or defaulted, stream otherwise unknown', async () => {
+    for (const ipr of RESTRICTED) {
+      for (const submissionType of ['IETF', null]) {
+        for (const mode of ALL_MODES) {
+          // -> No stream on Datatracker, not on Datatracker, offline
+          for (const [docName, opts] of [['draft-beep-boop8-00', {}], ['draft-beep-boop9-00', {}], ['draft-beep-boop7-00', { offline: true }]]) {
+            const result = await findings(ipr, docName, submissionType, { ...opts, mode })
+            expect(result).toHaveLength(1)
+            expect(result).toContainError('FORBIDDEN_IPR_VALUE_FOR_STREAM', ValidationWarning)
+          }
+        }
+      }
+    }
+    const message = async (submissionType, docName, opts) => (await findings('noDerivativesTrust200902', docName, submissionType, opts))[0].message
+    await expect(message('IETF', 'draft-beep-boop8-00')).resolves.toContain('(RFC 5378, Section 3.3). The rfc tag declares submissionType="IETF", and Datatracker has no stream for this draft yet. If the draft is meant for the IETF stream, use ipr="trust200902" (or "pre5378Trust200902"); if not, declare its stream with the submissionType attribute.')
+    await expect(message(null, 'draft-beep-boop9-00')).resolves.toContain('The rfc tag has no submissionType attribute, so the draft is treated as submissionType="IETF", and Datatracker doesn\'t have this draft yet.')
+    await expect(message('IETF', 'draft-beep-boop7-00', { offline: true })).resolves.toContain('and its stream was not looked up on Datatracker (offline).')
+  })
+  test('other streams', async () => {
+    for (const ipr of RESTRICTED) {
+      for (const mode of ALL_MODES) {
+        // -> Declared, Datatracker having no stream, not having the draft, or offline
+        for (const submissionType of ['independent', 'IAB', 'IRTF', 'editorial']) {
+          await expect(findings(ipr, 'draft-beep-boop8-00', submissionType, { mode })).resolves.toHaveLength(0)
+          await expect(findings(ipr, 'draft-beep-boop9-00', submissionType, { mode })).resolves.toHaveLength(0)
+          await expect(findings(ipr, 'draft-beep-boop7-00', submissionType, { mode, offline: true })).resolves.toHaveLength(0)
+        }
+        // -> Datatracker stream, whatever the declared stream
+        await expect(findings(ipr, 'draft-beep-boop5-00', 'independent', { mode })).resolves.toHaveLength(0)
+        await expect(findings(ipr, 'draft-beep-boop5-00', null, { mode })).resolves.toHaveLength(0)
+        await expect(findings(ipr, 'draft-beep-boop6-00', 'IETF', { mode })).resolves.toHaveLength(0)
+        await expect(findings(ipr, 'draft-ietf-beep-boop3-00', 'IETF', { mode })).resolves.toHaveLength(0)
+        // -> Name of the draft
+        await expect(findings(ipr, 'draft-irtf-beep-boop-00', null, { mode, offline: true })).resolves.toHaveLength(0)
+        await expect(findings(ipr, 'draft-iab-beep-boop-00', 'IAB', { mode, offline: true })).resolves.toHaveLength(0)
+      }
+    }
+  })
+  test('RFC', async () => {
+    const parseRfc = async (submissionType) => {
+      const typeAttr = submissionType ? ` submissionType="${submissionType}"` : ''
+      const { doc } = await parse(`<rfc version="3" ipr="noModificationTrust200902" number="9999"${typeAttr}><front><title>Test</title><seriesInfo name="RFC" value="9999"/></front></rfc>`, 'rfc9999.xml')
+      expect(doc.docKind).toBe('rfc')
+      return doc
+    }
+    // -> Datatracker has rfc9999 in the IETF stream
+    await expect(validateIprAttribute(await parseRfc('independent'))).resolves.toContainError('FORBIDDEN_IPR_VALUE_FOR_STREAM', ValidationError)
+    const [entry] = await validateIprAttribute(await parseRfc(null), { offline: true })
+    expect(entry).toBeInstanceOf(ValidationWarning)
+    expect(entry.message).toContain('so the RFC is treated as submissionType="IETF", and its stream was not looked up on Datatracker (offline). If the RFC is meant')
+    await expect(validateIprAttribute(await parseRfc('independent'), { offline: true })).resolves.toHaveLength(0)
   })
 })
 
@@ -745,26 +841,12 @@ describe('Validate IETF-TLP boilerplate for XML documents', () => {
 })
 
 describe('Test ipr attribute and boilerplate', () => {
-  test('should report error if ipr attribute is missing', async () => {
-    const doc = cloneDeep(baseXMLDoc)
-    const result = await validateXMLBoilerplate(doc)
-    expect(result).toContainEqual(
-      expect.objectContaining({
-        name: 'MISSING_IPR_ATTRIBUTE',
-        message: 'The ipr attribute is missing from the <rfc> tag.'
-      })
-    )
-  })
-
-  test('should warn if ipr attribute is invalid', async () => {
-    const doc = cloneDeep(baseXMLDoc)
-    set(doc, 'data.rfc._attr.ipr', 'somethingInvalid')
-    const result = await validateXMLBoilerplate(doc)
-    expect(result).toContainEqual(
-      expect.objectContaining({
-        name: 'INVALID_IPR_VALUE'
-      })
-    )
+  test('should leave the ipr attribute to validateIprAttribute', async () => {
+    // -> Missing and invalid ipr attributes are reported once, by validateIprAttribute
+    for (const iprAttr of ['', ' ipr=""', ' ipr="somethingInvalid"', ' ipr="noDerivativesTrust200902"']) {
+      const { doc } = await parse(`<rfc version="3" docName="draft-test-00"${iprAttr}><front><title>Test</title></front></rfc>`, 'draft-test-00.xml')
+      await expect(validateXMLBoilerplate(doc)).resolves.toHaveLength(0)
+    }
   })
 
   test('should leave a boilerplate element in a draft to detectPrepToolOutput', async () => {
@@ -782,24 +864,12 @@ describe('Validate IETF-TLP boilerplate for XML documents', () => {
     await expect(validateXMLBoilerplate(doc)).resolves.toHaveLength(0)
   })
 
-  test('Missing ipr attribute', async () => {
-    const doc = cloneDeep(baseXMLDoc)
-    set(doc, 'data.rfc._attr', {})
-    await expect(validateXMLBoilerplate(doc)).resolves.toContainError('MISSING_IPR_ATTRIBUTE', ValidationError)
-  })
-
-  test('Invalid ipr attribute value', async () => {
-    const doc = cloneDeep(baseXMLDoc)
-    set(doc, 'data.rfc._attr.ipr', 'invalidValue')
-    await expect(validateXMLBoilerplate(doc)).resolves.toContainError('INVALID_IPR_VALUE', ValidationWarning)
-  })
-
   test('Unnecessary boilerplate text detected', async () => {
     const { doc } = await parse(`<rfc version="3" docName="draft-test-00"><front><title>Test</title>
       <t>This Internet-Draft is submitted in full conformance with the provisions of BCP 78 and BCP 79.</t></front></rfc>`, 'draft-test-00.xml')
     const result = await validateXMLBoilerplate(doc)
+    expect(result).toHaveLength(1)
     expect(result).toContainError('UNNECESSARY_BOILERPLATE_TEXT', ValidationWarning)
-    expect(result).toContainError('MISSING_IPR_ATTRIBUTE', ValidationError)
     expect(result.find(r => r.name === 'UNNECESSARY_BOILERPLATE_TEXT').path).toBe('rfc.front.t')
   })
 
