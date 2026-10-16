@@ -12,7 +12,21 @@ import { gte } from 'semver'
 import { Listr, ListrDefaultRendererLogLevels } from 'listr2'
 import { checkNits, getAllValidations, getDocType, labelFindings } from './lib/index.mjs'
 import { getModeByName } from './lib/config/modes.mjs'
-import { DATATRACKER_URL_ENV, DEFAULT_DATATRACKER_URL, DEFAULT_RFCEDITOR_URL, RFCEDITOR_URL_ENV, getDatatrackerUrl, getRfcEditorUrl, normalizeBaseUrl, setRemoteUrls } from './lib/config/remote.mjs'
+import {
+  DATATRACKER_URL_ENV,
+  DEFAULT_DATATRACKER_URL,
+  DEFAULT_REMOTE_TIMEOUT,
+  DEFAULT_RFCEDITOR_URL,
+  REMOTE_TIMEOUT_ENV,
+  RFCEDITOR_URL_ENV,
+  getDatatrackerUrl,
+  getRemoteTimeout,
+  getRfcEditorUrl,
+  normalizeBaseUrl,
+  normalizeTimeout,
+  setRemoteTimeout,
+  setRemoteUrls
+} from './lib/config/remote.mjs'
 
 // Check Node.js version
 if (!gte(process.version, '18.0.0')) {
@@ -87,6 +101,11 @@ const argv = yargs(hideBin(process.argv))
     default: 'pretty',
     type: 'string'
   })
+  .option('remote-timeout', {
+    describe: `Seconds allowed for each remote lookup before it fails (overrides ${REMOTE_TIMEOUT_ENV}, default ${DEFAULT_REMOTE_TIMEOUT})`,
+    coerce: val => normalizeTimeout(val, '--remote-timeout'),
+    type: 'string'
+  })
   .option('rfceditor-url', {
     describe: `Base URL of the RFC Editor site used for remote lookups (overrides ${RFCEDITOR_URL_ENV}, default ${DEFAULT_RFCEDITOR_URL})`,
     coerce: val => normalizeBaseUrl(val, '--rfceditor-url'),
@@ -120,11 +139,13 @@ const argv = yargs(hideBin(process.argv))
 
 const chalk = (argv.color === false) ? new Chalk({ level: 0 }) : new Chalk()
 
-// Set the base URLs of remote lookups, checking those from the environment too
+// Set the base URLs and timeout of remote lookups, checking those from the environment too
 try {
   setRemoteUrls({ datatracker: argv.datatrackerUrl, rfcEditor: argv.rfceditorUrl })
+  setRemoteTimeout(argv.remoteTimeout)
   getDatatrackerUrl()
   getRfcEditorUrl()
+  getRemoteTimeout()
 } catch (err) {
   console.error(chalk.redBright(err.message))
   process.exit(1)

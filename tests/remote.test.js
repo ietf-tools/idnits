@@ -1,13 +1,21 @@
 import { afterAll, afterEach, beforeAll, describe, expect, test, vi } from 'vitest'
 import { setupServer } from 'msw/node'
-import { http, HttpResponse } from 'msw'
+import { delay, http, HttpResponse, passthrough } from 'msw'
+import { createServer } from 'node:http'
 import { readFile } from 'node:fs/promises'
+import { checkNits } from '../lib/index.mjs'
+import { MODES } from '../lib/config/modes.mjs'
 import {
   DEFAULT_DATATRACKER_URL,
+  DEFAULT_REMOTE_TIMEOUT,
   DEFAULT_RFCEDITOR_URL,
+  MAX_REMOTE_TIMEOUT,
   getDatatrackerUrl,
+  getRemoteTimeout,
   getRfcEditorUrl,
   normalizeBaseUrl,
+  normalizeTimeout,
+  setRemoteTimeout,
   setRemoteUrls
 } from '../lib/config/remote.mjs'
 import {
@@ -18,7 +26,8 @@ import {
   fetchRemoteDocInfo,
   fetchRemoteDocInfoJson,
   fetchRemoteRfcInfo,
-  getUserAgent
+  getUserAgent,
+  remoteFetch
 } from '../lib/remote/common.mjs'
 import { checkReferencesInDownrefs } from '../lib/remote/downref.mjs'
 
@@ -57,6 +66,7 @@ afterEach(() => {
   requests.length = 0
   clearRemoteCache()
   setRemoteUrls()
+  setRemoteTimeout()
   vi.unstubAllEnvs()
   vi.restoreAllMocks()
 })
@@ -208,5 +218,120 @@ describe('cachedLookup', () => {
     clearRemoteCache()
     await cachedLookup('key', fetcher)
     expect(fetcher).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe('normalizeTimeout', () => {
+  test('accepts a positive number of seconds', () => {
+    expect(normalizeTimeout('10')).toBe(10)
+    expect(normalizeTimeout(' 2.5 ')).toBe(2.5)
+    expect(normalizeTimeout(0.05)).toBe(0.05)
+    expect(normalizeTimeout(MAX_REMOTE_TIMEOUT)).toBe(MAX_REMOTE_TIMEOUT)
+  })
+
+  test('rejects other values', () => {
+    for (const value of ['0', '-1', 'abc', '', '10s', 'Infinity', 0, NaN, null]) {
+      expect(() => normalizeTimeout(value)).toThrow('must be a positive number of seconds')
+    }
+    expect(() => normalizeTimeout(MAX_REMOTE_TIMEOUT + 1, '--remote-timeout')).toThrow(`--remote-timeout must be at most ${MAX_REMOTE_TIMEOUT} seconds`)
+  })
+})
+
+describe('Remote timeout', () => {
+  test('defaults to 10 seconds', () => {
+    expect(getRemoteTimeout()).toBe(DEFAULT_REMOTE_TIMEOUT)
+    expect(DEFAULT_REMOTE_TIMEOUT).toBe(10)
+  })
+
+  test('is taken from the environment', () => {
+    vi.stubEnv('IDNITS_REMOTE_TIMEOUT', '2.5')
+    expect(getRemoteTimeout()).toBe(2.5)
+    vi.stubEnv('IDNITS_REMOTE_TIMEOUT', ' ')
+    expect(getRemoteTimeout()).toBe(DEFAULT_REMOTE_TIMEOUT)
+  })
+
+  test('rejects an invalid environment variable', () => {
+    vi.stubEnv('IDNITS_REMOTE_TIMEOUT', '0')
+    expect(() => getRemoteTimeout()).toThrow('IDNITS_REMOTE_TIMEOUT must be a positive number of seconds')
+  })
+
+  test('set explicitly takes precedence over the environment, and is validated', () => {
+    vi.stubEnv('IDNITS_REMOTE_TIMEOUT', '30')
+    setRemoteTimeout('5')
+    expect(getRemoteTimeout()).toBe(5)
+    setRemoteTimeout(null)
+    expect(getRemoteTimeout()).toBe(30)
+    expect(() => setRemoteTimeout(-1)).toThrow('Remote timeout must be a positive number of seconds')
+  })
+})
+
+describe('Remote lookups that time out', () => {
+  const stall = () => server.use(http.get(/^https:\/\/(datatracker\.ietf\.org|www\.rfc-editor\.org)\//, async () => {
+    await delay(1000)
+    return HttpResponse.json({ name: 'late', rev: '99', stream: '/api/v1/name/streamname/ietf/' })
+  }))
+
+  test('fail, are shared and warned about once, naming the host', async () => {
+    stall()
+    setRemoteTimeout(0.05)
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const start = Date.now()
+    const results = await Promise.all([
+      fetchRemoteDocInfo('draft-foo-bar-02'),
+      fetchRemoteDocInfo('draft-foo-bar-03')
+    ])
+    await expect(fetchRemoteDocInfo('draft-foo-bar')).resolves.toBeUndefined()
+    expect(Date.now() - start).toBeLessThan(900)
+    expect(results).toEqual([undefined, undefined])
+    expect(requests).toHaveLength(1)
+    expect(warn).toHaveBeenCalledTimes(1)
+    expect(warn).toHaveBeenCalledWith('Request to datatracker.ietf.org timed out after 0.05 s')
+  })
+
+  test('fail for doc.json and RFC Editor lookups too', async () => {
+    stall()
+    vi.stubEnv('IDNITS_REMOTE_TIMEOUT', '0.05')
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    await expect(fetchRemoteDocInfoJson('draft-foo-bar-02')).resolves.toBeUndefined()
+    await expect(fetchRemoteRfcInfo(1234)).resolves.toBeUndefined()
+    expect(warn.mock.calls).toEqual([
+      ['Request to datatracker.ietf.org timed out after 0.05 s'],
+      ['Request to www.rfc-editor.org timed out after 0.05 s']
+    ])
+  })
+
+  test('include reading the response body', async () => {
+    // -> A real server sending headers and part of the body, as msw doesn't abort a mocked body
+    const stalling = createServer((req, res) => {
+      res.writeHead(200, { 'Content-Type': 'text/html' })
+      res.write('<html>')
+    })
+    await new Promise(resolve => stalling.listen(0, '127.0.0.1', resolve))
+    const url = `http://127.0.0.1:${stalling.address().port}/doc/downref/`
+    server.use(http.get(url, () => passthrough()))
+    setRemoteTimeout(0.2)
+    try {
+      await expect(remoteFetch(url, { type: 'text' })).rejects.toThrow(`Request to 127.0.0.1:${stalling.address().port} timed out after 0.2 s`)
+    } finally {
+      stalling.closeAllConnections()
+      await new Promise(resolve => stalling.close(resolve))
+    }
+  })
+
+  test('let a submission check complete as when Datatracker does not know the document', async () => {
+    const raw = await readFile(new URL('./fixtures/draft-ietf-ippm-ioam-ipv6-options-10.xml', import.meta.url))
+    const run = () => checkNits(raw, 'draft-ietf-ippm-ioam-ipv6-options-10.xml', { mode: MODES.SUBMISSION })
+    const unknown = await run()
+    expect(requests.length).toBeGreaterThan(0)
+    expect(requests.every(r => r.url.startsWith('https://datatracker.ietf.org/api/v1/doc/document/'))).toBe(true)
+
+    clearRemoteCache()
+    stall()
+    setRemoteTimeout(0.05)
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const timedOut = await run()
+    expect(timedOut).toEqual(unknown)
+    expect(new Set(warn.mock.calls.map(c => c[0]))).toEqual(new Set(['Request to datatracker.ietf.org timed out after 0.05 s']))
+    expect(warn.mock.calls.length).toBe(new Set(requests.slice(requests.length / 2).map(r => r.url)).size)
   })
 })
