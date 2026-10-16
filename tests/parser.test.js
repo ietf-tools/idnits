@@ -2254,6 +2254,48 @@ Informative References
       { value: '[STWO]', subsection: 'informative_references' }
     ])
   })
+
+  // From draft-sergeev-claim-boundaries-01
+  test('Takes a declared reference label only from the start of a reference entry', async () => {
+    const txt = `${metaTXTBlock}
+   confidence as to that foundation" [HAMILTON].  The load-bearing
+
+16.  Informative References
+
+   [HAMILTON] Court of Appeal (Criminal Division), England and Wales,
+              "Hamilton & Ors v Post Office Ltd", [2021] EWCA Crim 577,
+              paragraphs 136-137, 23 April 2021,
+              <https://caselaw.nationalarchives.gov.uk/ewca/
+              crim/2021/577>.
+`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.referenceSectionDraftReferences).toEqual([
+      { value: '[HAMILTON]', subsection: 'informative_references' }
+    ])
+  })
+
+  // From draft-sharif-attp-01
+  test('Takes a declared reference label from a bulleted reference entry', async () => {
+    const txt = `${metaTXTBlock}
+17.  References
+
+17.1.  Normative References
+
+   *  [FIPS186-5] National Institute of Standards and Technology,
+      "Digital Signature Standard (DSS)", FIPS PUB 186-5, 2023.
+
+17.2.  Informative References
+
+   *  [OWASP-AISVS] OWASP, "AI Security Verification Standard", 2026.
+`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.referenceSectionDraftReferences).toEqual([
+      { value: '[FIPS186-5]', subsection: 'normative_references' },
+      { value: '[OWASP-AISVS]', subsection: 'informative_references' }
+    ])
+  })
 })
 
 describe('Page‐separator handling for split license and RFC headers', () => {
