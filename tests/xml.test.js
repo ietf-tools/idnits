@@ -185,24 +185,29 @@ describe('XML document should not use deprecated elements', () => {
 })
 
 describe('XML document should have a valid ipr attribute', () => {
+  const parseDoc = async (rfcAttrs) => {
+    const { doc } = await parse(`<rfc version="3" docName="draft-test-ipr-00"${rfcAttrs}><front><title>Test</title></front></rfc>`, 'draft-test-ipr-00.xml')
+    return doc
+  }
+
   test('valid ipr value', async () => {
-    const doc = cloneDeep(baseXMLDoc)
-    set(doc, 'data.rfc._attr.ipr', 'trust200902')
-    await expect(validateIprAttribute(doc)).resolves.toHaveLength(0)
+    for (const ipr of ['trust200902', 'pre5378Trust200902']) {
+      await expect(validateIprAttribute(await parseDoc(` ipr="${ipr}"`), { offline: true })).resolves.toHaveLength(0)
+    }
   })
   test('missing ipr attribute', async () => {
-    const doc = cloneDeep(baseXMLDoc)
-    set(doc, 'data.rfc', {})
-    await expect(validateIprAttribute(doc)).resolves.toContainError('MISSING_IPR_ATTRIBUTE', ValidationError)
+    const result = await validateIprAttribute(await parseDoc(''), { offline: true })
+    expect(result).toHaveLength(1)
+    expect(result).toContainError('MISSING_IPR_ATTRIBUTE', ValidationError)
+    expect(result[0].path).toBe('rfc._attr.ipr')
   })
   test('invalid ipr attribute', async () => {
-    const doc = cloneDeep(baseXMLDoc)
-    // -> Empty value
-    set(doc, 'data.rfc._attr.ipr', '')
-    await expect(validateIprAttribute(doc)).resolves.toContainError('INVALID_IPR_VALUE', ValidationWarning)
-    // -> Invalid value
-    set(doc, 'data.rfc._attr.ipr', 'test')
-    await expect(validateIprAttribute(doc)).resolves.toContainError('INVALID_IPR_VALUE', ValidationWarning)
+    for (const ipr of ['', 'test', 'trust200811']) {
+      const result = await validateIprAttribute(await parseDoc(` ipr="${ipr}"`), { offline: true })
+      expect(result).toHaveLength(1)
+      expect(result).toContainError('INVALID_IPR_VALUE', ValidationWarning)
+      expect(result[0].message).toContain(`"${ipr}" is not a valid value`)
+    }
   })
 })
 
@@ -745,26 +750,12 @@ describe('Validate IETF-TLP boilerplate for XML documents', () => {
 })
 
 describe('Test ipr attribute and boilerplate', () => {
-  test('should report error if ipr attribute is missing', async () => {
-    const doc = cloneDeep(baseXMLDoc)
-    const result = await validateXMLBoilerplate(doc)
-    expect(result).toContainEqual(
-      expect.objectContaining({
-        name: 'MISSING_IPR_ATTRIBUTE',
-        message: 'The ipr attribute is missing from the <rfc> tag.'
-      })
-    )
-  })
-
-  test('should warn if ipr attribute is invalid', async () => {
-    const doc = cloneDeep(baseXMLDoc)
-    set(doc, 'data.rfc._attr.ipr', 'somethingInvalid')
-    const result = await validateXMLBoilerplate(doc)
-    expect(result).toContainEqual(
-      expect.objectContaining({
-        name: 'INVALID_IPR_VALUE'
-      })
-    )
+  test('should leave the ipr attribute to validateIprAttribute', async () => {
+    // -> Missing and invalid ipr attributes are reported once, by validateIprAttribute
+    for (const iprAttr of ['', ' ipr=""', ' ipr="somethingInvalid"']) {
+      const { doc } = await parse(`<rfc version="3" docName="draft-test-00"${iprAttr}><front><title>Test</title></front></rfc>`, 'draft-test-00.xml')
+      await expect(validateXMLBoilerplate(doc)).resolves.toHaveLength(0)
+    }
   })
 
   test('should leave a boilerplate element in a draft to detectPrepToolOutput', async () => {
@@ -782,24 +773,12 @@ describe('Validate IETF-TLP boilerplate for XML documents', () => {
     await expect(validateXMLBoilerplate(doc)).resolves.toHaveLength(0)
   })
 
-  test('Missing ipr attribute', async () => {
-    const doc = cloneDeep(baseXMLDoc)
-    set(doc, 'data.rfc._attr', {})
-    await expect(validateXMLBoilerplate(doc)).resolves.toContainError('MISSING_IPR_ATTRIBUTE', ValidationError)
-  })
-
-  test('Invalid ipr attribute value', async () => {
-    const doc = cloneDeep(baseXMLDoc)
-    set(doc, 'data.rfc._attr.ipr', 'invalidValue')
-    await expect(validateXMLBoilerplate(doc)).resolves.toContainError('INVALID_IPR_VALUE', ValidationWarning)
-  })
-
   test('Unnecessary boilerplate text detected', async () => {
     const { doc } = await parse(`<rfc version="3" docName="draft-test-00"><front><title>Test</title>
       <t>This Internet-Draft is submitted in full conformance with the provisions of BCP 78 and BCP 79.</t></front></rfc>`, 'draft-test-00.xml')
     const result = await validateXMLBoilerplate(doc)
+    expect(result).toHaveLength(1)
     expect(result).toContainError('UNNECESSARY_BOILERPLATE_TEXT', ValidationWarning)
-    expect(result).toContainError('MISSING_IPR_ATTRIBUTE', ValidationError)
     expect(result.find(r => r.name === 'UNNECESSARY_BOILERPLATE_TEXT').path).toBe('rfc.front.t')
   })
 
