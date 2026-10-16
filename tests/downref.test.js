@@ -24,6 +24,9 @@ export const mockRestHandlers = [
   http.get('https://www.rfc-editor.org/rfc/rfc2119.json', () => {
     return HttpResponse.json({ status: 'BEST CURRENT PRACTICE' })
   }),
+  http.get('https://www.rfc-editor.org/rfc/rfc3901.json', () => {
+    return HttpResponse.json({ status: 'Best Current Practice', obsoleted_by: ['RFC10001'] })
+  }),
   http.get('https://www.rfc-editor.org/rfc/rfc4086.json', () => {
     return HttpResponse.json({})
   }),
@@ -233,6 +236,54 @@ ${entries(normative)}
 ${entries(informative)}
 `
   return parseTXT(txt, 'draft-ietf-beep-boop-01.txt')
+}
+
+/**
+ * Parse a TXT document whose references sections list the given RFCs: an RFC
+ * with the given number, or a draft when there is none
+ *
+ * @param {Object} opts
+ * @param {string} [opts.rfcNumber] RFC number of the document, e.g. '10001'
+ * @param {string[]} [opts.normative] RFC numbers listed under Normative References
+ * @param {string[]} [opts.informative] RFC numbers listed under Informative References
+ * @returns {Promise<Object>} Parsed document
+ */
+async function parseTXTRfcReferences ({ rfcNumber, normative = [], informative = [] }) {
+  const header = rfcNumber
+    ? `
+Internet Engineering Task Force (IETF)                         A. Author
+Request for Comments: ${rfcNumber}                                      Example
+Obsoletes: 3901                                              August 2026
+Category: Best Current Practice
+ISSN: 2070-1721
+
+
+              DNS IPv6 Transport Operational Guidelines
+
+Abstract
+
+   This document obsoletes RFC 3901.
+`
+    : CANONICAL_TXT
+  const entries = rfcs => rfcs.map(rfc => `   [RFC${rfc}]  Example, A., "Example Protocol", RFC ${rfc},
+              DOI 10.17487/RFC${rfc}, June 2005,
+              <https://www.rfc-editor.org/info/rfc${rfc}>.`).join('\n\n')
+  const txt = `${header}
+1.  Introduction
+
+   This document cites ${[...normative, ...informative].map(rfc => `[RFC${rfc}]`).join(' and ')}.
+
+2.  References
+
+2.1.  Normative References
+
+${entries(normative)}
+
+2.2.  Informative References
+
+${entries(informative)}
+`
+  return parseTXT(txt, rfcNumber ? `rfc${rfcNumber}.txt` : 'draft-ietf-beep-boop-01.txt')
 }
 
 describe('validateDownrefs', () => {
@@ -584,6 +635,18 @@ describe('validateNormativeReferences', () => {
         })
       )
     })
+    test('an RFC citing the RFC it obsoletes is not told that RFC is obsolete', async () => {
+      const doc = await parseTXTRfcReferences({ rfcNumber: '10001', normative: ['3901', '4087'], informative: ['5087'] })
+
+      const result = await validateNormativeReferences(doc, { mode: MODES.NORMAL })
+      expect(result).toEqual([
+        new ValidationError(
+          'OBSOLETE_REFERENCE',
+          'RFC 4087 is obsolete and has been replaced by: RFC9000.',
+          { ref: 'https://authors.ietf.org/en/required-content#references' }
+        )
+      ])
+    })
   })
 
   describe('XML Document Type', () => {
@@ -652,6 +715,24 @@ describe('validateNormativeReferences', () => {
           'UNDEFINED_STATUS',
           'RFC 4086 does not have a defined status or could not be fetched.',
           { ref: 'https://www.rfc-editor.org/info/rfc4086' }
+        )
+      ])
+    })
+
+    test('an RFC citing the RFC it obsoletes is not told that RFC is obsolete', async () => {
+      const { doc } = await parse(`<rfc version="3" category="bcp" number="10001" obsoletes="3901"><front><title>Test</title></front><back>
+        <references><name>Normative References</name>
+          <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.3901.xml"/>
+          <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.4087.xml"/>
+        </references>
+      </back></rfc>`, 'rfc10001.xml')
+
+      const result = await validateNormativeReferences(doc, { mode: MODES.NORMAL })
+      expect(result).toEqual([
+        new ValidationError(
+          'OBSOLETE_REFERENCE',
+          'RFC 4087 is obsolete and has been replaced by: RFC9000.',
+          { ref: 'https://authors.ietf.org/en/required-content#references' }
         )
       ])
     })
@@ -725,6 +806,16 @@ describe('validateUnclassifiedReferences', () => {
 
       const result = await validateUnclassifiedReferences(doc, { mode: MODES.NORMAL })
       expect(result).toContainError('OBSOLETE_REFERENCE', ValidationError)
+    })
+
+    test('an RFC citing the RFC it obsoletes is not told that RFC is obsolete', async () => {
+      const { doc } = await parse(`<rfc version="3" category="bcp" number="10001" obsoletes="3901"><front><title>Test</title></front><back>
+        <references><name>References</name>
+          <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.3901.xml"/>
+        </references>
+      </back></rfc>`, 'rfc10001.xml')
+
+      await expect(validateUnclassifiedReferences(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
     })
 
     test('FORGIVE_CHECKLIST mode for an obsolete unclassified RFC', async () => {
@@ -983,8 +1074,8 @@ describe('validateInformativeReferences', () => {
     const result = await validateInformativeReferences(doc, { mode: MODES.NORMAL })
     expect(result).toContainEqual(
       expect.objectContaining({
-        name: 'OBSOLETE_REFERENCE',
-        message: 'RFC 5087 is obsolete and has been replaced by: RFC9000, RFC9001.'
+        name: 'OBSOLETE_INFORMATIVE_REFERENCE',
+        message: 'Obsolete informative reference: RFC 5087 has been replaced by RFC9000, RFC9001. Is this intentional?'
       })
     )
   })
@@ -998,8 +1089,8 @@ describe('validateInformativeReferences', () => {
     const result = await validateInformativeReferences(doc, { mode: MODES.FORGIVE_CHECKLIST })
     expect(result).toContainEqual(
       expect.objectContaining({
-        name: 'OBSOLETE_REFERENCE',
-        message: 'RFC 5087 is obsolete and has been replaced by: RFC9000, RFC9001.'
+        name: 'OBSOLETE_INFORMATIVE_REFERENCE',
+        message: 'Obsolete informative reference: RFC 5087 has been replaced by RFC9000, RFC9001. Is this intentional?'
       })
     )
   })
@@ -1018,9 +1109,9 @@ describe('validateInformativeReferences', () => {
 
     const result = await validateInformativeReferences(doc, { mode: MODES.NORMAL })
     expect(result).toEqual([
-      new ValidationError(
-        'OBSOLETE_REFERENCE',
-        'RFC 5087 is obsolete and has been replaced by: RFC9000, RFC9001.',
+      new ValidationWarning(
+        'OBSOLETE_INFORMATIVE_REFERENCE',
+        'Obsolete informative reference: RFC 5087 has been replaced by RFC9000, RFC9001. Is this intentional?',
         { ref: 'https://authors.ietf.org/en/required-content#references' }
       )
     ])
@@ -1032,12 +1123,77 @@ describe('validateInformativeReferences', () => {
 
     const result = await validateInformativeReferences(doc, { mode: MODES.FORGIVE_CHECKLIST })
     expect(result).toEqual([
-      new ValidationWarning(
-        'OBSOLETE_REFERENCE',
-        'RFC 5087 is obsolete and has been replaced by: RFC9000, RFC9001.',
+      new ValidationComment(
+        'OBSOLETE_INFORMATIVE_REFERENCE',
+        'Obsolete informative reference: RFC 5087 has been replaced by RFC9000, RFC9001. Is this intentional?',
         { ref: 'https://authors.ietf.org/en/required-content#references' }
       )
     ])
+  })
+
+  test('an obsolete informative RFC is a question in each mode, not an error', async () => {
+    const doc = await parseTXTRfcReferences({ normative: ['4088'], informative: ['5087'] })
+    const message = 'Obsolete informative reference: RFC 5087 has been replaced by RFC9000, RFC9001. Is this intentional?'
+    const ref = { ref: 'https://authors.ietf.org/en/required-content#references' }
+
+    await expect(validateInformativeReferences(doc, { mode: MODES.NORMAL })).resolves.toEqual([
+      new ValidationWarning('OBSOLETE_INFORMATIVE_REFERENCE', message, ref)
+    ])
+    await expect(validateInformativeReferences(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toEqual([
+      new ValidationComment('OBSOLETE_INFORMATIVE_REFERENCE', message, ref)
+    ])
+    await expect(validateInformativeReferences(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+  })
+
+  test('an RFC citing the RFC it obsoletes is not told that RFC is obsolete', async () => {
+    const doc = await parseTXTRfcReferences({ rfcNumber: '10001', informative: ['3901', '5087'] })
+
+    const result = await validateInformativeReferences(doc, { mode: MODES.NORMAL })
+    expect(result).toEqual([
+      new ValidationWarning(
+        'OBSOLETE_INFORMATIVE_REFERENCE',
+        'Obsolete informative reference: RFC 5087 has been replaced by RFC9000, RFC9001. Is this intentional?',
+        { ref: 'https://authors.ietf.org/en/required-content#references' }
+      )
+    ])
+  })
+
+  test('a draft citing an RFC obsoleted by another RFC is told it is obsolete', async () => {
+    const doc = await parseTXTRfcReferences({ informative: ['3901'] })
+
+    const result = await validateInformativeReferences(doc, { mode: MODES.NORMAL })
+    expect(result).toEqual([
+      new ValidationWarning(
+        'OBSOLETE_INFORMATIVE_REFERENCE',
+        'Obsolete informative reference: RFC 3901 has been replaced by RFC10001. Is this intentional?',
+        { ref: 'https://authors.ietf.org/en/required-content#references' }
+      )
+    ])
+  })
+
+  test('an RFC citing the RFC it obsoletes is not told that RFC is obsolete (XML)', async () => {
+    const back = `<references><name>Informative References</name>
+      <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.3901.xml"/>
+      <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.5087.xml"/>
+    </references>`
+    const expected = [
+      new ValidationWarning(
+        'OBSOLETE_INFORMATIVE_REFERENCE',
+        'Obsolete informative reference: RFC 5087 has been replaced by RFC9000, RFC9001. Is this intentional?',
+        { ref: 'https://authors.ietf.org/en/required-content#references' }
+      )
+    ]
+
+    // -> The number attribute of <rfc>
+    const { doc: withNumber } = await parse(`<rfc version="3" category="bcp" number="10001" obsoletes="3901"><front><title>Test</title></front><back>${back}</back></rfc>`, 'rfc10001.xml')
+    await expect(validateInformativeReferences(withNumber, { mode: MODES.NORMAL })).resolves.toEqual(expected)
+
+    // -> Only an RFC <seriesInfo>, alongside a BCP one
+    const { doc: withSeriesInfo } = await parse(`<rfc version="3" category="bcp" obsoletes="3901"><front><title>Test</title>
+      <seriesInfo name="RFC" value="10001" stream="IETF"/>
+      <seriesInfo name="BCP" value="91" stream="IETF"/>
+    </front><back>${back}</back></rfc>`, 'rfc10001.xml')
+    await expect(validateInformativeReferences(withSeriesInfo, { mode: MODES.NORMAL })).resolves.toEqual(expected)
   })
 
   test('commented-out includes are not informative references (XML)', async () => {
