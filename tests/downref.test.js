@@ -148,6 +148,24 @@ export const mockRestHandlers = [
   http.get('https://datatracker.ietf.org/doc/draft-ietf-published-as-rfc/doc.json', () => {
     return HttpResponse.json({ state: 'RFC' })
   }),
+  http.get('https://datatracker.ietf.org/doc/draft-ietf-info-intended/doc.json', () => {
+    return HttpResponse.json({
+      state: 'Active',
+      intended_std_level: 'Informational',
+      rev_history: [{ rev: '02', name: 'draft-ietf-info-intended', published: '2026-01-01T12:00:00+00:00' }]
+    })
+  }),
+  http.get('https://datatracker.ietf.org/doc/draft-iana-ianabis-rfc8126bis/doc.json', () => {
+    return HttpResponse.json({
+      state: 'Replaced',
+      intended_std_level: null,
+      rev_history: [
+        { rev: '00', name: 'draft-iana-ianabis-rfc8126bis', published: '2025-02-27T21:45:32+00:00' },
+        { rev: '00', name: 'draft-ietf-ianabis-rfc8126bis', published: '2025-08-01T12:00:00+00:00' },
+        { rev: '03', name: 'draft-ietf-ianabis-rfc8126bis', published: '2026-07-06T21:46:23+00:00' }
+      ]
+    })
+  }),
   http.get('https://datatracker.ietf.org/doc/downref/', () => {
     return passthrough()
   }),
@@ -287,6 +305,68 @@ ${entries(informative)}
   return parseTXT(txt, rfcNumber ? `rfc${rfcNumber}.txt` : 'draft-ietf-beep-boop-01.txt')
 }
 
+/**
+ * Entry of the references section of a TXT draft for an Internet-Draft, as xml2rfc writes
+ * it, with the URL wrapped after the path
+ *
+ * @param {string} name Draft name with its version, e.g. draft-ietf-foo-bar-03
+ * @returns {string} References section entry
+ */
+function txtDraftEntry (name) {
+  return `   [I-D.${name.replace(/^draft-/, '').replace(/-\d{2}$/, '')}]
+              Example, A., "Example Protocol", Work in Progress,
+              Internet-Draft, ${name}, 2 January 2025,
+              <https://datatracker.ietf.org/doc/html/
+              ${name}>.`
+}
+
+/**
+ * Parse a TXT draft with the given intended status whose references sections list the given drafts
+ *
+ * @param {Object} opts
+ * @param {string} [opts.intendedStatus] Intended status of the draft
+ * @param {string[]} [opts.normative] Drafts listed under Normative References, with their version
+ * @param {string[]} [opts.informative] Drafts listed under Informative References, with their version
+ * @returns {Promise<Object>} Parsed document
+ */
+async function parseTXTDraftReferences ({ intendedStatus = 'Standards Track', normative = [], informative = [] }) {
+  const header = CANONICAL_TXT.replace('Intended status: Standards Track      ', `Intended status: ${intendedStatus.padEnd(21)}`)
+  const txt = `${header}
+1.  Introduction
+
+   This document cites the drafts below.
+
+2.  References
+
+2.1.  Normative References
+
+${normative.map(txtDraftEntry).join('\n\n')}
+
+2.2.  Informative References
+
+${informative.map(txtDraftEntry).join('\n\n')}
+`
+  return parseTXT(txt, 'draft-ietf-beep-boop-01.txt')
+}
+
+/**
+ * Parse an XML draft of the given category whose references sections list the given drafts
+ *
+ * @param {Object} opts
+ * @param {string} [opts.category] Category of the draft
+ * @param {string[]} [opts.normative] Drafts listed under Normative References, with their version
+ * @param {string[]} [opts.informative] Drafts listed under Informative References, with their version
+ * @returns {Promise<Object>} Parsed document
+ */
+async function parseXMLDraftReferences ({ category = 'std', normative = [], informative = [] }) {
+  const entries = names => names.map(name => `<reference anchor="I-D.${name.replace(/^draft-/, '')}"><front><title>T</title></front><seriesInfo name="Internet-Draft" value="${name}"/></reference>`).join('')
+  const { doc } = await parse(`<rfc version="3" category="${category}" docName="draft-test-references-00"><back>
+    <references><name>Normative References</name>${entries(normative)}</references>
+    <references><name>Informative References</name>${entries(informative)}</references>
+  </back></rfc>`, 'draft-test-references-00.xml')
+  return doc
+}
+
 describe('validateDownrefs', () => {
   describe('TXT Document Type', () => {
     test('valid references with no downrefs', async () => {
@@ -317,14 +397,12 @@ describe('validateDownrefs', () => {
     })
 
     test('FORGIVE_CHECKLIST mode returns warning on non RFC non draft reference', async () => {
-      const doc = cloneDeep(baseTXTDoc)
-      set(doc, 'data.extractedElements.referenceSectionRfc', [{ value: '1094', subsection: 'normative_references' }])
-      set(doc, 'data.extractedElements.draftStatusReferences', [{ value: 'ISO10589', subsection: 'normative_references' }])
-      set(doc, 'data.header.intendedStatus', null)
+      const doc = await parseTXTReferences({ normative: ['[ISO10589]'] })
 
       const result = await validateDownrefs(doc, { mode: MODES.FORGIVE_CHECKLIST })
-      expect(result).toHaveLength(1)
-      expect(result).toContainError('POSSIBLE_DOWNREF', ValidationWarning)
+      expect(result).toEqual([
+        new ValidationWarning('POSSIBLE_DOWNREF', 'Reference to [ISO10589] is possible downref', { ref: 'https://www.rfc-editor.org/info/bcp97' })
+      ])
     })
 
     test('unused informative reference is not a possible downref', async () => {
@@ -559,6 +637,35 @@ describe('validateDownrefs', () => {
       const result = await validateDownrefs(doc, { mode: MODES.FORGIVE_CHECKLIST })
       expect(result).toContainError('DOWNREF_TO_LOWER_STATUS_IN_REGISTRY', ValidationWarning)
     })
+  })
+})
+
+describe('Normative references to drafts are not downrefs', () => {
+  test('a draft whose intended status is lower (TXT)', async () => {
+    const doc = await parseTXTDraftReferences({ normative: ['draft-ietf-info-intended-02'] })
+    expect(doc.data.header.intendedStatus).toBe('Standards Track')
+    expect(doc.data.extractedElements.draftStatusReferences).toEqual([{ value: 'draft-ietf-info-intended-02', subsection: 'normative_references' }])
+
+    await expect(validateDownrefs(doc, { mode: MODES.NORMAL })).resolves.toEqual([])
+  })
+
+  test('a draft without an intended status, cited by its Datatracker URL (TXT)', async () => {
+    const doc = await parseTXTDraftReferences({ normative: ['draft-iana-ianabis-rfc8126bis-00', 'draft-ietf-bess-rfc7432bis-10'] })
+
+    await expect(validateDownrefs(doc, { mode: MODES.NORMAL })).resolves.toEqual([])
+    await expect(validateDownrefs(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toEqual([])
+  })
+
+  test('a draft whose intended status is lower (XML)', async () => {
+    const doc = await parseXMLDraftReferences({ normative: ['draft-ietf-info-intended-02'] })
+
+    await expect(validateDownrefs(doc, { mode: MODES.NORMAL })).resolves.toEqual([])
+  })
+
+  test('a draft without an intended status (XML)', async () => {
+    const doc = await parseXMLDraftReferences({ normative: ['draft-iana-ianabis-rfc8126bis-00', 'draft-ietf-bess-rfc7432bis-10'] })
+
+    await expect(validateDownrefs(doc, { mode: MODES.NORMAL })).resolves.toEqual([])
   })
 })
 
