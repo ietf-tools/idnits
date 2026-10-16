@@ -231,6 +231,127 @@ describe('Missing abstract section', () => {
     expect(result.data.content.abstract).not.toBeNull()
     expect(result.data.content.abstract).toEqual(expect.arrayContaining([expect.stringContaining('Abstract')]))
   })
+
+  // Excerpt from draft-lin-idr-cats-flowspec-ts-05: the abstract text is not indented
+  const unindentedAbstractTXT = [
+    'IDR                                                              C. Lin',
+    'Internet Draft                                     New H3C Technologies',
+    'Intended status: Standards Track                                 H. Yao',
+    'Expires: January 08, 2027                                  China Mobile',
+    '                                                           July 6, 2026',
+    '',
+    '             BGP Flowspec for Computing-Aware Traffic Steering',
+    '                     draft-lin-idr-cats-flowspec-ts-05',
+    '',
+    'Abstract',
+    '',
+    'A BGP Flow Specification is an n-tuple consisting of several matching',
+    'criteria that can be applied to IP traffic. Computing-Aware Traffic',
+    'Steering (CATS) is a framework which optimizes traffic steering to a',
+    'given service instance by taking into account the dynamic nature of',
+    'both computing and network resources. This document specifies a new BGP',
+    'Flow Spec Component Type in order to support CATS traffic forwarding.',
+    '',
+    'Status of this Memo',
+    '',
+    '   This Internet-Draft is submitted in full conformance with the',
+    '   provisions of BCP 78 and BCP 79.',
+    ''
+  ].join('\r\n')
+
+  test('The abstract text is not indented', async () => {
+    const result = await parse(unindentedAbstractTXT, 'draft-lin-idr-cats-flowspec-ts-05.txt')
+    expect(result.data.content.abstract).toHaveLength(7)
+    expect(result.data.content.abstract.at(-1)).toBe('Flow Spec Component Type in order to support CATS traffic forwarding.')
+  })
+
+  // Excerpt from draft-ietf-detnet-glbf-01: the abstract has several paragraphs and crosses a page break
+  const abstractAcrossPagesTXT = `DETNET                                                    T. Eckert, Ed.
+Internet-Draft                                Futurewei Technologies USA
+Intended status: Standards Track                                A. Clemm
+Expires: 21 January 2027                                       Sympotech
+                                                            20 July 2026
+
+
+                       draft-ietf-detnet-glbf-01
+
+Abstract
+
+   This memo proposes a mechanism called "guaranteed Latency Based
+   Forwarding" (gLBF) as part of DetNet for hop-by-hop packet forwarding
+   with per-hop deterministically bounded latency and minimal jitter.
+
+   In addition to reducing the jitter compared to TSN-ATS by additional
+   buffering (dampening) in the network, gLBF also eliminates the need
+   for per-flow, per-hop state maintenance required by TSN-ATS.  This
+   avoids the need to signal per-flow state to every hop from the
+   controller-plane and associated scaling problems.  It also reduces
+   implementation cost for high-speed networking hardware due to the
+
+
+
+Eckert, et al.           Expires 21 January 2027                [Page 1]
+\f
+Internet-Draft                 detnet-glbf                     July 2026
+
+
+   avoidance of additional high-speed speed read/write memory access to
+   retrieve, process and update per-flow state variables for a large
+   number of flows.
+
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+`
+
+  test('The abstract continues across paragraphs and page breaks', async () => {
+    const result = await parse(abstractAcrossPagesTXT, 'draft-ietf-detnet-glbf-01.txt')
+    expect(result.data.content.abstract).toHaveLength(13)
+    expect(result.data.content.abstract.at(-1)).toBe('number of flows.')
+    expect(result.data.content.abstract).not.toEqual(expect.arrayContaining([expect.stringMatching(/\[Page 1\]|July 2026/)]))
+  })
+
+  // Excerpts from draft-juwan-ars-00, whose body repeats the abstract as a numbered section
+  const abstractRepeatedInBodyTXT = `Independent Submission                                          J. Hwang
+Internet-Draft                                            22 August 2026
+Intended status: Informational
+Expires: 23 February 2027
+
+
+               ARS-1 -- Generic Archival Reference System
+                           draft-juwan-ars-00
+
+Abstract
+
+   ARS-1 defines a deterministic, human-oriented, cryptographically
+   derived reference protocol for assigning stable public References to
+   durable digital entities.  Typical references look like NX-174932,
+   CJ3-106, MR-X4928, or KX4-7B19Q2.
+
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+1.  Introduction
+
+   *Status:* v1.0-rc2 (Frozen) *Protocol class:* Generic archival
+   reference and permalink protocol
+
+2.  Abstract
+
+   ARS-1 defines a deterministic, human-oriented, cryptographically
+   derived reference protocol for assigning stable public References to
+   durable digital entities.
+`
+
+  test('A body section repeating the abstract is not the abstract', async () => {
+    const result = await parse(abstractRepeatedInBodyTXT, 'draft-juwan-ars-00.txt')
+    expect(result.data.content.abstract).toHaveLength(5)
+    expect(result.data.markers.abstract.start).toBe(10)
+    expect(result.data.possibleIssues.isAbstractNumbered).toBe(false)
+  })
 })
 
 describe('Missing introduction section', () => {
