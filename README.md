@@ -55,6 +55,7 @@ idnits [args] <file path|url>
 
 | Arguments | Alias | Description | Default |
 |---|---|---|---|
+| `--datatracker-url` |  | Base URL of the Datatracker used for remote lookups. Overrides the `IDNITS_DATATRACKER_URL` environment variable. | `https://datatracker.ietf.org` |
 | `--fail-on` |  | Exit with code `2` if there is at least one nit of the given severity or higher (`errors` > `warnings` > `comments`).<br>Accepted values: `errors`, `warnings`, `comments` |  |
 | `--filter` | `-f` | Filter output to only certain severity types. Can be declared multiple times to filter multiple severity types.<br>Accepted values: `errors`, `warnings`, `comments` |  |
 | `--mode` | `-m` | Validation mode, must be either `normal`, `forgive-checklist` or `submission`<br>Accepted shorthands: `norm`, `n`, `f-c`, `fc`, `f`, `sub`, `s` | `normal` |
@@ -62,10 +63,31 @@ idnits [args] <file path|url>
 | `--no-progress` |  | Disable progress messages / animations in `pretty` output.<br>No effect in other output formats. |  |
 | `--offline` |  | Disable validations that require an internet connection. |  |
 | `--output` | `-o` | Output format, must be either `pretty`, `simple`, `json` or `count` | `pretty` |
+| `--remote-timeout` |  | Seconds allowed for each remote lookup before it fails. Overrides the `IDNITS_REMOTE_TIMEOUT` environment variable. | `10` |
+| `--rfceditor-url` |  | Base URL of the RFC Editor site used for remote lookups. Overrides the `IDNITS_RFCEDITOR_URL` environment variable. | `https://www.rfc-editor.org` |
 | `--solarized` |  | Use alternate colors for a solarized light theme terminal.<br>Only used with the `pretty` output format. |  |
 | `--year` | `-y` | Expect the given year in the boilerplate |  |
 | `--help` | `-h` | Print the help text and exit |  |
 | `--version` |  | Print the version and exit |  |
+
+#### Remote lookups
+
+Unless `--offline` is used, some validations look up the document and the documents it references on the Datatracker (e.g. its latest revision and stream) and the RFC Editor site (e.g. the status of RFCs). The lookups of a document are made once per run, with a `User-Agent` header naming idnits3 and its version (e.g. `idnits3/3.0.0 (+https://github.com/ietf-tools/idnits)`).
+
+The services they are sent to, and the time each lookup is allowed, can be changed with these environment variables, or the matching flags, which take precedence. URLs must be `http` or `https` URLs, a trailing slash is ignored. The timeout is a positive number of seconds; it covers the whole request, response included.
+
+| Environment variable | Flag | Default |
+|---|---|---|
+| `IDNITS_DATATRACKER_URL` | `--datatracker-url` | `https://datatracker.ietf.org` |
+| `IDNITS_RFCEDITOR_URL` | `--rfceditor-url` | `https://www.rfc-editor.org` |
+| `IDNITS_REMOTE_TIMEOUT` | `--remote-timeout` | `10` |
+
+A lookup that times out fails like one to a service that can't be reached: a warning naming the host is printed once, and the validations carry on without its result.
+
+The environment variables also apply when idnits is used as a library in Node.js. In the browser, lookups go through the `/idnits3/api/` endpoints of the page's server instead.
+
+> [!NOTE]
+> **Datatracker deployments:** when idnits runs next to the Datatracker (e.g. in its celery containers), set `IDNITS_DATATRACKER_URL` to the in-cluster Datatracker web service (e.g. `http://datatracker:8000`), so that the lookups made for each submission stay in the cluster instead of going out through the public internet and its CDN. `IDNITS_REMOTE_TIMEOUT` bounds how long a slow or unresponsive Datatracker can hold up the check of a submission.
 
 #### Exit codes
 
