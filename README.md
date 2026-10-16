@@ -71,7 +71,7 @@ idnits [args] <file path|url>
 
 #### Remote lookups
 
-Unless `--offline` is used, some validations look up the document and the documents it references on the Datatracker (e.g. its latest revision and stream) and the RFC Editor site (e.g. the status of RFCs). They are made with a `User-Agent` header naming idnits3 and its version (e.g. `idnits3/3.0.0 (+https://github.com/ietf-tools/idnits)`).
+Unless `--offline` is used, some validations look up the document and the documents it references on the Datatracker (e.g. its latest revision and stream) and the RFC Editor site (e.g. the status of RFCs). The lookups of a document are made once per run, with a `User-Agent` header naming idnits3 and its version (e.g. `idnits3/3.0.0 (+https://github.com/ietf-tools/idnits)`).
 
 The services they are sent to can be changed with these environment variables, or the matching flags, which take precedence. Values must be `http` or `https` URLs, a trailing slash is ignored.
 

@@ -11,6 +11,10 @@ import {
   setRemoteUrls
 } from '../lib/config/remote.mjs'
 import {
+  cachedLookup,
+  clearRemoteCache,
+  DOC_INFO_CACHE_SIZE,
+  DOC_INFO_CACHE_TTL,
   fetchRemoteDocInfo,
   fetchRemoteDocInfoJson,
   fetchRemoteRfcInfo,
@@ -51,6 +55,7 @@ beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
 afterEach(() => {
   server.resetHandlers()
   requests.length = 0
+  clearRemoteCache()
   setRemoteUrls()
   vi.unstubAllEnvs()
   vi.restoreAllMocks()
@@ -138,11 +143,70 @@ describe('Remote lookups', () => {
     expect(requests.every(r => r.userAgent.startsWith('idnits3/'))).toBe(true)
   })
 
+  test('of a document are fetched once, with or without its version', async () => {
+    const results = await Promise.all([
+      fetchRemoteDocInfo('draft-foo-bar'),
+      fetchRemoteDocInfo('draft-foo-bar-02'),
+      fetchRemoteDocInfo('draft-foo-bar-03')
+    ])
+    await fetchRemoteDocInfo('draft-foo-bar-02')
+    expect(results).toEqual(Array(3).fill({ name: 'draft-foo-bar', rev: '02' }))
+    expect(requests).toHaveLength(1)
+  })
+
+  test('that find nothing are shared too', async () => {
+    await expect(fetchRemoteDocInfo('draft-foo-unknown-00')).resolves.toBeNull()
+    await expect(fetchRemoteDocInfo('draft-foo-unknown-01')).resolves.toBeNull()
+    expect(requests).toHaveLength(1)
+  })
+
+  test('are made again after the configured service changes', async () => {
+    await fetchRemoteDocInfo('draft-foo-bar-02')
+    setRemoteUrls({ datatracker: 'http://datatracker.svc:8000' })
+    await expect(fetchRemoteDocInfo('draft-foo-bar-02')).resolves.toEqual({ name: 'draft-foo-bar', rev: '03' })
+    expect(requests).toHaveLength(2)
+  })
+
   test('are not made to an invalid service', async () => {
     vi.stubEnv('IDNITS_DATATRACKER_URL', 'datatracker.svc')
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     await expect(fetchRemoteDocInfo('draft-foo-bar-02')).resolves.toBeUndefined()
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('IDNITS_DATATRACKER_URL must be'))
     expect(requests).toHaveLength(0)
+  })
+})
+
+describe('cachedLookup', () => {
+  test('shares a lookup until it expires', async () => {
+    const now = vi.spyOn(Date, 'now').mockReturnValue(1000)
+    const fetcher = vi.fn(async () => 'value')
+    await expect(cachedLookup('key', fetcher)).resolves.toBe('value')
+    now.mockReturnValue(1000 + DOC_INFO_CACHE_TTL - 1)
+    await cachedLookup('key', fetcher)
+    expect(fetcher).toHaveBeenCalledTimes(1)
+    now.mockReturnValue(1000 + DOC_INFO_CACHE_TTL)
+    await cachedLookup('key', fetcher)
+    expect(fetcher).toHaveBeenCalledTimes(2)
+  })
+
+  test('keeps a bounded number of lookups, dropping the oldest', async () => {
+    const fetcher = vi.fn(async () => 'value')
+    for (let i = 0; i <= DOC_INFO_CACHE_SIZE; i++) {
+      cachedLookup(`key${i}`, fetcher)
+    }
+    expect(fetcher).toHaveBeenCalledTimes(DOC_INFO_CACHE_SIZE + 1)
+    cachedLookup(`key${DOC_INFO_CACHE_SIZE}`, fetcher)
+    cachedLookup('key1', fetcher)
+    expect(fetcher).toHaveBeenCalledTimes(DOC_INFO_CACHE_SIZE + 1)
+    cachedLookup('key0', fetcher)
+    expect(fetcher).toHaveBeenCalledTimes(DOC_INFO_CACHE_SIZE + 2)
+  })
+
+  test('forgets all lookups when cleared', async () => {
+    const fetcher = vi.fn(async () => 'value')
+    await cachedLookup('key', fetcher)
+    clearRemoteCache()
+    await cachedLookup('key', fetcher)
+    expect(fetcher).toHaveBeenCalledTimes(2)
   })
 })
