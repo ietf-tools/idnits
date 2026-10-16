@@ -2314,6 +2314,117 @@ Informative References
     expect(result.data.extractedElements.nonReferenceSectionDraftReferences).not.toContain('[0-9A-HJKMNP-TV-Z]')
   })
 
+  // From draft-sheth-pqc-dnssec-strategy-01
+  test('Detects a declared reference label attached to the preceding word', async () => {
+    const txt = `${metaTXTBlock}
+   Currently standardized post-quantum secure algorithms that provide
+   cryptographic confidence and resilient fallback.  Examples: SLH-DSA
+   in Merkle Tree Ladder (MTL) mode [I-D.harvey-cfrg-mtl-mode],
+   Falcon[FALCON], XMSS[RFC8391], LMS[RFC8554].
+
+   provide routine performance with minimal operational impact.  They
+   may leverage newer but less well-established mathematical concepts.
+   Examples: MAYO[MAYO], SNOVA[SNOVA].
+
+10.  References
+
+10.2.  Informative References
+
+   [FALCON]   Fouque, P., Hoffstein, J., Kirchner, P., Lyubashevsky, V.,
+              Pornin, T., Prest, T., Ricosset, T., Seiler, G., Whyte,
+              W., and Z. Zhang, "Falcon: Fast-Fourier Lattice-based
+              Compact Signatures over NTRU", 10 January 2020,
+              <https://falcon-sign.info/falcon.pdf>.
+
+   [MAYO]     Beullens, W., Campos, F., Celi, S., Hess, B., and M.
+              Kannwischer, "MAYO", 5 February 2025,
+              <https://pqmayo.org/assets/specs/mayo-round2.pdf>.
+
+   [SNOVA]    Wang, L., Chou, C., Ding, J., Kuan, Y., Leegwater, J., Li,
+              M., Tseng, B., Tseng, P., and C. Wang, "SNOVA Proposal for
+              NISTPQC: Additional Digital Signature Schemes", 25 January
+              2025, <https://csrc.nist.gov/csrc/media/Projects/pqc-dig-
+              sig/documents/round-2/spec-files/snova-spec-
+              round2-web.pdf>.
+`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.nonReferenceSectionDraftReferences).toEqual(['[FALCON]', '[MAYO]', '[SNOVA]'])
+    expect(result.data.extractedElements.referenceSectionDraftReferences).toEqual([
+      { value: '[FALCON]', subsection: 'informative_references' },
+      { value: '[MAYO]', subsection: 'informative_references' },
+      { value: '[SNOVA]', subsection: 'informative_references' }
+    ])
+  })
+
+  // From draft-liu-cadi-01
+  test('Detects a declared reference label after a closing quote', async () => {
+    const txt = `${metaTXTBlock}
+         is also mentioned in CISA directive "Strategy for Migrating to
+         Automated Post-Quantum Cryptography Discovery and Inventory
+         Tools"[CISAACDI].
+
+10.  References
+
+10.2.  Informative References
+
+   [CISAACDI] "Strategy for Migrating to Automated Post-Quantum
+              Cryptography Discovery and Inventory Tools", August 2024,
+              <https://www.cisa.gov/sites/default/files/2024-09/
+              Strategy-for-Migrating-to-Automated-PQC-Discovery-and-
+              Inventory-Tools.pdf>.
+`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.nonReferenceSectionDraftReferences).toEqual(['[CISAACDI]'])
+    expect(result.data.extractedElements.referenceSectionDraftReferences).toEqual([
+      { value: '[CISAACDI]', subsection: 'informative_references' }
+    ])
+  })
+
+  // From draft-knodel-age-arch-01
+  test('Detects a declared reference label after a full stop', async () => {
+    const txt = `${metaTXTBlock}
+   identification process over time, which have implications for human
+   rights.[UN-HRC-29-32]
+
+9.  Informative References
+
+   [UN-HRC-29-32]
+              United Nations Human Rights Council, "Report of the Office
+              of the United Nations High Commissioner for Human Rights:
+              The Right to Privacy in the Digital Age", 2015,
+              <https://undocs.org/A/HRC/29/32>.
+`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.nonReferenceSectionDraftReferences).toEqual(['[UN-HRC-29-32]'])
+    expect(result.data.extractedElements.referenceSectionDraftReferences).toEqual([
+      { value: '[UN-HRC-29-32]', subsection: 'informative_references' }
+    ])
+  })
+
+  // From draft-bhatti-ilnp-tcp-udp-checksums-01
+  test('Does not take an array index as a reference label', async () => {
+    const txt = `${metaTXTBlock}
+       s_L64 += ntohs(((uint16_t *) src_L64)[i]);
+       d_L64 += ntohs(((uint16_t *) dst_L64)[i]);
+`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.nonReferenceSectionDraftReferences).not.toContain('[i]')
+  })
+
+  // From draft-aiendpoint-ai-discovery-01
+  test('Does not take a character class after an anchor as a reference label', async () => {
+    const txt = `${metaTXTBlock}
+      expression ^[a-z][a-z0-9_]*$ (lowercase ASCII letters, digits, and
+`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.nonReferenceSectionDraftReferences).not.toContain('[a-z]')
+  })
+
   // From draft-sergeev-claim-boundaries-01
   test('Takes a declared reference label only from the start of a reference entry', async () => {
     const txt = `${metaTXTBlock}
