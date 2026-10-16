@@ -2255,6 +2255,17 @@ Informative References
     ])
   })
 
+  // From draft-aevum-agentcard-00
+  test('Does not take a character class in parentheses as a reference label', async () => {
+    const txt = `${metaTXTBlock}
+   1.   agent_id MUST be exactly 26 characters drawn from the Crockford
+        Base32 alphabet ([0-9A-HJKMNP-TV-Z]).
+`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.nonReferenceSectionDraftReferences).not.toContain('[0-9A-HJKMNP-TV-Z]')
+  })
+
   // From draft-sergeev-claim-boundaries-01
   test('Takes a declared reference label only from the start of a reference entry', async () => {
     const txt = `${metaTXTBlock}
