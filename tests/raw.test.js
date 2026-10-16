@@ -29,6 +29,21 @@ describe('input does not include invalid control chars', () => {
     await expect(validateContent('abc\tdef\tgeh', { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('TABS_NOT_ALLOWED', ValidationWarning)
     await expect(validateContent('abc\tdef\tgeh', { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
   })
+  test('tabs are listed with their position', async () => {
+    const [result] = await validateContent('abc\tdef\n\tgeh')
+    expect(result.message).toBe('Document contains 2 tabs. Remove or replace them with spaces.')
+    expect(result.lines).toEqual([{ line: 1, pos: 3 }, { line: 2, pos: 0 }])
+    const [many] = await validateContent('\t'.repeat(25))
+    expect(many.message).toContain('25 tabs')
+    expect(many.lines).toHaveLength(20)
+  })
+  test('tabs in XML are left to validateTabs', async () => {
+    for (const mode of [MODES.NORMAL, MODES.FORGIVE_CHECKLIST, MODES.SUBMISSION]) {
+      await expect(validateContent('<rfc>\t</rfc>', { mode, type: 'xml' })).resolves.toHaveLength(0)
+    }
+    await expect(validateContent('<rfc>\t\b</rfc>', { type: 'xml' })).resolves.toContainError('INVALID_CTRL_CODES', ValidationError)
+    await expect(validateContent('<rfc>\t\b</rfc>', { type: 'xml' })).resolves.toHaveLength(1)
+  })
   test('invalid 0B char', async () => {
     await expect(validateContent('abc\vdef')).resolves.toContainError('INVALID_CTRL_CODES', ValidationError)
     await expect(validateContent('abc\vdef', { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('INVALID_CTRL_CODES', ValidationWarning)
