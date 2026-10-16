@@ -741,6 +741,13 @@ describe('document should have valid version', () => {
       await expect(validateVersion(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
       await expect(validateVersion(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('UNEXPECTED_DOC_VERSION', ValidationWarning)
     })
+    test('no docName (reported as DOCNAME_MISSING)', async () => {
+      const { doc } = await parse(`<?xml version="1.0" encoding="UTF-8"?>
+<rfc version="3">
+  <front><title>Test</title><seriesInfo name="Internet-Draft" value=""/></front>
+</rfc>`, 'draft-ietf-beep-boop-01.xml')
+      await expect(validateVersion(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+    })
   })
 
   describe('TXT Document Type', () => {

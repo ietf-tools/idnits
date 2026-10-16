@@ -192,4 +192,44 @@ describe('XML parser should determine the document kind', () => {
     expect(doc.docKindCertainty).toBe('guess')
     expect(nits).toContainError('XML_UNEXPECTED_SERIESINFO_NAME', ValidationWarning)
   })
+
+  // Without a <seriesInfo> (e.g. v2 documents), the document kind follows
+  // what the document declares, not what the file happens to be called
+  test.each([
+    ['docName, filename without draft- prefix', '<rfc docName="draft-ietf-beep-boop-00">', 'paper.xml', 'draft'],
+    ['docName, filename of an RFC', '<rfc docName="draft-ietf-beep-boop-00">', 'rfc9999.xml', 'draft'],
+    ['empty number and docName', '<rfc number="" docName="draft-ietf-beep-boop-00">', 'paper.xml', 'draft'],
+    ['number, filename of a draft', '<rfc number="9999" docName="draft-ietf-beep-boop-00">', 'draft-ietf-beep-boop-00.xml', 'rfc'],
+    ['neither, filename of a draft', '<rfc>', 'draft-ietf-beep-boop-00.xml', 'draft'],
+    ['neither, filename of an RFC', '<rfc>', 'rfc9999.xml', 'rfc']
+  ])('no seriesInfo: %s', async (_, rfcTag, filename, docKind) => {
+    const { doc, nits } = await parse(`<?xml version="1.0" encoding="UTF-8"?>
+${rfcTag}
+  <front><title>Test</title></front>
+</rfc>`, filename)
+    expect(doc.docKind).toBe(docKind)
+    expect(doc.docKindCertainty).toBe('guess')
+    expect(nits).toHaveLength(0)
+  })
+
+  test('no seriesInfo, docName or number, and a filename that says nothing', async () => {
+    await expect(parse(`<?xml version="1.0" encoding="UTF-8"?>
+<rfc>
+  <front><title>Test</title></front>
+</rfc>`, 'paper.xml')).rejects.toThrow(expect.objectContaining({ name: 'XML_UNRECOGNIZED_DOC_KIND' }))
+  })
+
+  test.each([
+    ['RFC', 'BCP', 'rfc'],
+    ['BCP', 'RFC', 'rfc'],
+    ['RFC', 'Internet-Draft', 'draft']
+  ])('several seriesInfo: %s and %s', async (first, second, docKind) => {
+    const { doc, nits } = await parse(`<?xml version="1.0" encoding="UTF-8"?>
+<rfc version="3" number="9999" docName="draft-ietf-beep-boop-00">
+  <front><title>Test</title><seriesInfo name="${first}" value="1"/><seriesInfo name="${second}" value="2"/></front>
+</rfc>`, 'paper.xml')
+    expect(doc.docKind).toBe(docKind)
+    expect(doc.docKindCertainty).toBe('strict')
+    expect(nits).toHaveLength(0)
+  })
 })

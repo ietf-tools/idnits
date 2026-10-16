@@ -39,6 +39,7 @@ import {
 import { baseTXTDoc } from './fixtures/base-doc.mjs'
 import { abstractTXTBlock, introductionTXTBlock, metaTXTBlock } from './fixtures/txt-blocks/section-blocks.mjs'
 import { parse } from '../lib/parsers/txt.mjs'
+import { CANONICAL_TXT } from './generators/doc-txt.js'
 import { cloneDeep } from 'lodash-es'
 import { DateTime } from 'luxon'
 import { PAGE_THRESHOLD_REQUIRING_TOC } from '../lib/config/consts.mjs'
@@ -313,19 +314,16 @@ describe('The Document have an acceptable paragraph pointing to the list of curr
 })
 
 describe('Validate document name on first page.', () => {
-  test('Document name doesn`t on first page', async () => {
-    const doc = cloneDeep(baseTXTDoc)
+  test('Document name not on first page', async () => {
+    const doc = await parse(CANONICAL_TXT.replace('draft-ietf-beep-boop-01', ''), 'draft-ietf-beep-boop-01.txt')
+    expect(doc.data.slug).toBeNull()
 
-    doc.data.slug = null
-
-    await expect(validateDocumentName(doc, { mode: MODES.NORMAL })).resolves.toContainError('DOCUMENT_NAME_MISSING', ValidationError)
-    await expect(validateDocumentName(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('DOCUMENT_NAME_MISSING', ValidationError)
+    await expect(validateDocumentName(doc, { mode: MODES.NORMAL })).resolves.toContainError('DOCUMENT_NAME_MISSING', ValidationWarning)
+    await expect(validateDocumentName(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('DOCUMENT_NAME_MISSING', ValidationWarning)
     await expect(validateDocumentName(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('DOCUMENT_NAME_MISSING', ValidationError)
   })
   test('Document name is present', async () => {
-    const doc = cloneDeep(baseTXTDoc)
-
-    doc.data.slug = 'draft-'
+    const doc = await parse(CANONICAL_TXT, 'draft-ietf-beep-boop-01.txt')
 
     await expect(validateDocumentName(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
     await expect(validateDocumentName(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
