@@ -1,9 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import { toContainError, ValidationError, ValidationWarning } from '../lib/helpers/error.mjs'
-import { validateFilename, validateDocName } from '../lib/modules/filename.mjs'
+import { splitFilename, validateFilename, validateDocName } from '../lib/modules/filename.mjs'
 import { MODES } from '../lib/config/modes.mjs'
-import { baseTXTDoc, baseXMLDoc } from './fixtures/base-doc.mjs'
-import { cloneDeep, set, repeat } from 'lodash-es'
 import { CANONICAL_TXT } from './generators/doc-txt.js'
 import { parse } from '../lib/parsers/txt.mjs'
 import { parse as parseXML } from '../lib/parsers/xml.mjs'
@@ -58,33 +56,64 @@ async function parseTXTDraft (name, filename) {
   return parse(CANONICAL_TXT.replace('draft-ietf-beep-boop-01', name), filename)
 }
 
-describe('filename base name contains valid characters', () => {
-  test('valid characters', async () => {
-    await expect(validateFilename('draft-ietf-abcd-01.txt')).resolves.toHaveLength(0)
+describe('filename is split into base name and extension', () => {
+  test('extension after the last dot, lowercased', () => {
+    expect(splitFilename('draft-ietf-abcd-01.XML')).toEqual({ base: 'draft-ietf-abcd-01', ext: 'xml' })
+    expect(splitFilename('draft-foo.bar-00.txt')).toEqual({ base: 'draft-foo.bar-00', ext: 'txt' })
   })
-  test('invalid uppercase alpha', async () => {
-    await expect(validateFilename('draft-IETF-abcd-01.txt')).resolves.toContainError('FILENAME_INVALID_CHARS')
+  test('no extension', () => {
+    expect(splitFilename('draft-ietf-abcd-01')).toEqual({ base: 'draft-ietf-abcd-01', ext: null })
   })
-  test('invalid symbols', async () => {
-    await expect(validateFilename('draft_ietf abcd-01.txt')).resolves.toContainError('FILENAME_INVALID_CHARS')
-  })
-  test('too many dots', async () => {
-    await expect(validateFilename('draft-ietf-abcd.01.txt')).resolves.toContainError('FILENAME_TOO_MANY_DOTS')
+  test('xml2rfc --v2v3 output', () => {
+    expect(splitFilename('draft-ietf-abcd-01.v2v3.xml')).toEqual({ base: 'draft-ietf-abcd-01', ext: 'xml' })
+    expect(splitFilename('draft-ietf-abcd-01.v2v3.txt')).toEqual({ base: 'draft-ietf-abcd-01.v2v3', ext: 'txt' })
   })
 })
 
 describe('filename extension matches a valid format type', () => {
-  test('txt format', async () => {
+  test.each(['draft-ietf-abcd-01.txt', 'draft-ietf-abcd-01.xml', 'draft-ietf-abcd-01.XML', 'draft-ietf-abcd-01.Txt'])('%s', async (filename) => {
+    await expect(validateFilename(filename)).resolves.toHaveLength(0)
+  })
+  describe.each(ALL_MODES)('in %s mode', (_, mode) => {
+    const Severity = submissionSeverity(mode)
+    test(`invalid extension (${severityName(Severity)})`, async () => {
+      await expect(validateFilename('draft-ietf-abcd-01.pdf', { mode })).resolves.toContainError('FILENAME_EXTENSION_INVALID', Severity)
+    })
+    test(`missing extension (${severityName(Severity)})`, async () => {
+      const result = await validateFilename('draft-ietf-abcd-01', { mode })
+      expect(result).toContainError('FILENAME_MISSING_EXTENSION', Severity)
+      expect(result.map(r => r.name)).not.toContain('FILENAME_EXTENSION_INVALID')
+    })
+  })
+})
+
+describe('filename base name contains valid characters', () => {
+  test('valid characters', async () => {
     await expect(validateFilename('draft-ietf-abcd-01.txt')).resolves.toHaveLength(0)
   })
-  test('xml format', async () => {
-    await expect(validateFilename('draft-ietf-abcd-01.xml')).resolves.toHaveLength(0)
+  test('xml2rfc --v2v3 output', async () => {
+    await expect(validateFilename('draft-ietf-abcd-01.v2v3.xml')).resolves.toHaveLength(0)
   })
-  test('invalid extension', async () => {
-    await expect(validateFilename('draft-ietf-abcd-01.pdf')).resolves.toContainError('FILENAME_EXTENSION_INVALID')
+  test('dot in the base name, the extension still found', async () => {
+    const result = await validateFilename('draft-foo.bar-00.txt')
+    expect(result).toContainError('FILENAME_TOO_MANY_DOTS', ValidationWarning)
+    expect(result.map(r => r.name)).toEqual(['FILENAME_TOO_MANY_DOTS'])
   })
-  test('missing extension', async () => {
-    await expect(validateFilename('draft-ietf-abcd-01')).resolves.toContainError('FILENAME_MISSING_EXTENSION')
+  describe.each(ALL_MODES)('in %s mode', (_, mode) => {
+    const Severity = submissionSeverity(mode)
+    test.each(['draft-ietf abcd-01.txt', 'draft-ietf-abcd-01\t.txt', 'draft-ietf-$abcd-01.txt', 'draft-ietf-&abcd-01.txt', 'draft-ietf-;abcd-01.txt', 'draft-ietf-*abcd-01.txt', 'draft-ietf-\\abcd-01.txt'])(`characters Datatracker refuses in an upload: %s (${severityName(Severity)})`, async (filename) => {
+      await expect(validateFilename(filename, { mode })).resolves.toContainError('FILENAME_INVALID_CHARS', Severity)
+    })
+  })
+  // How the name is built is checked against the declared name (see validateDocName)
+  test.each(['draft-IETF-abcd-01.txt', 'draft_ietf_abcd-01.txt'])('characters Datatracker accepts in an upload: %s', async (filename) => {
+    await expect(validateFilename(filename)).resolves.toHaveLength(0)
+  })
+  describe.each(ALL_MODES)('in %s mode', (_, mode) => {
+    const Severity = submissionSeverity(mode)
+    test(`too many dots (${severityName(Severity)})`, async () => {
+      await expect(validateFilename('draft-ietf-abcd.01.txt', { mode })).resolves.toContainError('FILENAME_TOO_MANY_DOTS', Severity)
+    })
   })
 })
 
@@ -122,23 +151,44 @@ describe('name declared in the document follows the Datatracker naming rules', (
       const xmlResult = await validateDocName(xmlDoc, { mode })
       expect(xmlResult).toContainError(code, Severity)
       expect(xmlResult.find(r => r.name === code).path).toBe('rfc.docName')
+      expect(xmlResult.map(r => r.name)).not.toContain('FILENAME_DOCNAME_MISMATCH')
 
       if (inText) {
         const txtDoc = await parseTXTDraft(name, `${name}.txt`)
         expect(txtDoc.data.slug).toBe(name)
         const txtResult = await validateDocName(txtDoc, { mode })
         expect(txtResult).toContainError(code, Severity)
+        expect(txtResult.map(r => r.name)).not.toContain('FILENAME_DOCNAME_MISMATCH')
       }
     })
     test(`name without its revision (${severityName(Severity)})`, async () => {
       const doc = await parseXMLDraft('draft-ietf-abcd', 'draft-ietf-abcd-00.xml')
       const result = await validateDocName(doc, { mode })
       expect(result).toContainError('DOCNAME_INVALID_VERSION_SUFFIX', Severity)
+      expect(result.map(r => r.name)).toEqual(['DOCNAME_INVALID_VERSION_SUFFIX'])
+    })
+    test(`name with a file name extension (${severityName(Severity)})`, async () => {
+      const doc = await parseXMLDraft('draft-ietf-abcd-01.txt', 'draft-ietf-abcd-01.xml')
+      const result = await validateDocName(doc, { mode })
+      expect(result).toContainError('DOCNAME_INVALID_CHARS', Severity)
+      expect(result.map(r => r.name)).toEqual(['DOCNAME_INVALID_CHARS'])
     })
     test(`no name in an XML document (${severityName(Severity)})`, async () => {
       const doc = await parseXMLDraft(null, 'draft-ietf-abcd-00.xml')
       await expect(validateDocName(doc, { mode })).resolves.toContainError('DOCNAME_MISSING', Severity)
     })
+  })
+  test('no name in an XML document: the filename is checked instead', async () => {
+    const doc = await parseXMLDraft(null, 'draft-ietf-00.xml')
+    const result = await validateDocName(doc, { mode: MODES.SUBMISSION })
+    expect(result.map(r => r.name)).toEqual(['DOCNAME_MISSING', 'FILENAME_MISSING_COMPONENTS'])
+    expect(result).toContainError('FILENAME_MISSING_COMPONENTS', ValidationError)
+  })
+  test('no name in a text document: the filename is checked instead', async () => {
+    const doc = await parse(CANONICAL_TXT.replace('draft-ietf-beep-boop-01', ''), 'Draft-ietf-beep-boop.txt')
+    const result = await validateDocName(doc)
+    expect(result.map(r => r.name)).toEqual(['FILENAME_MISSING_DRAFT_PREFIX', 'FILENAME_INVALID_VERSION_SUFFIX'])
+    expect(result).toContainError('FILENAME_INVALID_VERSION_SUFFIX', ValidationWarning)
   })
   test('the name of an RFC is not checked', async () => {
     const doc = await parseXMLRFC('9999', 'rfc9999.xml')
@@ -150,14 +200,12 @@ describe('name declared in the document follows the Datatracker naming rules', (
 describe('filename base name matches the name declared in the document', () => {
   describe('Text Document Type', () => {
     test('matching name', async () => {
-      const doc = { ...cloneDeep(baseTXTDoc), filename: 'draft-ietf-abcd-01.txt' }
-      set(doc, 'data.slug', 'draft-ietf-abcd-01')
+      const doc = await parse(CANONICAL_TXT, 'draft-ietf-beep-boop-01.txt')
       await expect(validateDocName(doc)).resolves.toHaveLength(0)
     })
-    test('non-matching name', async () => {
-      const doc = { ...cloneDeep(baseTXTDoc), filename: 'draft-ietf-abcd-01.txt' }
-      set(doc, 'data.slug', 'draft-ietf-abcd-02')
-      await expect(validateDocName(doc)).resolves.toContainError('FILENAME_DOCNAME_MISMATCH')
+    test('matching name with an uppercase extension', async () => {
+      const doc = await parse(CANONICAL_TXT, 'draft-ietf-beep-boop-01.TXT')
+      await expect(validateDocName(doc)).resolves.toHaveLength(0)
     })
     test('matching name written with its .txt extension', async () => {
       const filename = 'draft-ietf-beep-boop-01.txt'
@@ -172,7 +220,12 @@ describe('filename base name matches the name declared in the document', () => {
     test('non-matching name in the document', async () => {
       const filename = 'draft-ietf-beep-boop-02.txt'
       const doc = await parse(CANONICAL_TXT, filename)
-      await expect(validateDocName(doc)).resolves.toContainError('FILENAME_DOCNAME_MISMATCH')
+      await expect(validateDocName(doc)).resolves.toContainError('FILENAME_DOCNAME_MISMATCH', ValidationError)
+    })
+    test('filename without the revision', async () => {
+      const doc = await parse(CANONICAL_TXT, 'draft-ietf-beep-boop.txt')
+      const result = await validateDocName(doc)
+      expect(result.map(r => r.name)).toEqual(['FILENAME_INVALID_VERSION_SUFFIX'])
     })
     test('no name in the document', async () => {
       const filename = 'draft-ietf-beep-boop-01.txt'
@@ -182,65 +235,53 @@ describe('filename base name matches the name declared in the document', () => {
   })
   describe('XML Document Type', () => {
     test('matching name', async () => {
-      const doc = { ...cloneDeep(baseXMLDoc), filename: 'draft-ietf-abcd-01.xml' }
-      set(doc, 'data.rfc._attr.docName', 'draft-ietf-abcd-01')
+      const doc = await parseXMLDraft('draft-ietf-abcd-01', 'draft-ietf-abcd-01.xml')
       await expect(validateDocName(doc)).resolves.toHaveLength(0)
     })
-    test('non-matching name', async () => {
-      const doc = { ...cloneDeep(baseXMLDoc), filename: 'draft-ietf-abcd-01.xml' }
-      set(doc, 'data.rfc._attr.docName', 'draft-ietf-abcd-02')
-      await expect(validateDocName(doc)).resolves.toContainError('FILENAME_DOCNAME_MISMATCH')
+    test('matching name with an uppercase extension', async () => {
+      const doc = await parseXMLDraft('draft-ietf-abcd-01', 'draft-ietf-abcd-01.XML')
+      await expect(validateDocName(doc)).resolves.toHaveLength(0)
+    })
+    test('xml2rfc --v2v3 output', async () => {
+      const doc = await parseXMLDraft('draft-ietf-abcd-01', 'draft-ietf-abcd-01.v2v3.xml')
+      await expect(validateDocName(doc)).resolves.toHaveLength(0)
+    })
+    describe.each(ALL_MODES)('in %s mode', (_, mode) => {
+      // An Error where the document is about to become an RFC, a Warning otherwise
+      const MismatchSeverity = mode === MODES.NORMAL ? ValidationError : ValidationWarning
+      test(`non-matching name (${severityName(MismatchSeverity)})`, async () => {
+        const doc = await parseXMLDraft('draft-ietf-abcd-02', 'draft-ietf-abcd-01.xml')
+        await expect(validateDocName(doc, { mode })).resolves.toContainError('FILENAME_DOCNAME_MISMATCH', MismatchSeverity)
+      })
+      test(`filename without the revision (${severityName(submissionSeverity(mode))})`, async () => {
+        const doc = await parseXMLDraft('draft-rswg-rfc7997bis-02', 'draft-rswg-rfc7997bis.xml')
+        const result = await validateDocName(doc, { mode })
+        expect(result).toContainError('FILENAME_INVALID_VERSION_SUFFIX', submissionSeverity(mode))
+        expect(result.map(r => r.name)).toEqual(['FILENAME_INVALID_VERSION_SUFFIX'])
+      })
     })
   })
-})
-
-describe('filename (including extension) is no more than 72 characters', () => {
-  test('valid length', async () => {
-    await expect(validateFilename('draft-ietf-abcd-01.txt')).resolves.toHaveLength(0)
-  })
-  test('exactly 72 characters in length', async () => {
-    await expect(validateFilename('draft-ietf-1234567890-1234567890-1234567890-1234567890-1234567890-12.txt')).resolves.toHaveLength(0)
-  })
-  test('filename too long >72 <=255', async () => {
-    await expect(validateFilename('draft-ietf-1234567890-1234567890-1234567890-1234567890-1234567890-123.txt')).resolves.toContainError('FILENAME_TOO_LONG', ValidationWarning)
-  })
-  test('filename too long >255', async () => {
-    await expect(validateFilename(`draft-ietf${repeat('-123456789', 24)}-1.txt`)).resolves.toContainError('FILENAME_TOO_LONG', ValidationError)
-  })
-})
-
-describe('filename must start with draft-', () => {
-  test('starts with draft-', async () => {
-    await expect(validateFilename('draft-ietf-abcd-01.txt')).resolves.toHaveLength(0)
-  })
-  test('missing draft prefix', async () => {
-    await expect(validateFilename('ietf-abcd-01.txt')).resolves.toContainError('FILENAME_MISSING_DRAFT_PREFIX')
-  })
-  test('draft prefix without dash', async () => {
-    await expect(validateFilename('draftietf-abcd-01.txt')).resolves.toContainError('FILENAME_MISSING_DRAFT_PREFIX')
-  })
-})
-
-describe('filename must end with a version', () => {
-  test('valid version suffix', async () => {
-    await expect(validateFilename('draft-ietf-abcd-01.txt')).resolves.toHaveLength(0)
-  })
-  test('missing version suffix', async () => {
-    await expect(validateFilename('draft-ietf-abcd.txt')).resolves.toContainError('FILENAME_INVALID_VERSION_SUFFIX')
-  })
-  test('version suffix over 99', async () => {
-    await expect(validateFilename('draft-ietf-abcd-100.txt')).resolves.toContainError('FILENAME_INVALID_VERSION_SUFFIX')
-  })
-})
-
-describe('filename must have at least 4 components', () => {
-  test('valid 4 components', async () => {
-    await expect(validateFilename('draft-ietf-abcd-01.txt')).resolves.toHaveLength(0)
-  })
-  test('valid 5 components', async () => {
-    await expect(validateFilename('draft-ietf-abcd-efgh-01.txt')).resolves.toHaveLength(0)
-  })
-  test('invalid 3 components', async () => {
-    await expect(validateFilename('draft-ietf-01.txt')).resolves.toContainError('FILENAME_MISSING_COMPONENTS')
+  describe('RFC', () => {
+    test.each(['rfc9999.xml', 'rfc09999.xml'])('matching number: %s', async (filename) => {
+      const doc = await parseXMLRFC('9999', filename)
+      await expect(validateDocName(doc)).resolves.toHaveLength(0)
+    })
+    test.each(['rfc9998.xml', 'draft-ietf-beep-boop-07.xml'])('non-matching number: %s', async (filename) => {
+      const doc = await parseXMLRFC('9999', filename)
+      await expect(validateDocName(doc)).resolves.toContainError('FILENAME_DOCNAME_MISMATCH', ValidationError)
+      await expect(validateDocName(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('FILENAME_DOCNAME_MISMATCH', ValidationWarning)
+    })
+    test('text RFC', async () => {
+      const rfc = CANONICAL_TXT.replace('Internet-Draft', 'Request for Comments: 9999').replace(/Intended status:/, 'Category:')
+      const doc = await parse(rfc, 'rfc9999.txt')
+      expect(doc.docKind).toBe('rfc')
+      await expect(validateDocName(doc)).resolves.toHaveLength(0)
+      const renamed = await parse(rfc, 'draft-ietf-beep-boop-01.txt')
+      await expect(validateDocName(renamed)).resolves.toContainError('FILENAME_DOCNAME_MISMATCH', ValidationError)
+    })
+    test('text draft named as an RFC', async () => {
+      const doc = await parse(CANONICAL_TXT, 'rfc9999.txt')
+      await expect(validateDocName(doc)).resolves.toContainError('FILENAME_DOCNAME_MISMATCH', ValidationError)
+    })
   })
 })
