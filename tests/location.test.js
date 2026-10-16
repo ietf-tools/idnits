@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import { parse } from '../lib/parsers/xml.mjs'
-import { getXmlLocationLabel, labelFindings, parsePath } from '../lib/helpers/location.mjs'
+import { addXmlSourceLines, findXmlSourceOffset, getXmlLocationLabel, labelFindings, parsePath } from '../lib/helpers/location.mjs'
+import { scanXmlSource } from '../lib/helpers/xml-source.mjs'
 import { ValidationWarning } from '../lib/helpers/error.mjs'
 import { checkNits } from '../lib/index.mjs'
 
@@ -161,6 +162,68 @@ describe('location', () => {
     })
   })
 
+  describe('findXmlSourceOffset()', () => {
+    test.each([
+      // Elements, with [0] on an only child as some checks give it
+      ['rfc.middle.section[0].t[1]', { line: 17, pos: 6 }, true],
+      ['rfc.middle.section[0].t[1].#text', { line: 17, pos: 6 }, true],
+      ['rfc.middle.section[2].section[1]', { line: 28, pos: 6 }, true],
+      ['rfc.back.references.references[0].reference[1]', { line: 41, pos: 8 }, true],
+      ['rfc.front.abstract', { line: 8, pos: 4 }, true],
+      ['rfc.front.abstract[0]', { line: 8, pos: 4 }, true],
+      ['rfc.rfc.middle.section[0].t[0].', { line: 16, pos: 6 }, true],
+      // Attributes, under _attr or by their bare name
+      ['rfc._attr.ipr', { line: 2, pos: 50 }, true],
+      ['rfc.docName', { line: 2, pos: 17 }, true],
+      ['rfc.front.author[1].fullname', { line: 6, pos: 12 }, true],
+      ['rfc.front.author[1]._attr.fullname', { line: 6, pos: 12 }, true],
+      // Not in the source: nearest ancestor
+      ['rfc.front.author[1].organization', { line: 6, pos: 4 }, false],
+      ['rfc.front.author[1]._attr.asciiFullname', { line: 6, pos: 4 }, false],
+      ['rfc.number', { line: 2, pos: 0 }, false],
+      ['rfc.middle.section', { line: 14, pos: 2 }, false],
+      ['rfc.middle.section[7].t[0]', { line: 14, pos: 2 }, false],
+      ['rfc.middle.section[0].t[9]', { line: 15, pos: 4 }, false],
+      ['rfc.middle.section[name=Introduction]', { line: 14, pos: 2 }, false]
+    ])('%s → %o', async (path, expected, exact) => {
+      const doc = await getDoc()
+      const source = scanXmlSource(doc.body)
+      const found = findXmlSourceOffset(source, doc.body, path)
+      expect(source.position(found.offset)).toEqual(expected)
+      expect(found.exact).toBe(exact)
+    })
+    test('should not locate paths outside the root element', async () => {
+      const doc = await getDoc()
+      expect(findXmlSourceOffset(scanXmlSource(doc.body), doc.body, 'data.content.abstract')).toBeNull()
+      expect(findXmlSourceOffset(scanXmlSource(''), '', 'rfc.front')).toBeNull()
+    })
+    test('should not be misled by attribute names in quoted values', () => {
+      const xml = '<rfc title="a docName=b" docName="c"/>'
+      const found = findXmlSourceOffset(scanXmlSource(xml), xml, 'rfc.docName')
+      expect(xml.slice(found.offset)).toEqual('docName="c"/>')
+    })
+  })
+
+  describe('addXmlSourceLines()', () => {
+    test('should add the source line of XML findings with a path and leave others untouched', async () => {
+      const doc = await getDoc()
+      const findings = [
+        new ValidationWarning('A', 'a', { path: 'rfc.middle.section[2].section[1]' }),
+        new ValidationWarning('B', 'b'),
+        new ValidationWarning('C', 'c', { path: 'rfc.middle.section[0].t[0]', lines: [{ line: 99, pos: 1 }] })
+      ]
+      addXmlSourceLines(findings, doc)
+      expect(findings[0].lines).toEqual([{ line: 28, pos: 6 }])
+      expect(findings[1].lines).toBeUndefined()
+      expect(findings[2].lines).toEqual([{ line: 99, pos: 1 }])
+    })
+    test('should not add lines to findings of text documents', () => {
+      const findings = [new ValidationWarning('A', 'a', { path: 'rfc.front.date' })]
+      addXmlSourceLines(findings, { type: 'txt', body: '<rfc><front><date/></front></rfc>', data: {} })
+      expect(findings[0].lines).toBeUndefined()
+    })
+  })
+
   describe('checkNits()', () => {
     test('should add a label to XML findings that have a path', async () => {
       const xml = SAMPLE_XML.replace('<t>Intro two.</t>', '<t>Implementations MUST do this.</t>')
@@ -169,6 +232,20 @@ describe('location', () => {
       expect(finding).toBeDefined()
       expect(finding.path).toEqual('rfc.middle.section[0].t[1]')
       expect(finding.label).toEqual('Section 1 (Introduction), paragraph 2')
+    })
+    test('should add the source line to XML findings that have a path', async () => {
+      const xml = SAMPLE_XML.replace('<t>Intro two.</t>', '<t>Implementations MUST do this.</t>')
+      const result = await checkNits(Buffer.from(xml), 'draft-test-location-00.xml', { offline: true })
+      const finding = result.find(r => r.name === 'MISSING_BCP14_TAGS')
+      expect(finding.lines).toEqual([{ line: 17, pos: 6 }])
+    })
+    test('should keep the lines a check gives', async () => {
+      const xml = SAMPLE_XML.replace('<figure><artwork>art</artwork></figure>', '<sourcecode>a\tb</sourcecode>')
+      const result = await checkNits(Buffer.from(xml), 'draft-test-location-00.xml', { offline: true })
+      const finding = result.find(r => r.name === 'TABS_IN_CODE')
+      expect(finding.path).toEqual('rfc.middle.section[2].sourcecode')
+      // (the tab, not the start of the element)
+      expect(finding.lines).toEqual([{ line: 23, pos: 19 }])
     })
   })
 })
