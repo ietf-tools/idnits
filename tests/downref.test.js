@@ -7,6 +7,7 @@ import { parse } from '../lib/parsers/xml.mjs'
 import { parse as parseTXT } from '../lib/parsers/txt.mjs'
 import { CANONICAL_TXT } from './generators/doc-txt.js'
 import { validateDownrefs, validateInformativeReferences, validateNormativeReferences, validateUnclassifiedReferences, validatePublishedDraftReferences, validateReferenceForStale } from '../lib/modules/downref.mjs'
+import { getAllValidations } from '../lib/index.mjs'
 import { setupServer } from 'msw/node'
 import { http, HttpResponse, passthrough } from 'msw'
 
@@ -1448,5 +1449,28 @@ describe('validateReferenceForStale (XML)', () => {
 
     const res = await validateReferenceForStale(doc, { mode: MODES.SUBMISSION })
     expect(res).toHaveLength(0)
+  })
+})
+
+describe('Draft references are checked for both document types', () => {
+  const findTask = (docType) => getAllValidations(docType).flatMap(group => group.tasks.map(task => ({ group: group.key, ...task }))).find(task => task.key === 'draftrefs')
+
+  test('registered with the common validations', () => {
+    expect(findTask('txt').group).toBe('common')
+    expect(findTask('xml').group).toBe('common')
+  })
+
+  test('XML document', async () => {
+    const { doc } = await parse(`<rfc version="3" docName="draft-test-draftrefs-00"><back><references><name>Informative References</name>
+      <reference anchor="I-D.ietf-published-as-rfc"><front><title>Published</title></front><seriesInfo name="Internet-Draft" value="draft-ietf-published-as-rfc-01"/></reference>
+    </references></back></rfc>`, 'draft-test-draftrefs-00.xml')
+    const result = await findTask('xml').task({ doc, options: { mode: MODES.NORMAL } })
+    expect(result).toEqual([
+      new ValidationWarning(
+        'INVALID_STATE_FOR_DRAFT',
+        'The draft reference draft-ietf-published-as-rfc is already published as an RFC and should not be referenced as a draft.',
+        { ref: 'https://datatracker.ietf.org/doc/draft-ietf-published-as-rfc' }
+      )
+    ])
   })
 })
