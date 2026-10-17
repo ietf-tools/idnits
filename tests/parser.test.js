@@ -2239,7 +2239,6 @@ describe('Reference is declared, but not used in the document', () => {
       ${abstractWithReferencesTXTBlock}
       ${introductionTXTBlock}
       ${securityConsiderationsTXTBlock}
-      ${referenceTXTBlock}
     `
 
     const result = await parse(txt, 'txt')
@@ -2290,7 +2289,6 @@ describe('Reference is declared, but not used in the document', () => {
       ${introductionTXTBlock}
       [I-D.ietf-bess-evpn-igmp-mld-proxy], [I-D.ietf-bess-bgp-multicast-controller], [I-D.ietf-idr-legacy-rtc]
       ${securityConsiderationsTXTBlock}
-      ${referenceTXTBlock}
     `
 
     const result = await parse(txt, 'txt')
@@ -2499,6 +2497,178 @@ Informative References
       { value: '[FIPS186-5]', subsection: 'normative_references' },
       { value: '[OWASP-AISVS]', subsection: 'informative_references' }
     ])
+  })
+
+  // From draft-vangeest-lamps-update-asn1-signed-type-01
+  test('Counts a declared reference label in source code, but not other brackets there', async () => {
+    const txt = `${metaTXTBlock}
+   <CODE BEGINS>
+   AsymmetricKeyPackageModuleV1-2026
+     { iso(1) member-body(2) us(840) rsadsi(113549) pkcs(1) pkcs-9(9)
+       smime(16) modules(0) id-mod-asymmetricKeyPkgV1-2026(TBD2) }
+
+   DEFINITIONS IMPLICIT TAGS ::=
+
+   BEGIN
+
+     [[2: publicKey        [1] PublicKey OPTIONAL ]],
+     ...
+   }
+
+   PrivateKeyInfo ::= OneAsymmetricKey
+
+   -- PrivateKeyInfo is used by [P12]. If any items tagged as version
+   -- 2 are used, the version must be v2, else the version should be
+   -- v1. When v1, PrivateKeyInfo is the same as it was in [RFC5208].
+
+   END
+   <CODE ENDS>
+
+7.  References
+
+7.2.  Informative References
+
+   [P12]      RSA Laboratories, "PKCS #12 v1.0: Personal Information
+              Exchange Syntax", June 1999.
+`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.nonReferenceSectionDraftReferences).toEqual(['[P12]'])
+  })
+
+  // From draft-ietf-sidrops-rpki-erik-protocol-07
+  test('Counts an RFC cited in source code as used, without taking it as a bracketed citation', async () => {
+    const txt = `${metaTXTBlock}
+   <CODE BEGINS>
+
+   IMPORTS
+     CONTENT-TYPE, ContentSet, Digest, DigestAlgorithmIdentifier
+     FROM CryptographicMessageSyntax-2010 -- in [RFC6268]
+     { iso(1) member-body(2) us(840) rsadsi(113549) pkcs(1)
+       pkcs-9(9) smime(16) modules(0) id-mod-cms-2009(58) }
+
+   <CODE ENDS>
+`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.nonReferenceSectionRfc).toContain('6268')
+    expect(result.data.extractedElements.bracketedRfcNonReferences).toEqual([])
+  })
+
+  // From draft-ietf-rtgwg-vrrp-rfc8347bis-23, draft-ietf-idr-bgp-model-21 and draft-gong-spring-sr-policy-group-yang-04
+  test('Does not take the keys of a YANG tree diagram list as a reference label', async () => {
+    const txt = `${metaTXTBlock}
+             +--rw track
+             |  +--rw interfaces
+             |  |  +--rw interface* [interface]
+             |  |     +--rw interface             if:interface-ref
+
+                           |  |     +--ro unknown-attributes
+                           |  |     |  +--ro unknown-attribute*
+                           |  |     |          [attr-type]
+                           |  |     |     +--ro optional?     boolean
+
+          + sr-policy-groups
+              group* [group-color]
+                + name
+`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.nonReferenceSectionDraftReferences).toEqual([])
+  })
+
+  // From draft-ietf-lamps-csr-attestation-29
+  test('Does not take an ASN.1 tag as a reference label', async () => {
+    const txt = `${metaTXTBlock}
+      CertificateChoices ::= CHOICE {
+        certificate Certificate,
+        extendedCertificate [0] IMPLICIT ExtendedCertificate,
+             -- Obsolete
+        ...,
+        [[3: v1AttrCert [1] IMPLICIT AttributeCertificateV1]],
+             -- Obsolete
+        [[4: v2AttrCert [2] IMPLICIT AttributeCertificateV2]],
+        [[5: other      [3] IMPLICIT OtherCertificateFormat]] }
+`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.nonReferenceSectionDraftReferences).toEqual([])
+  })
+
+  // From draft-ietf-regext-rdap-jscontact-27
+  test('Does not take a number as a reference label in a document citing references by name', async () => {
+    const txt = `${metaTXTBlock}
+   jCard property:  "family name" component of n
+   Reference:  Section 6.2.2 of [RFC6350]
+   Path:  $..vcardArray[1][?(@[0]=='n')][3][0]
+
+11.  References
+
+11.1.  Normative References
+
+   [RFC6350]  Perreault, S., "vCard Format Specification", RFC 6350,
+              DOI 10.17487/RFC6350, August 2011,
+              <https://www.rfc-editor.org/info/rfc6350>.
+`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.nonReferenceSectionDraftReferences).toEqual([])
+    expect(result.data.extractedElements.nonReferenceSectionRfc).toEqual(['6350'])
+  })
+
+  // From draft-ietf-dnsop-zone-cut-to-nowhere-00
+  test('Does not take an ellipsis as a reference label', async () => {
+    const txt = `${metaTXTBlock}
+           ; the signed zone PUPPY.EXAMPLE.ORG exists,
+           ; but in another namespace
+
+           PUPPY  3600  IN  DS  [...]
+                            NS  .
+`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.nonReferenceSectionDraftReferences).toEqual([])
+  })
+
+  // From draft-ietf-oauth-v2-1-16 and draft-ietf-cdni-logging-extensions-04
+  test('Does not take a character range or class as a reference label', async () => {
+    const txt = `${metaTXTBlock}
+   The code_verifier is a unique high-entropy cryptographically random
+   string generated for each authorization request, using the unreserved
+   characters [A-Z] / [a-z] / [0-9] / "-" / "." / "_" / "~", with a
+   minimum length of 43 characters and a maximum length of 128
+   characters.
+
+                       "transforms": [{
+                               "type": "MI.LoggingTransformUrlParam",
+                               "value": {
+                                       "replace-param": "^.?[iI][dD]$|.*_[iI][dD]$",
+                                       "strip-params": False
+                               }
+`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.nonReferenceSectionDraftReferences).toEqual([])
+  })
+
+  // From draft-ietf-anima-rfc8366bis-37
+  test('Takes an RFC Editor placeholder in a table as a placeholder reference', async () => {
+    const txt = `${metaTXTBlock}
+   IANA is requested to register the following entries in the IETF YANG-
+   SID Ranges registry:
+
+      +=============+======+======================+=================+
+      | Entry Point | Size | Module Name          | Reference       |
+      +=============+======+======================+=================+
+      |     2450    |  50  | ietf-voucher         | [This-Document] |
+      +-------------+------+----------------------+-----------------+
+      |     2500    |  50  | ietf-voucher-request | [This-Document] |
+      +-------------+------+----------------------+-----------------+
+`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.nonReferenceSectionDraftReferences).toEqual([])
+    expect(result.data.extractedElements.placeholderReferences).toEqual(['[This-Document]'])
   })
 })
 
