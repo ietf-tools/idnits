@@ -398,6 +398,43 @@ function txtDraftEntry (name) {
 }
 
 /**
+ * Where texts are in a parsed TXT document, as findings give it: on each line containing the given
+ * text, where each text starts
+ *
+ * @param {Object} doc Parsed TXT document
+ * @param {string} lineText Text the lines contain
+ * @param {...string} texts Texts to locate in each line; the line text when none is given
+ * @returns {Array<{line: number, pos: number}>} Locations, both 1-based
+ */
+function locate (doc, lineText, ...texts) {
+  return doc.body.split('\n').flatMap((line, idx) => line.includes(lineText)
+    ? (texts.length > 0 ? texts : [lineText]).map(text => ({ line: idx + 1, pos: line.indexOf(text) + 1 }))
+    : [])
+}
+
+/**
+ * Where a TXT draft written by txtDraftEntry() links to drafts
+ *
+ * @param {Object} doc Parsed TXT document
+ * @param {...string} names Drafts linked to, with their version
+ * @returns {Array<{line: number, pos: number}>} Locations
+ */
+function draftLinks (doc, ...names) {
+  return names.flatMap(name => locate(doc, `${name}>.`, name))
+}
+
+/**
+ * Where a TXT document written by parseTXTRfcReferences() lists an RFC: its label and its series
+ *
+ * @param {Object} doc Parsed TXT document
+ * @param {string} rfc RFC number
+ * @returns {Array<{line: number, pos: number}>} Locations
+ */
+function rfcEntry (doc, rfc) {
+  return locate(doc, `[RFC${rfc}]  Example`, `[RFC${rfc}]`, `RFC ${rfc},`)
+}
+
+/**
  * Parse a TXT draft with the given intended status whose references sections list the given drafts
  *
  * @param {Object} opts
@@ -478,7 +515,7 @@ describe('validateDownrefs', () => {
 
       const result = await validateDownrefs(doc, { mode: MODES.FORGIVE_CHECKLIST })
       expect(result).toEqual([
-        new ValidationWarning('POSSIBLE_DOWNREF', 'Reference to [ISO10589] is possible downref', { ref: 'https://www.rfc-editor.org/info/bcp97' })
+        new ValidationWarning('POSSIBLE_DOWNREF', 'Reference to [ISO10589] is possible downref', { ref: 'https://www.rfc-editor.org/info/bcp97', lines: locate(doc, '[ISO10589]') })
       ])
     })
 
@@ -731,16 +768,20 @@ describe('Normative references to drafts', () => {
     { ref: BCP97 }
   )
 
+  // -> A finding of a text document says where the draft is linked to; an XML document gets lines centrally
+  const atTXTDraftLinks = (finding, doc, ...names) => Object.assign(finding, { lines: draftLinks(doc, ...names) })
+  const asXML = (finding) => finding
+
   describe.each([
-    ['TXT', parseTXTDraftReferences, 'intendedStatus', 'Informational'],
-    ['XML', parseXMLDraftReferences, 'category', 'info']
-  ])('%s', (_type, parseDoc, statusKey, informational) => {
+    ['TXT', parseTXTDraftReferences, 'intendedStatus', 'Informational', atTXTDraftLinks],
+    ['XML', parseXMLDraftReferences, 'category', 'info', asXML]
+  ])('%s', (_type, parseDoc, statusKey, informational, at) => {
     test('drafts without an intended status are reported alike, and not as downrefs (#223)', async () => {
       const doc = await parseDoc({ normative: ['draft-ietf-bess-evpn-ipvpn-interworking-13', 'draft-ietf-bess-rfc7432bis-10'] })
 
       await expect(validateDownrefs(doc, { mode: MODES.NORMAL })).resolves.toEqual([
-        toDraft('the Internet-Draft draft-ietf-bess-evpn-ipvpn-interworking-13'),
-        toDraft('the Internet-Draft draft-ietf-bess-rfc7432bis-10')
+        at(toDraft('the Internet-Draft draft-ietf-bess-evpn-ipvpn-interworking-13'), doc, 'draft-ietf-bess-evpn-ipvpn-interworking-13'),
+        at(toDraft('the Internet-Draft draft-ietf-bess-rfc7432bis-10'), doc, 'draft-ietf-bess-rfc7432bis-10')
       ])
     })
 
@@ -749,15 +790,15 @@ describe('Normative references to drafts', () => {
 
       // -> The end of the chain is a BCP, as high as this draft
       await expect(validateDownrefs(doc, { mode: MODES.NORMAL })).resolves.toEqual([
-        toDraft('the Internet-Draft draft-iana-ianabis-rfc8126bis-00, which was replaced by draft-ietf-ianabis-rfc8126bis')
+        at(toDraft('the Internet-Draft draft-iana-ianabis-rfc8126bis-00, which was replaced by draft-ietf-ianabis-rfc8126bis'), doc, 'draft-iana-ianabis-rfc8126bis-00')
       ])
     })
 
     test('a draft whose intended status is lower is a downref in the making', async () => {
       const doc = await parseDoc({ normative: ['draft-ietf-info-intended-02'] })
       const expected = [
-        toDraft('the Internet-Draft draft-ietf-info-intended-02'),
-        toLowerStatusDraft('the Internet-Draft draft-ietf-info-intended-02', 'draft-ietf-info-intended', 'Informational')
+        at(toDraft('the Internet-Draft draft-ietf-info-intended-02'), doc, 'draft-ietf-info-intended-02'),
+        at(toLowerStatusDraft('the Internet-Draft draft-ietf-info-intended-02', 'draft-ietf-info-intended', 'Informational'), doc, 'draft-ietf-info-intended-02')
       ]
 
       await expect(validateDownrefs(doc, { mode: MODES.NORMAL })).resolves.toEqual(expected)
@@ -770,8 +811,8 @@ describe('Normative references to drafts', () => {
       const subject = 'the Internet-Draft draft-chain-a-03, which was replaced by draft-chain-c'
 
       await expect(validateDownrefs(doc, { mode: MODES.NORMAL })).resolves.toEqual([
-        toDraft(subject),
-        toLowerStatusDraft(subject, 'draft-chain-c', 'Informational')
+        at(toDraft(subject), doc, 'draft-chain-a-03'),
+        at(toLowerStatusDraft(subject, 'draft-chain-c', 'Informational'), doc, 'draft-chain-a-03')
       ])
     })
 
@@ -779,7 +820,7 @@ describe('Normative references to drafts', () => {
       const doc = await parseDoc({ [statusKey]: informational, normative: ['draft-ietf-info-intended-02'] })
 
       await expect(validateDownrefs(doc, { mode: MODES.NORMAL })).resolves.toEqual([
-        toDraft('the Internet-Draft draft-ietf-info-intended-02')
+        at(toDraft('the Internet-Draft draft-ietf-info-intended-02'), doc, 'draft-ietf-info-intended-02')
       ])
     })
 
@@ -787,7 +828,7 @@ describe('Normative references to drafts', () => {
       const doc = await parseDoc({ normative: ['draft-ietf-missing-01'] })
 
       await expect(validateDownrefs(doc, { mode: MODES.NORMAL })).resolves.toEqual([
-        toDraft('the Internet-Draft draft-ietf-missing-01')
+        at(toDraft('the Internet-Draft draft-ietf-missing-01'), doc, 'draft-ietf-missing-01')
       ])
     })
 
@@ -796,11 +837,11 @@ describe('Normative references to drafts', () => {
 
       // -> RFC 9000 is Proposed Standard; draft-chain-hist was replaced by a draft published as RFC 1234, Historic
       await expect(validateDownrefs(doc, { mode: MODES.NORMAL })).resolves.toEqual([
-        new ValidationError(
+        at(new ValidationError(
           'DOWNREF_TO_LOWER_STATUS',
           'Reference to RFC 1234 (cited as draft-chain-hist-02), which has a lower status than this draft\'s intended status. This reference is not in the Downref Registry.',
           { ref: BCP97 }
-        )
+        ), doc, 'draft-chain-hist-02')
       ])
       await expect(validateDownrefs(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('DOWNREF_TO_LOWER_STATUS', ValidationWarning)
     })
@@ -809,11 +850,11 @@ describe('Normative references to drafts', () => {
       const doc = await parseDoc({ normative: ['draft-ietf-obsolete-rfc-07', 'draft-ietf-quic-transport-34'] })
 
       await expect(validateNormativeReferences(doc, { mode: MODES.NORMAL })).resolves.toEqual([
-        new ValidationError(
+        at(new ValidationError(
           'OBSOLETE_REFERENCE',
           'RFC 4087 (cited as draft-ietf-obsolete-rfc-07) is obsolete and has been replaced by: RFC9000.',
           { ref: 'https://authors.ietf.org/en/required-content#references' }
-        )
+        ), doc, 'draft-ietf-obsolete-rfc-07')
       ])
       await expect(validateNormativeReferences(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('OBSOLETE_REFERENCE', ValidationWarning)
     })
@@ -823,8 +864,8 @@ describe('Normative references to drafts', () => {
       const subject = 'the Internet-Draft draft-cycle-a-00, which was replaced by draft-cycle-b'
 
       await expect(validateDownrefs(doc, { mode: MODES.NORMAL })).resolves.toEqual([
-        toDraft(subject),
-        toLowerStatusDraft(subject, 'draft-cycle-b', 'Informational')
+        at(toDraft(subject), doc, 'draft-cycle-a-00'),
+        at(toLowerStatusDraft(subject, 'draft-cycle-b', 'Informational'), doc, 'draft-cycle-a-00')
       ])
     })
 
@@ -832,7 +873,7 @@ describe('Normative references to drafts', () => {
       const doc = await parseDoc({ normative: ['draft-long-0-00'] })
 
       const result = await validateDownrefs(doc, { mode: MODES.NORMAL })
-      expect(result[0]).toEqual(toDraft('the Internet-Draft draft-long-0-00, which was replaced by draft-long-9'))
+      expect(result[0]).toEqual(at(toDraft('the Internet-Draft draft-long-0-00, which was replaced by draft-long-9'), doc, 'draft-long-0-00'))
     })
 
     test('informative references to drafts are not reported', async () => {
@@ -915,7 +956,7 @@ ${txtDraftEntry('draft-ietf-info-intended-02')}
       new ValidationWarning(
         'OUTDATED_DRAFT',
         'The draft reference draft-chain-hist-02 is stale. draft-chain-hist was replaced by draft-chain-hist-wg, which has been published as RFC 1234.',
-        { ref: 'https://datatracker.ietf.org/doc/draft-chain-hist' }
+        { ref: 'https://datatracker.ietf.org/doc/draft-chain-hist', lines: draftLinks(doc, 'draft-chain-hist-02') }
       )
     ])
   })
@@ -1003,8 +1044,88 @@ describe('validateNormativeReferences', () => {
         new ValidationError(
           'OBSOLETE_REFERENCE',
           'RFC 4087 is obsolete and has been replaced by: RFC9000.',
-          { ref: 'https://authors.ietf.org/en/required-content#references' }
+          { ref: 'https://authors.ietf.org/en/required-content#references', lines: rfcEntry(doc, '4087') }
         )
+      ])
+    })
+  })
+
+  describe('TXT Document Type: where the reference is', () => {
+    test('an RFC listed in both references sections is located in the normative one', async () => {
+      // -> Excerpt of draft-baur-pap-02, whose second Informative References section lists RFC 3339 again
+      const doc = await parseTXT(`${CANONICAL_TXT}
+1.  Introduction
+
+   Timestamps are as defined in [RFC3339].
+
+19.  References
+
+19.1.  Normative References
+
+   [RFC2119] Bradner, S., "Key words for use in RFCs to Indicate
+   Requirement Levels", BCP 14, RFC 2119, March 1997.
+
+   [RFC3339] Klyne, G. and C.  Newman, "Date and Time on the Internet:
+   Timestamps", RFC 3339, July 2002.
+
+19.2.  Informative References
+
+   [RFC6455] Fette, I. and A.  Melnikov, "The WebSocket Protocol", RFC
+   6455, December 2011.
+
+20.  Informative References
+
+   [RFC3339]  Klyne, G. and C. Newman, "Date and Time on the Internet:
+              Timestamps", RFC 3339, DOI 10.17487/RFC3339, July 2002,
+              <https://www.rfc-editor.org/info/rfc3339>.
+`, 'draft-baur-pap-02.txt')
+      server.use(http.get('https://www.rfc-editor.org/rfc/rfc3339.json', () => HttpResponse.json({})))
+      expect(doc.data.extractedElements.locations.referenceSectionRfc['3339']).toHaveLength(2)
+
+      await expect(validateNormativeReferences(doc, { mode: MODES.NORMAL })).resolves.toEqual([
+        new ValidationComment('UNDEFINED_STATUS', 'RFC 3339 does not have a defined status or could not be fetched.', {
+          ref: 'https://www.rfc-editor.org/info/rfc3339',
+          lines: locate(doc, '[RFC3339] Klyne', '[RFC3339]')
+        })
+      ])
+    })
+
+    test('a citation after the references section is not where the reference is', async () => {
+      // -> Excerpt of draft-bormann-cbor-cddl-freezer-18, whose Acknowledgements follow the references
+      const doc = await parseTXT(`${CANONICAL_TXT}
+9.  Security considerations
+
+   The security considerations of [RFC8610] apply.
+
+10.  References
+
+10.1.  Normative References
+
+   [RFC8610]  Birkholz, H., Vigano, C., and C. Bormann, "Concise Data
+              Definition Language (CDDL): A Notational Convention to
+              Express Concise Binary Object Representation (CBOR) and
+              JSON Data Structures", RFC 8610, DOI 10.17487/RFC8610,
+              June 2019, <https://www.rfc-editor.org/rfc/rfc8610>.
+
+10.2.  Informative References
+
+   [cddlc]    "CDDL conversion utilities", n.d.,
+              <https://github.com/cabo/cddlc>.
+
+Acknowledgements
+
+   Before [RFC8610] was finally published, many people have asked for
+   CDDL to be completed, soon.
+`, 'draft-bormann-cbor-cddl-freezer-18.txt')
+      server.use(http.get('https://www.rfc-editor.org/rfc/rfc8610.json', () => HttpResponse.json({})))
+      // -> The text parser takes the Acknowledgements for part of the references section
+      expect(doc.data.extractedElements.locations.referenceSectionRfc['8610']).toHaveLength(2)
+
+      await expect(validateNormativeReferences(doc, { mode: MODES.NORMAL })).resolves.toEqual([
+        new ValidationComment('UNDEFINED_STATUS', 'RFC 8610 does not have a defined status or could not be fetched.', {
+          ref: 'https://www.rfc-editor.org/info/rfc8610',
+          lines: locate(doc, '[RFC8610]  Birkholz', '[RFC8610]')
+        })
       ])
     })
   })
@@ -1494,7 +1615,7 @@ describe('validateInformativeReferences', () => {
   test('an obsolete informative RFC is a question in each mode, not an error', async () => {
     const doc = await parseTXTRfcReferences({ normative: ['4088'], informative: ['5087'] })
     const message = 'Obsolete informative reference: RFC 5087 has been replaced by RFC9000, RFC9001. Is this intentional?'
-    const ref = { ref: 'https://authors.ietf.org/en/required-content#references' }
+    const ref = { ref: 'https://authors.ietf.org/en/required-content#references', lines: rfcEntry(doc, '5087') }
 
     await expect(validateInformativeReferences(doc, { mode: MODES.NORMAL })).resolves.toEqual([
       new ValidationWarning('OBSOLETE_INFORMATIVE_REFERENCE', message, ref)
@@ -1513,7 +1634,7 @@ describe('validateInformativeReferences', () => {
       new ValidationWarning(
         'OBSOLETE_INFORMATIVE_REFERENCE',
         'Obsolete informative reference: RFC 5087 has been replaced by RFC9000, RFC9001. Is this intentional?',
-        { ref: 'https://authors.ietf.org/en/required-content#references' }
+        { ref: 'https://authors.ietf.org/en/required-content#references', lines: rfcEntry(doc, '5087') }
       )
     ])
   })
@@ -1526,7 +1647,7 @@ describe('validateInformativeReferences', () => {
       new ValidationWarning(
         'OBSOLETE_INFORMATIVE_REFERENCE',
         'Obsolete informative reference: RFC 3901 has been replaced by RFC10001. Is this intentional?',
-        { ref: 'https://authors.ietf.org/en/required-content#references' }
+        { ref: 'https://authors.ietf.org/en/required-content#references', lines: rfcEntry(doc, '3901') }
       )
     ])
   })
@@ -1570,6 +1691,23 @@ describe('validateInformativeReferences', () => {
 })
 
 describe('validateReferenceForStale (TXT)', () => {
+  test('a draft listed in both references sections is located in each, for each finding', async () => {
+    const doc = await parseTXTDraftReferences({ normative: ['draft-chain-hist-02'], informative: ['draft-chain-hist-02'] })
+    const [normative, informative] = draftLinks(doc, 'draft-chain-hist-02')
+
+    const res = await validateReferenceForStale(doc, { mode: MODES.NORMAL })
+    expect(res.map(finding => finding.name)).toEqual(['OUTDATED_DRAFT', 'OUTDATED_DRAFT'])
+    expect(res.map(finding => finding.lines)).toEqual([[normative], [informative]])
+  })
+
+  test('at most 20 locations are given', async () => {
+    const doc = await parseTXTDraftReferences({ informative: Array(25).fill('draft-ietf-missing-01') })
+
+    const res = await validatePublishedDraftReferences(doc, { mode: MODES.NORMAL })
+    expect(res).toHaveLength(1)
+    expect(res[0].lines).toEqual(draftLinks(doc, 'draft-ietf-missing-01').slice(0, 20))
+  })
+
   test('no warnings if draft version matches latest', async () => {
     const doc = cloneDeep(baseTXTDoc)
     set(doc, 'data.extractedElements.draftStatusReferences', [
@@ -1899,7 +2037,12 @@ ${entry('draft-ietf-missing-01', 'C')}
   test('a draft that cannot be fetched is reported once (TXT)', async () => {
     const doc = await parseTXTDraftRefs()
     expect(doc.data.extractedElements.draftStatusReferences).toHaveLength(3)
-    await expect(runDraftChecks(doc)).resolves.toEqual(expected)
+    // -> Where the draft is linked to, in each references subsection that links to it
+    await expect(runDraftChecks(doc)).resolves.toEqual([
+      new ValidationWarning(expected[0].name, expected[0].message, { ref: expected[0].refUrl, lines: locate(doc, 'html/draft-ietf-published-as-rfc-01>', 'draft-ietf-published-as-rfc-01') }),
+      new ValidationWarning(expected[1].name, expected[1].message, { ref: expected[1].refUrl, lines: locate(doc, 'html/draft-ietf-missing-01>', 'draft-ietf-missing-01') })
+    ])
+    expect(locate(doc, 'html/draft-ietf-missing-01>')).toHaveLength(2)
   })
 
   test('not checked for a published RFC (XML)', async () => {
