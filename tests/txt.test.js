@@ -174,9 +174,9 @@ describe('validateCodeComments', () => {
     const result = await validateCodeComments(doc, { mode: 0 })
 
     expect(result).toEqual([
-      new ValidationWarning('COMMENT_OUT_OF_CODE_BLOCK', 'Found something which looks like a code comment -- if you have code sections in the document, please surround them with \'<CODE BEGINS>\' and \'<CODE ENDS>\' lines.', {
+      new ValidationWarning('COMMENT_OUT_OF_CODE_BLOCK', 'Found lines outside any <CODE BEGINS>/<CODE ENDS> block that look like code comments ("/*", "*/", or a line starting with "#") -- if they are part of code, surround that code with \'<CODE BEGINS>\' and \'<CODE ENDS>\' lines so it is identified as a Code Component (Trust Legal Provisions 5.0, Section 4.b).', {
         lines: [{ line: 10, pos: 5 }],
-        ref: 'https://datatracker.ietf.org/doc/rfc8879'
+        ref: 'https://trustee.ietf.org/documents/trust-legal-provisions/tlp-5/'
       })
     ])
   })
@@ -196,12 +196,12 @@ describe('validateCodeComments', () => {
     const result = await validateCodeComments(doc, { mode: 0 })
 
     expect(result).toEqual([
-      new ValidationWarning('COMMENT_OUT_OF_CODE_BLOCK', 'Found something which looks like a code comment -- if you have code sections in the document, please surround them with \'<CODE BEGINS>\' and \'<CODE ENDS>\' lines.', {
+      new ValidationWarning('COMMENT_OUT_OF_CODE_BLOCK', 'Found lines outside any <CODE BEGINS>/<CODE ENDS> block that look like code comments ("/*", "*/", or a line starting with "#") -- if they are part of code, surround that code with \'<CODE BEGINS>\' and \'<CODE ENDS>\' lines so it is identified as a Code Component (Trust Legal Provisions 5.0, Section 4.b).', {
         lines: [
           { line: 10, pos: 5 },
           { line: 15, pos: 20 }
         ],
-        ref: 'https://datatracker.ietf.org/doc/rfc8879'
+        ref: 'https://trustee.ietf.org/documents/trust-legal-provisions/tlp-5/'
       })
     ])
   })

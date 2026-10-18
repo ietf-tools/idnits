@@ -214,6 +214,43 @@ describe('A possible code comment is detected outside of a marked code block', (
       expect.objectContaining({ line: 40 })
     ]))
   })
+
+  test('An RFC 8792 folding header starting with "#" is not a code comment', async () => {
+    // From draft-ietf-httpapi-digest-fields-problem-types-06
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractTXTBlock}
+      ${introductionTXTBlock}
+   debugging or error reporting, as shown in the following example.
+
+   # NOTE: '\\' line wrapping per RFC 8792
+
+   HTTP/1.1 400 Bad Request
+   Content-Type: application/problem+json
+   Want-Content-Digest: sha-512=3, sha-256=10
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.inlineCode).toHaveLength(0)
+  })
+
+  test('An RFC 8792 two-backslash folding header is not a code comment, other "#" lines still are', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractTXTBlock}
+      ${introductionTXTBlock}
+   # NOTE: '\\\\' line wrapping per RFC 8792
+
+   # This is a possible code comment
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.inlineCode).toEqual([
+      expect.objectContaining({ line: lineNumber(txt, '# This is a possible code comment') })
+    ])
+  })
 })
 
 describe('Missing abstract section', () => {
