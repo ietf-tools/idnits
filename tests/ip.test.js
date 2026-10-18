@@ -7,6 +7,7 @@ import {
 } from '../lib/modules/ip.mjs'
 import { baseXMLDoc } from './fixtures/base-doc.mjs'
 import { parse } from '../lib/parsers/xml.mjs'
+import { parse as parseTXT } from '../lib/parsers/txt.mjs'
 import { cloneDeep, set } from 'lodash-es'
 
 expect.extend({
@@ -135,6 +136,67 @@ describe('document should have valid IP Address mentions', () => {
         new ValidationWarning('INVALID_IPV6_ADDRESS', 'IPv6 address is invalid.', {
           ref: 'https://datatracker.ietf.org/doc/html/rfc4291',
           text: 'abcd::g'
+        })
+      ])
+    })
+
+    test('locates each invalid IPv4 address, every time it is found', async () => {
+      // From draft-geng-acme-sm2dualcert-extension-00: an OID arc, found as an IPv4 address twice
+      const txt = `
+   *Note on OIDs*: All cryptographic algorithm OIDs used in this
+   document are defined in [GMT.0006-2023].  The permanent OID for the
+   custom certificate extension (id-sm2-auth-key-hash) defined in this
+   document is to be assigned by the China Cryptography Industry
+   Standardization Technical Committee (CCSTC) under its managed
+   1.2.156.10197 arc (which is not within IANA's management scope; see
+   Section 5.3).  During the experimental phase, a temporary OID under
+   the enterprise arc (1.3.6.1.4.1.2011.2.467) is used.
+
+   *SM3 OID Note*: The standard OID for the SM3 cryptographic hash
+   algorithm used in this specification is 1.2.156.10197.1.401 (id-hash-
+   sm3), defined in [GMT.0006-2023] under the CCSTC 1.2.156.10197 arc.
+`
+      const doc = await parseTXT(txt, 'draft-geng-acme-sm2dualcert-extension-00.txt')
+      const result = await validateIPs(doc, { mode: MODES.NORMAL })
+      expect(result).toEqual([
+        new ValidationWarning('INVALID_IPV4_ADDRESS', 'IPv4 address is invalid.', {
+          ref: 'https://datatracker.ietf.org/doc/html/rfc791',
+          text: '1.2.156.10197',
+          lines: [{ line: 7, pos: 4 }]
+        }),
+        new ValidationWarning('INVALID_IPV4_ADDRESS', 'IPv4 address is invalid.', {
+          ref: 'https://datatracker.ietf.org/doc/html/rfc791',
+          text: '1.2.156.10197',
+          lines: [{ line: 13, pos: 53 }]
+        })
+      ])
+    })
+
+    test('locates each invalid IPv6 address among valid ones', async () => {
+      // From draft-gong-teas-spring-nrp-oam-02: traceroute output, with addresses ending in "::" after a group
+      const txt = `
+   2  2001:db8:3:2:31:: 0.721 msec 0.810 msec 0.795 msec DA:
+   2001:db8:K:4:X52::, SRH:(2001:db8:L:5::2, 2001:db8:L:5::1,
+   2001:db8:K:4:X52::1, 2001:db8:K:2:X31::1, SL=2)
+
+   3  2001:db8:4:3::41:: 0.921 msec 0.816 msec 0.759 msec DA:
+   2001:db8:K:4:X52::, SRH:(2001:db8:L:5::2, 2001:db8:L:5::1,
+   2001:db8:K:4:X52::1, 2001:db8:K:2:X31::, SL=1)
+
+   4  2001:db8:5:4::52:: 0.879 msec 0.916 msec 1.024 msec DA:
+`
+      const doc = await parseTXT(txt, 'draft-gong-teas-spring-nrp-oam-02.txt')
+      const result = await validateIPs(doc, { mode: MODES.NORMAL })
+      expect(result).toEqual([
+        new ValidationWarning('INVALID_IPV6_ADDRESS', 'IPv6 address is invalid.', {
+          ref: 'https://datatracker.ietf.org/doc/html/rfc4291',
+          text: '2001:db8:4:3::41::',
+          lines: [{ line: 6, pos: 7 }]
+        }),
+        new ValidationWarning('INVALID_IPV6_ADDRESS', 'IPv6 address is invalid.', {
+          ref: 'https://datatracker.ietf.org/doc/html/rfc4291',
+          text: '2001:db8:5:4::52::',
+          lines: [{ line: 10, pos: 7 }]
         })
       ])
     })
