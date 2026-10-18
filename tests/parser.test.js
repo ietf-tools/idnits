@@ -47,7 +47,7 @@ import {
   RFC2119Alt2BoilerplateTXTBlock,
   BCP14BoilerplateTXTBlock
 } from './fixtures/txt-blocks/section-blocks.mjs'
-import { pageBreakLineType, parse } from '../lib/parsers/txt.mjs'
+import { getLocations, pageBreakLineType, parse } from '../lib/parsers/txt.mjs'
 
 beforeAll(() => {
   vi.spyOn(console, 'info').mockImplementation(() => {})
@@ -147,6 +147,17 @@ Authors' Addresses
  */
 function lineAfterToc (txt, toc) {
   return txt.split(/\r?\n/).slice(toc.end).find(line => line.trim())
+}
+
+/**
+ * Number (1-based) of the first line of a text holding a string
+ *
+ * @param {string} txt Parsed text
+ * @param {string} text String to find
+ * @returns {number} The line number
+ */
+function lineNumber (txt, text) {
+  return txt.split(/\r?\n/).findIndex(line => line.includes(text)) + 1
 }
 
 describe('A possible code comment is detected outside of a marked code block', () => {
@@ -701,6 +712,25 @@ describe('Parsing FQRN', () => {
     expect(result.data.extractedElements.fqdnDomains).toEqual(['starlinkisp.net'])
   })
 
+  test('Locates every mention of a domain in the document', async () => {
+    // From draft-iab-ip-geo-workshop-report-04
+    const txt = `
+   [PAN]      Pan, J. and J. Zhao, "GeoFeed in the wild: A case study on
+              StarlinkISP.net", November 2025,
+              <https://www.ietf.org/slides/slides-ipgeows-paper-geofeed-
+              in-the-wild-a-case-study-on-starlinkispnet-00.pdf>.
+
+   *  J.  Pan, J.  Zhao: GeoFeed in the wild: A case study on
+      StarlinkISP.net [PAN]
+    `
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.locations.fqdnDomains).toEqual({
+      'starlinkisp.net': [{ line: 3, pos: 14 }, { line: 8, pos: 6 }]
+    })
+    expect(getLocations(result, 'fqdnDomains', 'starlinkisp.net')).toEqual([{ line: 3, pos: 14 }, { line: 8, pos: 6 }])
+    expect(getLocations(result, 'fqdnDomains', 'www.ietf.org')).toEqual([])
+  })
+
   test('Takes an email address broken mid-word at the end of a full line as one address', async () => {
     // From draft-ietf-scitt-architecture-20: xml2rfc broke "iesg@ietf.org" to fit the 72-column line
     const txt = `
@@ -765,6 +795,24 @@ describe('Parsing IPs', () => {
     expect(result.data.extractedElements.ipv4).toEqual([])
     expect(result.data.extractedElements.ipv6).toEqual([])
   })
+
+  test('Locates every IP address in the document', async () => {
+    // From draft-denis-dns-stamps-02
+    const txt = `
+   *  IPv4: 192.0.2.1 or 192.0.2.1:5353
+
+   *  IPv6: [2001:db8::1] or [2001:db8::1]:5353
+    `
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.ipv4).toEqual(['192.0.2.1', '192.0.2.1'])
+    expect(result.data.extractedElements.locations.ipv4).toEqual({
+      '192.0.2.1': [{ line: 2, pos: 12 }, { line: 2, pos: 25 }]
+    })
+    expect(result.data.extractedElements.locations.ipv6).toEqual({
+      '2001:db8::1': [{ line: 4, pos: 13 }, { line: 4, pos: 30 }]
+    })
+  })
 })
 
 describe('Testing parsing RFC2119 keywords and boilerplates', () => {
@@ -814,6 +862,27 @@ describe('Testing parsing RFC2119 keywords and boilerplates', () => {
       'MAY',
       'OPTIONAL'
     ])
+  })
+
+  test('Locates keywords, in the boilerplate where they start', async () => {
+    // From draft-ietf-teas-ns-ip-mpls-10: "NOT RECOMMENDED" is broken across lines in the boilerplate
+    const txt = `
+1.1.  Terminology
+
+   In this document, the key words "MUST", "MUST NOT", "REQUIRED",
+   "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT
+   RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be
+   interpreted as described in BCP 14 [RFC2119] [RFC8174] when, and only
+   when, they appear in all capitals, as shown here.
+    `
+
+    const result = await parse(txt, 'txt')
+    const { locations } = result.data.extractedElements
+    expect(locations.keywords2119.MUST).toEqual([{ line: 4, pos: 36 }])
+    expect(locations.keywords2119.RECOMMENDED).toEqual([{ line: 5, pos: 50 }, { line: 6, pos: 3 }])
+    expect(locations.boilerplate2119Keywords.MUST).toEqual([{ line: 4, pos: 36 }])
+    expect(locations.boilerplate2119Keywords.RECOMMENDED).toEqual([{ line: 5, pos: 50 }])
+    expect(locations.boilerplate2119Keywords['NOT RECOMMENDED']).toEqual([{ line: 5, pos: 65 }])
   })
 
   test('Detecting RFC2119 boilerplate', async () => {
@@ -1075,6 +1144,28 @@ describe('Parsing obsolete and update metadata', () => {
     const result = await parse(txt, 'txt')
     expect(result.data.extractedElements.obsoletesRfc).toHaveLength(0)
     expect(result.data.extractedElements.updatesRfc).toHaveLength(0)
+  })
+
+  test('Locates the RFCs a document updates in its header', async () => {
+    // From draft-ietf-6man-slaac-renum-14
+    const txt = `IPv6 Maintenance (6man) Working Group                            F. Gont
+Internet-Draft                                              SI6 Networks
+Updates: 4191, 4861, 4862, 8106, 9096, 8781,                     J. Zorz
+         9463 (if approved)                                     6connect
+Intended status: Standards Track                            R. Patterson
+Expires: 6 January 2027                                           Sky UK
+                                                             5 July 2026
+`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.locations.updatesRfc).toEqual({
+      4191: [{ line: 3, pos: 9 }],
+      4861: [{ line: 3, pos: 15 }],
+      4862: [{ line: 3, pos: 21 }],
+      8106: [{ line: 3, pos: 27 }],
+      9096: [{ line: 3, pos: 33 }],
+      8781: [{ line: 3, pos: 39 }]
+    })
   })
 })
 
@@ -2616,6 +2707,84 @@ Informative References
     expect(result.data.extractedElements.nonReferenceSectionRfc).toEqual(['6350'])
   })
 
+  // From draft-ietf-regext-rdap-jscontact-27
+  test('Locates RFCs mentioned inside and outside the references section', async () => {
+    const txt = `${metaTXTBlock}
+   jCard property:  "family name" component of n
+   Reference:  Section 6.2.2 of [RFC6350]
+   Path:  $..vcardArray[1][?(@[0]=='n')][3][0]
+
+11.  References
+
+11.1.  Normative References
+
+   [RFC6350]  Perreault, S., "vCard Format Specification", RFC 6350,
+              DOI 10.17487/RFC6350, August 2011,
+              <https://www.rfc-editor.org/info/rfc6350>.
+`
+
+    const result = await parse(txt, 'txt')
+    const mention = lineNumber(txt, 'Reference:  Section 6.2.2')
+    const entry = lineNumber(txt, '[RFC6350]  Perreault')
+    const { locations } = result.data.extractedElements
+    expect(locations.nonReferenceSectionRfc).toEqual({ 6350: [{ line: mention, pos: 32 }] })
+    expect(locations.bracketedRfcNonReferences).toEqual({ '[RFC6350]': [{ line: mention, pos: 32 }] })
+    expect(locations.referenceSectionRfc).toEqual({ 6350: [{ line: entry, pos: 3 }, { line: entry, pos: 59 }] })
+    expect(locations.bracketedRfcReferences).toEqual({ '[RFC6350]': [{ line: entry, pos: 3 }] })
+    // Numbers in brackets are not reference labels here, and are not located as such
+    expect(locations.nonReferenceSectionDraftReferences).toEqual({})
+  })
+
+  // From draft-vangeest-lamps-update-asn1-signed-type-01
+  test('Locates a label in source code once the references section declares it', async () => {
+    const txt = `${metaTXTBlock}
+   <CODE BEGINS>
+   PrivateKeyInfo ::= OneAsymmetricKey
+
+   -- PrivateKeyInfo is used by [P12]. If any items tagged as version
+   -- 2 are used, the version must be v2, else the version should be
+   -- v1. When v1, PrivateKeyInfo is the same as it was in [RFC5208].
+   <CODE ENDS>
+
+7.  References
+
+7.2.  Informative References
+
+   [P12]      RSA Laboratories, "PKCS #12 v1.0: Personal Information
+              Exchange Syntax", June 1999.
+`
+
+    const result = await parse(txt, 'txt')
+    expect(getLocations(result, 'nonReferenceSectionDraftReferences', '[P12]')).toEqual([
+      { line: lineNumber(txt, 'is used by [P12]'), pos: 32 }
+    ])
+    expect(getLocations(result, 'referenceSectionDraftReferences', '[P12]')).toEqual([
+      { line: lineNumber(txt, '[P12]      RSA'), pos: 3 }
+    ])
+  })
+
+  // From draft-abak-agent-control-delivery-evidence-01
+  test('Locates a draft linked to from the references section where its name starts, on a URL broken across lines', async () => {
+    const txt = `${metaTXTBlock}
+18.  Informative References
+
+   [I-D.agentic-ai-usecases-requirements]
+              Reddy.K, T., Sarker, Z., and K. Yao, "Agentic AI Use Cases
+              and Requirements", Work in Progress, Internet-Draft,
+              draft-agentic-ai-usecases-requirements-02, 25 August 2026,
+              <https://datatracker.ietf.org/doc/draft-agentic-ai-
+              usecases-requirements/>.
+`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.draftStatusReferences).toEqual([
+      { value: 'draft-agentic-ai-usecases-requirements', subsection: 'informative_references' }
+    ])
+    expect(getLocations(result, 'draftStatusReferences', 'draft-agentic-ai-usecases-requirements')).toEqual([
+      { line: lineNumber(txt, '<https://datatracker.ietf.org/doc/draft-agentic-ai-'), pos: 48 }
+    ])
+  })
+
   // From draft-ietf-dnsop-zone-cut-to-nowhere-00
   test('Does not take an ellipsis as a reference label', async () => {
     const txt = `${metaTXTBlock}
@@ -2669,6 +2838,13 @@ Informative References
     const result = await parse(txt, 'txt')
     expect(result.data.extractedElements.nonReferenceSectionDraftReferences).toEqual([])
     expect(result.data.extractedElements.placeholderReferences).toEqual(['[This-Document]'])
+    expect(result.data.extractedElements.locations.placeholderReferences).toEqual({
+      '[This-Document]': [
+        { line: lineNumber(txt, '2450'), pos: 52 },
+        { line: lineNumber(txt, '2500'), pos: 52 }
+      ]
+    })
+    expect(result.data.extractedElements.locations.nonReferenceSectionDraftReferences).toEqual({})
   })
 })
 
