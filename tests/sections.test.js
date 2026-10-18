@@ -225,6 +225,109 @@ describe('document should have a valid abstract section', () => {
         ValidationWarning
       )
     })
+
+    describe('findings locate what they are about', () => {
+      // The abstract of CANONICAL_TXT replaced: "Abstract" is on line 18, the text starts on line 20
+      const parseWithAbstract = (abstract) => parseTXT(CANONICAL_TXT.replace('   This document obsoletes RFC 5678.\n', `${abstract}
+Status of This Memo
+`), '')
+      const ref = 'https://authors.ietf.org/required-content#abstract'
+
+      // From draft-ahearn-seal-01
+      test('each RFC reference', async () => {
+        const doc = await parseWithAbstract(`   This document defines the Signed Email Authentication Layer (SEAL), a
+   cryptographically signed identity envelope carried within a new
+   message header field, SEAL-Envelope.  SEAL provides a stable,
+   forwarding-resilient identity assertion that binds the origin domain
+   to a specific message instance using the SEAL-MSGID header, which
+   contains a SEAL-protected copy of the [RFC5322] Message-ID present at
+   message creation time.  After SEAL-MSGID is set, intermediaries may
+   modify or discard the visible [RFC5322] Message-ID header without
+   affecting SEAL validity.
+`)
+        const error = { ref, lines: [{ line: 25, pos: 42 }, { line: 27, pos: 34 }] }
+        await expect(validateAbstractSection(doc)).resolves.toEqual([
+          new ValidationError('INVALID_ABSTRACT_SECTION_REF', 'The abstract section should not contain references to RFCs.', error)
+        ])
+        await expect(validateAbstractSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toEqual([
+          new ValidationWarning('INVALID_ABSTRACT_SECTION_REF', 'The abstract section should not contain references to RFCs.', error)
+        ])
+        await expect(validateAbstractSection(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+      })
+
+      test('not the RFCs the document updates or obsoletes', async () => {
+        const doc = await parseWithAbstract(`   This document updates [RFC1234] and obsoletes [RFC5678], and
+   carries a copy of the [RFC5322] Message-ID.
+`)
+        await expect(validateAbstractSection(doc)).resolves.toEqual([
+          new ValidationError('INVALID_ABSTRACT_SECTION_REF', 'The abstract section should not contain references to RFCs.', {
+            ref,
+            lines: [{ line: 21, pos: 26 }]
+          })
+        ])
+      })
+
+      // From draft-bates-atp-test-vectors-00
+      test('each section and custom reference', async () => {
+        const doc = await parseWithAbstract(`   This document publishes golden test vectors for the Agent Transaction
+   Protocol (ATP) [ATP-CORE].  The vectors cover canonicalization (RFC
+   8785 JCS), nodeId computation, and Ed25519 signature generation and
+   verification.  ATP Core conformance per [ATP-CORE] Section 13.7
+   requires that conformant implementations pass all vectors in this
+   document for canonicalization, nodeId computation, and Ed25519
+   signature verification.
+`)
+        await expect(validateAbstractSection(doc)).resolves.toEqual([
+          new ValidationError('INVALID_ABSTRACT_SECTION_REF', 'The abstract section should not contain references to sections or appendices.', {
+            ref,
+            lines: [{ line: 23, pos: 55 }]
+          }),
+          new ValidationError('INVALID_ABSTRACT_SECTION_CUSTOM_REF', 'The abstract section should not contain custom references like [REST].', {
+            ref,
+            lines: [{ line: 21, pos: 19 }, { line: 23, pos: 44 }]
+          })
+        ])
+      })
+
+      // From draft-bruynooghe-n0-quic-nat-traversal-00
+      test('each URL, even one wrapped across lines', async () => {
+        const doc = await parseWithAbstract(`   A description of how noq (https://github.com/n0-computer/noq)
+   performs NAT traversal for iroh (https://github.com/n0-computer/
+   iroh), including all current bugs.  This is not yet a specification,
+   though further revisions migth be.
+`)
+        await expect(validateAbstractSection(doc)).resolves.toEqual([
+          new ValidationError('INVALID_ABSTRACT_SECTION_URL', 'The abstract section should not contain URLs.', {
+            ref,
+            lines: [{ line: 20, pos: 30 }, { line: 21, pos: 37 }]
+          })
+        ])
+      })
+
+      // From draft-bryce-cose-receipts-mmr-profile-03
+      test('each Internet-Draft reference', async () => {
+        const doc = await parseWithAbstract(`   This document defines a new verifiable data structure type for COSE
+   Receipts [I-D.ietf-cose-merkle-tree-proofs] specifically for use with
+   ledgers based on post-order traversal binary Merkle trees.
+`)
+        await expect(validateAbstractSection(doc)).resolves.toEqual([
+          new ValidationError('INVALID_ABSTRACT_SECTION_ID_REF', 'The abstract section should not contain references to Internet-Drafts.', {
+            ref,
+            lines: [{ line: 21, pos: 13 }]
+          })
+        ])
+      })
+
+      test('an empty abstract at its heading', async () => {
+        const doc = await parseWithAbstract('')
+        await expect(validateAbstractSection(doc)).resolves.toEqual([
+          new ValidationError('EMPTY_ABSTRACT_SECTION', 'The abstract section is present but contains no meaningful content.', {
+            ref,
+            lines: [{ line: 18, pos: 1 }]
+          })
+        ])
+      })
+    })
   })
 
   describe('XML Document Type', () => {
@@ -398,6 +501,22 @@ describe('document should have a valid introduction section', () => {
         `
       }
       await expect(validateIntroductionSection(doc, { mode: 'FORGIVE_CHECKLIST' })).resolves.toHaveLength(0)
+    })
+
+    test('empty introduction section is located at its heading', async () => {
+      const doc = await parseTXT(`${CANONICAL_TXT}
+1.  Introduction
+
+2.  Terminology
+
+   The key words "MUST" and "MUST NOT" are to be interpreted as described.
+`, '')
+      await expect(validateIntroductionSection(doc)).resolves.toEqual([
+        new ValidationError('EMPTY_INTRODUCTION_SECTION', 'The first section is present but contains no meaningful content.', {
+          ref: 'https://authors.ietf.org/en/required-content#introduction',
+          lines: [{ line: 22, pos: 1 }]
+        })
+      ])
     })
   })
 
@@ -624,6 +743,28 @@ describe('document should have a valid security considerations section', () => {
         ValidationError
       )
     })
+
+    // From draft-chen-rdma-windowless-ack-00
+    test('empty security considerations section is located at its heading', async () => {
+      const doc = await parseTXT(`${CANONICAL_TXT}
+1.  Introduction
+
+      Fallback timeout mechanism serves only as safety backup; primary
+      loss recovery relies on extended T/C AETH SACK reports.
+
+7.  Security Considerations
+
+8.  IANA Considerations
+
+   This document has no requests to IANA.
+`, '')
+      await expect(validateSecurityConsiderationsSection(doc)).resolves.toEqual([
+        new ValidationError('EMPTY_SECURITY_CONSIDERATIONS_SECTION', 'The security considerations section is present but contains no meaningful content.', {
+          ref: 'https://authors.ietf.org/en/required-content#security-considerations',
+          lines: [{ line: 27, pos: 1 }]
+        })
+      ])
+    })
   })
 
   describe('XML Document Type', () => {
@@ -779,6 +920,28 @@ describe('document should have valid security author sections', () => {
         `
       }
       await expect(validateAuthorSection(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
+    })
+
+    // Address from draft-acosta-deepspace-celestial-bodies-registry-03
+    test('misused possessive mark is located at the section title', async () => {
+      const doc = await parseTXT(`${CANONICAL_TXT}
+1.  Introduction
+
+   This document uses [RFC4360].
+
+Authors" Addresses
+
+   Alejandro Acosta
+   LACNIC
+   Email: alejandro@lacnic.net
+`, '')
+      await expect(validateAuthorSection(doc)).resolves.toEqual([
+        new ValidationWarning('MISUSED_POSSESSIVE_MARK', 'The author\'s address section title "Authors" Addresses" uses an incorrect possessive mark or character other than a single quote.', {
+          ref: 'https://authors.ietf.org/en/required-content#authors-addresses',
+          path: 'data.content.authorAddress[0]',
+          lines: [{ line: 26, pos: 1 }]
+        })
+      ])
     })
   })
 
@@ -1116,11 +1279,62 @@ describe('document should have valid references sections', () => {
 `, '')
       await expect(validateReferencesSection(await parseWithReferences('References'))).resolves.toEqual([
         new ValidationError('REFERENCE_TYPE_NOT_DECLARED', 'References must be identified as Normative or Informative.', {
-          ref: 'https://authors.ietf.org/required-content#references'
+          ref: 'https://authors.ietf.org/required-content#references',
+          lines: [{ line: 26, pos: 1 }]
         })
       ])
       await expect(validateReferencesSection(await parseWithReferences('Normative References'))).resolves.toHaveLength(0)
       await expect(validateReferencesSection(await parseWithReferences('Informative References'))).resolves.toHaveLength(0)
+    })
+
+    // From draft-cheng-lsr-igp-shortcut-enhancement-10
+    test('unclassified subsection is located at its title', async () => {
+      const doc = await parseTXT(`${CANONICAL_TXT}
+1.  Introduction
+
+   This document uses [RFC9825] and [RFC9012].
+
+9.  References
+
+9.1.  Normative References
+
+   [RFC9825] Lindem, A., Psenak, P., and Y. Qu, "Extensions to OSPF for
+             Advertising Prefix Administrative Tags", RFC9825, DOI
+             10.17487/RFC9825, July 2025, < https://www.rfc-
+             editor.org/info/rfc9825>.
+
+            9.2. Informational References
+
+   [RFC9012] Patel, K., Van de Velde, G., Sangli, S., and J. Scudder,
+             "The BGP Tunnel Encapsulation Attribute", RFC 9012, DOI
+             10.17487/RFC9012, April 2021, <https://www.rfc-
+             editor.org/info/rfc9012>.
+
+Authors' Addresses
+`, '')
+      await expect(validateReferencesSection(doc)).resolves.toEqual([
+        new ValidationError('UNCLASSIFIED_REFERENCES_SUBSECTION', 'The subsection "9.2. Informational References" is not classified as Normative or Informative.', {
+          ref: 'https://authors.ietf.org/required-content#references',
+          lines: [{ line: 35, pos: 13 }]
+        })
+      ])
+    })
+
+    test('empty references section is located at its heading', async () => {
+      const doc = await parseTXT(`${CANONICAL_TXT}
+1.  Introduction
+
+   This document uses no references.
+
+2.  References
+
+Authors' Addresses
+`, '')
+      const opts = { ref: 'https://authors.ietf.org/required-content#references', lines: [{ line: 26, pos: 1 }] }
+      await expect(validateReferencesSection(doc)).resolves.toEqual([
+        new ValidationError('EMPTY_REFERENCES_SECTION', 'The references section is present but contains no meaningful content.', opts),
+        new ValidationError('REFERENCE_TYPE_NOT_DECLARED', 'References must be identified as Normative or Informative.', opts)
+      ])
     })
 
     describe('references split into separate sections', () => {
@@ -1133,8 +1347,10 @@ describe('document should have valid references sections', () => {
    This document uses [RFC4360].
 
 ${back}`, '')
-      const warning = new ValidationWarning('MULTIPLE_REFERENCES_SECTION_TITLES', 'References should be one section with Normative and Informative subsections (RFC 7322, Section 4.8.6).', {
-        ref: 'https://www.rfc-editor.org/rfc/rfc7322.html#section-4.8.6'
+      // -> Located at each section title
+      const warning = (lines) => new ValidationWarning('MULTIPLE_REFERENCES_SECTION_TITLES', 'References should be one section with Normative and Informative subsections (RFC 7322, Section 4.8.6).', {
+        ref: 'https://www.rfc-editor.org/rfc/rfc7322.html#section-4.8.6',
+        lines
       })
 
       test('top-level Normative and Informative References sections', async () => {
@@ -1144,8 +1360,9 @@ ${entry}
 3.  Informative References
 
 ${entry}`)
-        await expect(validateReferencesSection(doc)).resolves.toEqual([warning])
-        await expect(validateReferencesSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toEqual([warning])
+        const lines = [{ line: 26, pos: 1 }, { line: 31, pos: 1 }]
+        await expect(validateReferencesSection(doc)).resolves.toEqual([warning(lines)])
+        await expect(validateReferencesSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toEqual([warning(lines)])
         await expect(validateReferencesSection(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
       })
       test('an empty References section before the one holding the references', async () => {
@@ -1156,7 +1373,7 @@ ${entry}`)
 3.1.  Normative References
 
 ${entry}`)
-        await expect(validateReferencesSection(doc)).resolves.toEqual([warning])
+        await expect(validateReferencesSection(doc)).resolves.toEqual([warning([{ line: 26, pos: 1 }, { line: 28, pos: 1 }])])
       })
       test('unnumbered References section with unnumbered subsections', async () => {
         const doc = await parseWithBack(`References
@@ -1391,6 +1608,28 @@ describe('document should have a valid IANA considerations section', () => {
       doc.data.content.ianaConsiderations = ['IANA Considerations']
       await expect(validateIANAConsiderationsSection(doc)).resolves.toContainError('INVALID_IANA_CONSIDERATIONS_SECTION', ValidationError)
     })
+    // From draft-ietf-mailmaint-aprf-00
+    test('empty IANA considerations section is located at its heading', async () => {
+      const doc = await parseTXT(`${CANONICAL_TXT}
+1.  Introduction
+
+   to every entity requesting these reports.
+
+11.  IANA Considerations
+
+12.  FAQ
+
+   *  Can the SDI (segment) configuration be leveraged to differentiate
+      reporting for promotional/transactional, or even at the campaign
+      or audience segment level?  If so, how does this mechanism work?
+`, '')
+      await expect(validateIANAConsiderationsSection(doc)).resolves.toEqual([
+        new ValidationError('INVALID_IANA_CONSIDERATIONS_SECTION', 'The IANA considerations section is empty.', {
+          ref: 'https://authors.ietf.org/en/required-content#iana-considerations',
+          lines: [{ line: 26, pos: 1 }]
+        })
+      ])
+    })
   })
 })
 
@@ -1491,8 +1730,59 @@ describe('validateReferencesInText', () => {
       expect(result).toContainEqual(new ValidationComment(
         'PLACEHOLDER_REFERENCE',
         'Document has [RFCVVVV], a placeholder reference; the RFC Editor will replace it.',
-        { ref: 'https://authors.ietf.org/en/required-content#references' }
+        { ref: 'https://authors.ietf.org/en/required-content#references', lines: [{ line: 24, pos: 54 }] }
       ))
+    })
+
+    // From draft-acosta-deepspace-celestial-bodies-registry-03
+    test('an unused reference is located at its entry', async () => {
+      const doc = await parseTXT(`${CANONICAL_TXT}
+1.  Introduction
+
+   Celestial bodies are named as the Minor Planet Center designates them
+   [MPC-Packed].
+
+2.  Informative References
+
+   [RFC1591]  Postel, J., "Domain Name System Structure and Delegation",
+              RFC 1591, March 1994, <https://rfc-editor.org>.
+
+   [MPC-Packed]
+              Minor Planet Center, "Packed Provisional and Permanent
+              Designations", <https://minorplanetcenter.net>.
+
+Author's Address
+`, '')
+      await expect(validateReferencesInText(doc)).resolves.toEqual([
+        new ValidationWarning('REFERENCE_NOT_USED', 'The reference 1591 is listed in the References section but is not mentioned in the document text.', {
+          ref: 'https://authors.ietf.org/en/required-content#references',
+          lines: [{ line: 29, pos: 4 }]
+        })
+      ])
+    })
+
+    test('an unused reference is located at its entry, not where another entry mentions it', async () => {
+      const doc = await parseTXT(`${CANONICAL_TXT}
+1.  Introduction
+
+   This document uses [RFC8446].
+
+2.  Normative References
+
+   [RFC8446]  Rescorla, E., "The Transport Layer Security (TLS) Protocol
+              Version 1.3", RFC 8446, August 2018 (obsoletes [RFC5246]).
+
+   [RFC5246]  Dierks, T. and E. Rescorla, "The Transport Layer Security
+              (TLS) Protocol Version 1.2", RFC 5246, August 2008.
+
+Author's Address
+`, '')
+      await expect(validateReferencesInText(doc)).resolves.toEqual([
+        new ValidationWarning('REFERENCE_NOT_USED', 'The reference 5246 is listed in the References section but is not mentioned in the document text.', {
+          ref: 'https://authors.ietf.org/en/required-content#references',
+          lines: [{ line: 31, pos: 4 }]
+        })
+      ])
     })
   })
 
