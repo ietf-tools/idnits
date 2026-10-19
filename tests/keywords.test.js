@@ -7,6 +7,7 @@ import {
 } from '../lib/modules/keywords.mjs'
 import { baseTXTDoc, baseXMLDoc } from './fixtures/base-doc.mjs'
 import { parse } from '../lib/parsers/xml.mjs'
+import { parse as parseTXT } from '../lib/parsers/txt.mjs'
 import { cloneDeep, set } from 'lodash-es'
 
 expect.extend({
@@ -707,6 +708,181 @@ describe('document should have valid RFC2119 keywords', () => {
           { ref: 'https://www.rfc-editor.org/rfc/rfc7322.html#section-4.8.2' }
         )
       ])
+    })
+
+    describe('locations of findings in a text draft', () => {
+      // Text of the document at a location
+      const at = (doc, { line, pos }) => doc.body.split('\n')[line - 1].slice(pos - 1)
+
+      test('similar boilerplate, keywords without a boilerplate and RFC 2119 cited without RFC 8174', async () => {
+        const doc = await parseTXT(`
+1.1.  Requirements Language
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
+   document are to be interpreted as described in RFC 2119 [RFC2119].
+
+   In a component that may at some time be interpreted to be a URI by
+   some system the "@" MUST NOT be placed prior to the userinfo
+   component:
+
+9.  Normative References
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119, March 1997.
+`, 'draft-accilent-at-sign-00.txt')
+
+        const result = await validate2119Keywords(doc, { mode: MODES.NORMAL })
+        expect(result.map((e) => [e.name, e.lines])).toEqual([
+          // The paragraph starting as a boilerplate does
+          ['MISSING_REQLEVEL_BOILERPLATE', [{ line: 4, pos: 4 }]],
+          // The keywords, the paragraph's included as it isn't a boilerplate
+          ['MISSING_REQLEVEL_BOILERPLATE', [
+            { line: 4, pos: 19 }, { line: 4, pos: 27 }, { line: 4, pos: 39 }, { line: 4, pos: 51 }, { line: 4, pos: 60 },
+            { line: 5, pos: 5 }, { line: 5, pos: 15 }, { line: 5, pos: 29 }, { line: 5, pos: 44 }, { line: 5, pos: 55 },
+            { line: 9, pos: 24 }
+          ]],
+          // The citation and the reference
+          ['MISSING_RFC8174_REF', [{ line: 6, pos: 60 }, { line: 14, pos: 4 }]]
+        ])
+        expect(at(doc, result[0].lines[0])).toMatch(/^The key words/)
+        expect(at(doc, result[1].lines[10])).toMatch(/^MUST NOT be placed/)
+        expect(result[2].lines.map((loc) => at(doc, loc))).toEqual([
+          expect.stringMatching(/^\[RFC2119\]\.$/),
+          expect.stringMatching(/^\[RFC2119\] {2}Bradner/)
+        ])
+      })
+
+      test('keywords: at most 20 locations, the first ones', async () => {
+        const doc = await parseTXT(`
+1.3.  Specification Requirements
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and
+   "OPTIONAL" in this document are to be interpreted as described in BCP
+   14 RFC2119 [RFC8174] when, and only when, they appear in all
+   capitals, as shown here.
+
+   The key deriviations described below MUST be done when the inner
+   method is EAP (i.e. when the parties exchange EAP-Payload TLVs).  The
+   key deriviations described below MUST NOT be done when the inner
+   method is anything other than EAP (i.e. when the inner method does
+   not include EAP-Payload TLVs).
+
+   Since the Crypto-Binding TLV depends on the key derivations, it has
+   the same requirements.  A Crypto-Binding TLV MUST be used when the
+   inner method is EAP.  A Crypto-Binding TLV MUST NOT be used when the
+   inner method is anything other than EAP.
+
+   Inner EAP methods MUST produce an MSK and/or an EMSK.  Inner EAP
+   methods which produce neither MSK or EMSK (e.g. EAP-GTC) MUST NOT be
+   used.  A party which sees an attempt to use a forbidden inner EAP
+   method MUST either respond with an EAP NAK that suggests one or more
+   acceptable EAP methods, or else respond with a fatal error, and an
+
+   *  The Version field MUST set to two (2).
+
+   *  The Received-Ver field MUST be set to two (2), to indicate TEAPv2.
+
+   *  The Flags field MUST have value 2, to indicate that only the MSK
+      Compound-MAC is present.
+
+   *  The ESMK Compound-MAC field is not used.  It SHOULD be set to
+      zeros by the sender.  The receiver MUST ignore it.
+`, 'draft-ietf-emu-teapv2-00.txt')
+
+        const result = await validate2119Keywords(doc, { mode: MODES.NORMAL })
+        const keywordsFinding = result.find((e) => e.name === 'MISSING_REQLEVEL_BOILERPLATE' && e.message.includes('keywords are present'))
+        expect(doc.data.extractedElements.keywords2119).toHaveLength(23)
+        expect(keywordsFinding.lines).toHaveLength(20)
+        expect(keywordsFinding.lines[0]).toEqual({ line: 4, pos: 19 })
+        expect(keywordsFinding.lines.at(-1)).toEqual({ line: 29, pos: 30 })
+        for (const loc of keywordsFinding.lines) {
+          expect(at(doc, loc)).toMatch(/^(NOT )?(MUST|REQUIRED|SHALL|SHOULD|RECOMMENDED|OPTIONAL|MAY)/)
+        }
+        // RFC 8174 is only cited
+        expect(result.find((e) => e.name === 'MISSING_RFC2119_REF').lines).toEqual([{ line: 7, pos: 15 }])
+        expect(at(doc, { line: 7, pos: 15 })).toMatch(/^\[RFC8174\] when/)
+      })
+
+      test('boilerplate without keywords: the boilerplate', async () => {
+        const doc = await parseTXT(`
+2.  Conventions and Definitions
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and
+   "OPTIONAL" in this document are to be interpreted as described in
+   BCP 14 [RFC2119] [RFC8174] when, and only when, they appear in all
+   capitals, as shown here.
+`, 'draft-bg-onions-update-network-service-models-01.txt')
+
+        const result = await validate2119Keywords(doc, { mode: MODES.NORMAL })
+        expect(result.map((e) => e.name)).toEqual(['MISSING_REQLEVEL_KEYWORDS'])
+        expect(result[0].lines).toEqual([
+          { line: 4, pos: 19 }, { line: 4, pos: 27 }, { line: 4, pos: 39 }, { line: 4, pos: 51 }, { line: 4, pos: 60 },
+          { line: 5, pos: 5 }, { line: 5, pos: 15 }, { line: 5, pos: 29 }, { line: 5, pos: 44 }, { line: 5, pos: 63 },
+          { line: 6, pos: 5 }
+        ])
+        expect(result[0].lines.map((loc) => at(doc, loc).slice(0, 4))).toEqual(['MUST', 'MUST', 'REQU', 'SHAL', 'SHAL', 'SHOU', 'SHOU', 'RECO', 'NOT ', 'MAY"', 'OPTI'])
+      })
+
+      test('NOT RECOMMENDED used but not in the boilerplate: where it is used', async () => {
+        const doc = await parseTXT(`
+2.  Terminology
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
+   document are to be interpreted as described in RFC 2119.
+
+   errors (REQUIRED):  An array of named error conditions that this
+      endpoint may return.  Each error condition MUST be named and
+      SHOULD include a description.  Generic error names (e.g., "error",
+      "failure") are NOT RECOMMENDED.  Specific descriptive error names
+      (e.g., "reservation_unavailable", "invalid_datetime",
+      "restaurant_not_found") are REQUIRED for conformance.
+`, 'draft-hood-independent-agis-01.txt')
+
+        const result = await validate2119Keywords(doc, { mode: MODES.NORMAL })
+        expect(result.map((e) => [e.name, e.lines])).toEqual([
+          ['MISSING_NOTRECOMMENDED_IN_BOILERPLATE', [{ line: 11, pos: 22 }]]
+        ])
+        expect(at(doc, result[0].lines[0])).toMatch(/^NOT RECOMMENDED\./)
+      })
+
+      test('[BCP14] citation: in the text and in the references', async () => {
+        const doc = await parseTXT(`
+1.2.  Requirements Language and Applicability
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and
+   "OPTIONAL" in this document are to be interpreted as described in BCP
+   14 [BCP14] when, and only when, they appear in all capitals, as shown
+   here.
+
+   A mapping instance MUST identify its source objects, source format
+
+10.  Normative References
+
+   [BCP14]    Best Current Practice 14,
+`, 'draft-abak-ai-evaluation-claim-preservation-00.txt')
+
+        const result = await validate2119Keywords(doc, { mode: MODES.NORMAL })
+        const finding = result.find((e) => e.name === 'BCP14_CITED_INSTEAD_OF_RFCS')
+        expect(finding.lines).toEqual([{ line: 7, pos: 7 }, { line: 14, pos: 4 }])
+        expect(finding.lines.map((loc) => at(doc, loc).slice(0, 7))).toEqual(['[BCP14]', '[BCP14]'])
+      })
+
+      test('misspelled keyword: where the keyword starts', async () => {
+        const doc = await parseTXT(`
+   The "@" SHOULD not be placed prior to the userinfo component even in
+`, 'draft-accilent-at-sign-00.txt')
+
+        const result = await validate2119Keywords(doc, { mode: MODES.NORMAL })
+        const finding = result.find((e) => e.name === 'INCORRECT_KEYWORD_SPELLING')
+        // The parser still gives this position counting from 0 (to be changed with its other positions)
+        expect(finding.lines).toEqual([{ line: 2, pos: 11 }])
+        expect(at(doc, { line: 2, pos: 12 })).toMatch(/^SHOULD not be placed/)
+      })
     })
   })
 
