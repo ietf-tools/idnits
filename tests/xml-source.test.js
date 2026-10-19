@@ -80,16 +80,16 @@ describe('scanXmlSource', () => {
 
     const tabs = [...xml.matchAll(/\t/g)].map(match => match.index)
     expect(tabs.map(offset => source.position(offset))).toEqual([
-      { line: 2, pos: 9 },
-      { line: 2, pos: 12 },
-      { line: 2, pos: 15 },
-      { line: 3, pos: 4 }
+      { line: 2, pos: 10 },
+      { line: 2, pos: 13 },
+      { line: 2, pos: 16 },
+      { line: 3, pos: 5 }
     ])
     const located = tabs.map(offset => source.locate(offset)).map(({ element, markup }) => [element.name, markup?.kind ?? 'text'])
     expect(located).toEqual([['t', 'tag'], ['t', 'tag'], ['t', 'text'], ['rfc', 'comment']])
     expect(source.locate(0).element.name).toBe('rfc')
     expect(source.locate(xml.length - 1)).toEqual({ element: null, markup: null })
-    expect(source.position(0)).toEqual({ line: 1, pos: 0 })
+    expect(source.position(0)).toEqual({ line: 1, pos: 1 })
   })
 
   test('malformed documents', () => {

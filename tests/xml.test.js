@@ -506,10 +506,10 @@ describe('Tabs in XML documents', () => {
     const [sourcecode, artwork] = await validateTabs(doc)
     expect(sourcecode.path).toBe('rfc.middle.section.sourcecode[0]')
     expect(sourcecode.message).toContain('<sourcecode> contains 2 tabs, first on line 4.')
-    expect(sourcecode.lines).toEqual([{ line: 4, pos: 24 }, { line: 5, pos: 0 }])
+    expect(sourcecode.lines).toEqual([{ line: 4, pos: 25 }, { line: 5, pos: 1 }])
     expect(artwork.path).toBe('rfc.middle.section.figure.artwork')
     expect(artwork.message).toContain('<artwork type="ascii-art"> contains a tab on line 7.')
-    expect(artwork.lines).toEqual([{ line: 7, pos: 47 }])
+    expect(artwork.lines).toEqual([{ line: 7, pos: 48 }])
   })
 
   test('tabs elsewhere, once per document', async () => {
@@ -538,7 +538,7 @@ describe('Tabs in XML documents', () => {
   test('a tab elsewhere', async () => {
     const [result] = await validateTabs(await parseDoc('<t>One\ttwo</t>'))
     expect(result.message).toBe('Document contains a tab that xml2rfc treats as whitespace, on line 4. xml2rfc only expands tabs, and warns about them, when other text follows them on a line of <sourcecode> or <artwork type="ascii-art">.')
-    expect(result.lines).toEqual([{ line: 4, pos: 6 }])
+    expect(result.lines).toEqual([{ line: 4, pos: 7 }])
   })
 
   test('first 20 tabs listed', async () => {
@@ -571,7 +571,7 @@ describe('Tabs in XML documents', () => {
     const doc = await parseDoc('<figure><artwork>\t<![CDATA[\t<CODE BEGINS> file "a\tb"\nint\tx;\n<CODE ENDS>\tx]]></artwork></figure>', '2')
     const result = await validateTabs(doc)
     expect(result.map(r => r.name)).toEqual(['TABS_IN_CODE', 'TABS_AS_WHITESPACE'])
-    expect(result[0].lines).toEqual([{ line: 5, pos: 3 }])
+    expect(result[0].lines).toEqual([{ line: 5, pos: 4 }])
     expect(result[1].message).toContain('Document contains 4 tabs')
   })
 
@@ -618,7 +618,7 @@ describe('Size of <artwork> and <sourcecode>', () => {
     expect(artwork.path).toBe('rfc.middle.section.figure.artwork')
     expect(artwork.message).toBe('<artwork> has 1 line too wide for the 72 columns of xml2rfc\'s text output. The widest, line 1 of the artwork, is 73 characters long.')
     addXmlSourceLines([sourcecode], doc)
-    expect(sourcecode.lines).toEqual([{ line: 4, pos: 0 }])
+    expect(sourcecode.lines).toEqual([{ line: 4, pos: 1 }])
   })
 
   test('lines measured as xml2rfc renders them', async () => {
