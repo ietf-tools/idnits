@@ -1205,6 +1205,80 @@ describe('validateNormativeReferences', () => {
       ])
     })
 
+    test('an RFC cited under another label is checked, at the label of its entry', async () => {
+      // -> Excerpt of draft-ietf-mailmaint-autoconfig-06, whose informative references list RFC 3986 again
+      const doc = await parseTXT(`${CANONICAL_TXT}
+1.  Introduction
+
+   This document uses [STARTTLS], [TLSv1.2] and [URL].
+
+2.  References
+
+2.1.  Normative References
+
+   [STARTTLS] Newman, C., "Using TLS with IMAP, POP3 and ACAP",
+              RFC 2595, DOI 10.17487/RFC2595, June 1999,
+              <https://www.rfc-editor.org/rfc/rfc2595>.
+
+   [TLSv1.2]  Dierks, T. and E. Rescorla, "The Transport Layer Security
+              (TLS) Protocol Version 1.2", RFC 5246,
+              DOI 10.17487/RFC5246, August 2008,
+              <https://www.rfc-editor.org/rfc/rfc5246>.
+
+   [URL]      Berners-Lee, T., Fielding, R., and L. Masinter, "Uniform
+              Resource Identifier (URI): Generic Syntax", STD 66,
+              RFC 3986, DOI 10.17487/RFC3986, January 2005,
+              <https://www.rfc-editor.org/rfc/rfc3986>.
+
+2.2.  Informative References
+
+   [RFC3986]  Berners-Lee, T., Fielding, R., and L. Masinter, "Uniform
+              Resource Identifier (URI): Generic Syntax", STD 66,
+              RFC 3986, DOI 10.17487/RFC3986, January 2005,
+              <https://www.rfc-editor.org/rfc/rfc3986>.
+`, 'draft-ietf-mailmaint-autoconfig-06.txt')
+      server.use(
+        http.get('https://www.rfc-editor.org/rfc/rfc2595.json', () => HttpResponse.json({ status: 'Proposed Standard', obsoleted_by: [] })),
+        http.get('https://www.rfc-editor.org/rfc/rfc5246.json', () => HttpResponse.json({ status: 'Proposed Standard', obsoleted_by: ['RFC8446'] })),
+        http.get('https://www.rfc-editor.org/rfc/rfc3986.json', () => HttpResponse.json({ status: 'Internet Standard', obsoleted_by: [] }))
+      )
+      expect(doc.data.extractedElements.referenceSectionRfc).toEqual([{ value: '3986', subsection: 'informative_references' }])
+
+      // -> RFC 3986 is checked once, as the parser records it, for the informative references
+      await expect(validateNormativeReferences(doc, { mode: MODES.NORMAL })).resolves.toEqual([
+        new ValidationError('OBSOLETE_REFERENCE', 'RFC 5246 is obsolete and has been replaced by: RFC8446.', {
+          ref: 'https://authors.ietf.org/en/required-content#references',
+          lines: locate(doc, '[TLSv1.2]  Dierks', '[TLSv1.2]')
+        })
+      ])
+    })
+
+    test('an RFC cited under a numeric label is checked for a downref, at the label of its entry', async () => {
+      // -> Excerpt of draft-dnoveck-nfsv4-rfc5662bis-08
+      const doc = await parseTXT(`${CANONICAL_TXT}
+1.  Introduction
+
+   This document uses [1] and [3].
+
+2.  Normative References
+
+   [1]        Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119, March 1997,
+              <https://www.rfc-editor.org/rfc/rfc2119>.
+
+   [3]        Eisler, M., "XDR: External Data Representation Standard",
+              STD 67, RFC 4506, May 2006,
+              <https://www.rfc-editor.org/rfc/rfc4506>.
+`, 'draft-dnoveck-nfsv4-rfc5662bis-08.txt')
+
+      await expect(validateDownrefs(doc, { mode: MODES.NORMAL })).resolves.toEqual([
+        new ValidationError('POSSIBLE_DOWNREF', 'RFC 4506 status can\'t be fetched. Reference is possible downref', {
+          ref: 'https://www.rfc-editor.org/info/bcp97',
+          lines: locate(doc, '   [3]', '[3]')
+        })
+      ])
+    })
+
     test('a citation after the references section is not where the reference is', async () => {
       // -> Excerpt of draft-bormann-cbor-cddl-freezer-18, whose Acknowledgements follow the references
       const doc = await parseTXT(`${CANONICAL_TXT}
