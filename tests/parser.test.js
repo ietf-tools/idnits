@@ -177,8 +177,9 @@ describe('A possible code comment is detected outside of a marked code block', (
     const result = await parse(txt, 'txt')
     expect(result.data.possibleIssues.inlineCode).toHaveLength(2)
     expect(result.data.possibleIssues.inlineCode).toEqual(expect.arrayContaining([
-      expect.objectContaining({ line: 42 }),
-      expect.objectContaining({ line: 43 })
+      // (at the comment marker, after the indentation before a "#")
+      expect.objectContaining({ line: 42, pos: 7 }),
+      expect.objectContaining({ line: 43, pos: 7 })
     ]))
   })
 
@@ -248,7 +249,7 @@ describe('A possible code comment is detected outside of a marked code block', (
 
     const result = await parse(txt, 'txt')
     expect(result.data.possibleIssues.inlineCode).toEqual([
-      expect.objectContaining({ line: lineNumber(txt, '# This is a possible code comment') })
+      expect.objectContaining({ line: lineNumber(txt, '# This is a possible code comment'), pos: 4 })
     ])
   })
 })
@@ -2055,8 +2056,9 @@ describe('The document does not appear to be ragged-right', () => {
     expect(result.data.possibleIssues.linesWithSpaces).toHaveLength(3)
     expect(result.data.possibleIssues.linesWithSpaces).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ line: 24, pos: 52 }),
-        expect.objectContaining({ line: 25, pos: 62 })
+        // (where the first run of extra spaces starts, after "The")
+        expect.objectContaining({ line: 24, pos: 10 }),
+        expect.objectContaining({ line: 25, pos: 20 })
       ])
     )
   })
@@ -3785,7 +3787,8 @@ Author's Address
     const result = await parse(txt, 'txt')
     expect(result.data.possibleIssues.unexpectedIndentation).toHaveLength(1)
     expect(result.data.possibleIssues.unexpectedIndentation).toEqual(
-      expect.arrayContaining([expect.objectContaining({ pos: 0 })])
+      // (at the first non-blank character)
+      expect.arrayContaining([expect.objectContaining({ pos: 2 })])
     )
   })
 
@@ -3808,7 +3811,7 @@ Author's Address
     const result = await parse(txt, 'txt')
     expect(result.data.possibleIssues.unexpectedIndentation).toHaveLength(3)
     expect(result.data.possibleIssues.unexpectedIndentation).toEqual(
-      expect.arrayContaining([expect.objectContaining({ pos: 0 }), expect.objectContaining({ pos: 0 })])
+      expect.arrayContaining([expect.objectContaining({ name: 'References', pos: 4 }), expect.objectContaining({ name: 'Introduction', pos: 3 })])
     )
   })
 
