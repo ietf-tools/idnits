@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import { parse } from '../lib/parsers/xml.mjs'
-import { collectXmlReferences, getCitedDrafts, getCitedRfcs } from '../lib/helpers/xml-references.mjs'
+import { collectXmlReferences, getCitedDrafts, getCitedRfcs, listXmlReferences } from '../lib/helpers/xml-references.mjs'
 
 // A v2 document as kramdown-rfc writes it: references pulled in by external
 // entities and <?rfc include?> instructions (quotes not always balanced), in
@@ -114,5 +114,101 @@ describe('collectXmlReferences', () => {
     expect(getCitedRfcs(references, ['informative'])).toEqual([])
     expect(getCitedRfcs(references, ['unclassified'])).toEqual(['6991'])
     expect(getCitedDrafts(references)).toEqual(['draft-ietf-baz-07', 'draft-ietf-foo-bar-02'])
+  })
+})
+
+// Normative references of drafts: a reference to a document from elsewhere (draft-bokovoy-kitten-pkinit-pqc-02),
+// one to a draft given by its anchor and link only (draft-becker-cnsa2-ssh-profile-05), one whose content is
+// included (draft-ietf-6man-sub-link-scope-multicast-01), one to a draft named in a <seriesInfo> of another name
+// (draft-ietf-rift-auto-evpn-07), and bibliography entries of RFC subseries and of another series
+// (draft-dunglas-mercure-08), pulled in by xi:include
+const V3_EXTERNAL_DOC = `<?xml version="1.0" encoding="UTF-8"?>
+<rfc version="3" category="std" docName="draft-test-references-00" xmlns:xi="http://www.w3.org/2001/XInclude">
+  <front><title>Test</title></front>
+  <middle><section><name>Introduction</name><t>Text.</t></section></middle>
+  <back>
+    <references>
+      <name>References</name>
+      <references>
+        <name>Normative References</name>
+        <reference anchor="FIPS203" target="https://doi.org/10.6028/NIST.FIPS.203">
+          <front>
+            <title>Module-Lattice-Based Key-Encapsulation Mechanism Standard</title>
+            <author>
+              <organization>National Institute of Standards and Technology (NIST)</organization>
+            </author>
+            <date year="2024" month="August"/>
+          </front>
+          <seriesInfo name="FIPS PUB" value="203"/>
+        </reference>
+        <reference anchor="I-D.jenkins-cnsa2-pkix-profile" target="https://datatracker.ietf.org/doc/draft-jenkins-cnsa2-pkix-profile/">
+          <front>
+            <title>Commercial National Security Algorithm Suite Certificate and Certificate Revocation List Profile</title>
+            <author initials="M." surname="Jenkins" fullname="M. Jenkins"><organization/></author>
+            <date month="January" year="2025"/>
+          </front>
+        </reference>
+        <reference anchor="TLS">
+          <front><title>The Transport Layer Security (TLS) Protocol Version 1.3</title><author/><date/></front>
+          <seriesInfo name="DOI" value="10.17487/RFC8446"/>
+        </reference>
+        <reference anchor="MCinUC">
+          <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.6085.xml" xpointer="xpointer(/reference/*)"/>
+        </reference>
+        <reference anchor="RIFT-KV">
+          <front>
+            <title>RIFT Key/Value Structure and Registry</title>
+            <seriesInfo name="Work in Progress," value="draft-head-rift-kv-registry-05"/>
+            <author initials="J." surname="Head" fullname="Jordan Head">
+              <organization/>
+            </author>
+          </front>
+        </reference>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml-rfcsubseries/reference.STD.0069.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml-rfcsubseries/reference.BCP.38.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml4/reference.W3C.REC-xml-20081126.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml"/>
+        <xi:include href="refs/local.xml"/>
+      </references>
+    </references>
+  </back>
+</rfc>
+`
+
+describe('listXmlReferences', () => {
+  const PATH = 'rfc.back.references[0].references[0]'
+
+  test('lists every reference with what it cites and where it is', async () => {
+    const { doc } = await parse(V3_EXTERNAL_DOC, 'draft-test-references-00.xml')
+
+    expect(listXmlReferences(doc)).toEqual([
+      { section: 'normative', rfc: null, draft: null, bcp: null, std: null, external: true, anchor: 'FIPS203', path: `${PATH}.reference[0]`, source: 'reference' },
+      { section: 'normative', rfc: null, draft: null, bcp: null, std: null, external: false, anchor: 'I-D.jenkins-cnsa2-pkix-profile', path: `${PATH}.reference[1]`, source: 'reference' },
+      { section: 'normative', rfc: null, draft: null, bcp: null, std: null, external: false, anchor: 'TLS', path: `${PATH}.reference[2]`, source: 'reference' },
+      { section: 'normative', rfc: null, draft: null, bcp: null, std: null, external: false, anchor: 'MCinUC', path: `${PATH}.reference[3]`, source: 'reference' },
+      { section: 'normative', rfc: null, draft: null, bcp: null, std: null, external: false, anchor: 'RIFT-KV', path: `${PATH}.reference[4]`, source: 'reference' },
+      { section: 'normative', rfc: null, draft: null, bcp: null, std: '69', external: false, anchor: 'STD.0069', path: `${PATH}.xi:include[0]`, source: 'xi:include' },
+      { section: 'normative', rfc: null, draft: null, bcp: '38', std: null, external: false, anchor: 'BCP.38', path: `${PATH}.xi:include[1]`, source: 'xi:include' },
+      { section: 'normative', rfc: null, draft: null, bcp: null, std: null, external: true, anchor: 'W3C.REC-xml-20081126', path: `${PATH}.xi:include[2]`, source: 'xi:include' },
+      { section: 'normative', rfc: '2119', draft: null, bcp: null, std: null, external: false, anchor: 'RFC.2119', path: `${PATH}.xi:include[3]`, source: 'xi:include' },
+      { section: 'normative', rfc: null, draft: null, bcp: null, std: null, external: null, anchor: null, path: `${PATH}.xi:include[4]`, source: 'xi:include' }
+    ])
+  })
+
+  test('lists the references pulled in by external entities and <?rfc include?> at their section', async () => {
+    const { doc } = await parse(V2_DOC, 'draft-test-references-00.xml')
+    const references = listXmlReferences(doc)
+
+    expect(references.map(({ anchor, external, path, source }) => ({ anchor, external, path, source }))).toEqual([
+      { anchor: 'QUIC', external: false, path: 'rfc.back.references[0].reference[0]', source: 'reference' },
+      { anchor: 'RFC.8174', external: false, path: 'rfc.back.references[0]', source: 'pi' },
+      { anchor: 'RFC.2119', external: false, path: 'rfc.back.references[0]', source: 'entity' },
+      { anchor: 'IANA', external: true, path: 'rfc.back.references[1].reference[0]', source: 'reference' },
+      { anchor: 'RFC.6991', external: false, path: 'rfc.back.references[1]', source: 'pi' },
+      { anchor: 'I-D.draft-ietf-tls-esni-25', external: false, path: 'rfc.back.references[1]', source: 'pi' },
+      { anchor: 'I-D.ietf-quic-http', external: false, path: 'rfc.back.references[1]', source: 'entity' }
+    ])
+    // -> collectXmlReferences() keeps those citing an RFC or a draft
+    expect(collectXmlReferences(doc)).toHaveLength(6)
   })
 })
