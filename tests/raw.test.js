@@ -32,7 +32,7 @@ describe('input does not include invalid control chars', () => {
   test('tabs are listed with their position', async () => {
     const [result] = await validateContent('abc\tdef\n\tgeh')
     expect(result.message).toBe('Document contains 2 tabs. Remove or replace them with spaces.')
-    expect(result.lines).toEqual([{ line: 1, pos: 3 }, { line: 2, pos: 0 }])
+    expect(result.lines).toEqual([{ line: 1, pos: 4 }, { line: 2, pos: 1 }])
     const [many] = await validateContent('\t'.repeat(25))
     expect(many.message).toContain('25 tabs')
     expect(many.lines).toHaveLength(20)
@@ -77,11 +77,11 @@ describe('non-ASCII characters should follow draft-rswg-rfc7997bis', () => {
     }
     const zwsp = (await validateContent(data)).find(r => r.message.includes('U+200B'))
     expect(zwsp.message).toContain('2 ZERO WIDTH SPACE (U+200B) characters')
-    expect(zwsp.lines).toEqual([{ line: 2, pos: 2 }, { line: 2, pos: 4 }])
+    expect(zwsp.lines).toEqual([{ line: 2, pos: 3 }, { line: 2, pos: 5 }])
     expect(zwsp.refUrl).toBe('https://datatracker.ietf.org/doc/draft-rswg-rfc7997bis/#section-3')
     const rlo = (await validateContent(data)).find(r => r.message.includes('U+202E'))
     expect(rlo.message).toContain('a RIGHT-TO-LEFT OVERRIDE (U+202E) character')
-    expect(rlo.lines).toEqual([{ line: 3, pos: 2 }])
+    expect(rlo.lines).toEqual([{ line: 3, pos: 3 }])
   })
   test('zero width space and word joiner are line-break hints in XML', async () => {
     const xml = await decode('<?xml version="1.0" encoding="UTF-8"?>\n<rfc>\n<t>address\u2060/port long\u200Bidentifier</t>\n<t>\u202Eabc\u202C d\ufeffef</t>\n</rfc>')
@@ -98,7 +98,7 @@ describe('non-ASCII characters should follow draft-rswg-rfc7997bis', () => {
     // -> Text documents, including one starting with "<" or an XML declaration, still report them
     for (const start of ['Network Working Group', '<Network Working Group>', '<?xml version="1.0"?>']) {
       const result = await validateContent(await decode(`${start}\na\u200Bb\u2060c`), { type: 'txt' })
-      expect(result.filter(r => r.name === 'NON_DISPLAYABLE_CHARACTER').map(r => r.lines)).toEqual([[{ line: 2, pos: 1 }], [{ line: 2, pos: 3 }]])
+      expect(result.filter(r => r.name === 'NON_DISPLAYABLE_CHARACTER').map(r => r.lines)).toEqual([[{ line: 2, pos: 2 }], [{ line: 2, pos: 4 }]])
     }
   })
   test('joiners are allowed', async () => {
@@ -113,7 +113,7 @@ describe('non-ASCII characters should follow draft-rswg-rfc7997bis', () => {
     const elsewhere = await validateContent(await decode('abc\nd\ufeffef'), { mode: MODES.SUBMISSION })
     expect(elsewhere).toHaveLength(1)
     expect(elsewhere).toContainError('NON_DISPLAYABLE_CHARACTER', ValidationWarning)
-    expect(elsewhere[0].lines).toEqual([{ line: 2, pos: 1 }])
+    expect(elsewhere[0].lines).toEqual([{ line: 2, pos: 2 }])
   })
   test('text not in NFC', async () => {
     const data = await decode('abc\nCafe\u0301 and Cafe\u0301\nZo\u0308e\nCaf\u00E9')
@@ -123,7 +123,7 @@ describe('non-ASCII characters should follow draft-rswg-rfc7997bis', () => {
     const result = (await validateContent(data)).find(r => r.name === 'NON_NFC_TEXT')
     expect(result.message).toContain('Text on 2 lines')
     expect(result.message).toContain('first on line 2')
-    expect(result.lines).toEqual([{ line: 2, pos: 3 }])
+    expect(result.lines).toEqual([{ line: 2, pos: 4 }])
     const nfc = await validateContent(await decode('Caf\u00E9'))
     expect(nfc.find(r => r.name === 'NON_NFC_TEXT')).toBeUndefined()
   })
