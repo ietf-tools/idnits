@@ -207,6 +207,92 @@ describe('document should have valid FQDN mentions', () => {
       await expect(validateFQDNs(doc, { mode: MODES.FORGIVE_CHECKLIST, offline: true })).resolves.toEqual(expected)
       await expect(validateFQDNs(doc, { mode: MODES.SUBMISSION, offline: true })).resolves.toHaveLength(0)
     })
+    test('an ARPA domain is reported with where it is mentioned', async () => {
+      // From draft-ietf-core-coap-over-gatt-00
+      const doc = await parseTXT(`
+   Table of Contents
+     5.1.  ble.arpa  . . . . . . . . . . . . . . . . . . . . . . . .  15
+
+5.1.  ble.arpa
+
+   IANA is asked to create two new reserved domain names in the .arpa
+   name space as described in [rfc6761]: the suffixes .ble.arpa.
+      `, 'draft-ietf-core-coap-over-gatt-00.txt')
+
+      const result = await validateFQDNs(doc, { mode: MODES.NORMAL, offline: true })
+      expect(result).toEqual([
+        new ValidationWarning('INVALID_ARPA_DOMAIN', 'ARPA domain "ble.arpa" usage is invalid.', {
+          ref: 'https://www.iana.org/domains/arpa',
+          lines: [{ line: 3, pos: 12 }, { line: 5, pos: 7 }],
+          text: 'ble.arpa'
+        })
+      ])
+    })
+    test('a github-like domain is reported with where it is mentioned', async () => {
+      // From draft-mahy-mimi-credential-preauth-00
+      const doc = await parseTXT(`
+SEQUENCE (1 elem)
+  SET (1 elem)
+    SEQUENCE (2 elem)
+      OBJECT IDENTIFIER 2.5.4.3 commonName (X.520 DN component)
+      PrintableString github.com
+      `, 'draft-mahy-mimi-credential-preauth-00.txt')
+
+      const result = await validateFQDNs(doc, { mode: MODES.NORMAL, offline: true })
+      expect(result).toEqual([
+        new ValidationComment('POSSIBLE_INVALID_TLD', 'Ensure "github.com" isn\'t used as a example. For example domains, consider using ".example.(com|org|net)" instead.', {
+          ref: 'https://www.rfc-editor.org/rfc/rfc6761',
+          lines: [{ line: 6, pos: 23 }],
+          text: 'github.com'
+        })
+      ])
+    })
+    test('a domain is reported with the first 20 places it is mentioned', async () => {
+      // The lines of draft-varnagy-iid-protocol-00 that mention doe.org, other than in a URL or an email address
+      const doc = await parseTXT(`
+   foo.org >>> doe.org {
+   The doe.org identity server records that foo.org has requested a
+   foo.org <<< doe.org {
+   prompted to authenticate.  After that, the settings of his doe.org
+   If not, the process continues immediately.  The doe.org server
+   foo.org >>> doe.org {
+   The doe.org server has already recorded that the login with the
+   foo.org <<< doe.org {
+   IID; any additional information can be retrieved from doe.org
+   IID in a cookie, it can contact doe.org without asking John his IID.
+   While John is still signed in to doe.org, and his account settings
+   where to ship John's order, it contacts his identity server: doe.org.
+   webshop.com >>> doe.org {
+   At this point, the doe.org identity server MAY retrieve the req2026
+   doe.org.
+   webshop.com <<< doe.org {
+   webshop.com >>> doe.org {
+   webshop.com <<< doe.org {
+   doe.org >>> webshop.com {
+   doe.org <<< webshop.com {
+   The bar.org server retrieves the key from doe.org.  It requires the
+   bar.org >>> doe.org {
+      `, 'draft-varnagy-iid-protocol-00.txt')
+
+      const result = await validateFQDNs(doc, { mode: MODES.NORMAL, offline: true })
+      expect(result.map(({ name, text }) => [name, text])).toEqual([
+        ['INVALID_DOMAIN_TLD', 'foo.org'],
+        ['INVALID_DOMAIN_TLD', 'doe.org'],
+        ['INVALID_DOMAIN_TLD', 'webshop.com'],
+        ['INVALID_DOMAIN_TLD', 'bar.org']
+      ])
+      const doeOrg = result[1]
+      expect(doeOrg.lines).toHaveLength(20)
+      expect(doeOrg.lines[0]).toEqual({ line: 2, pos: 16 })
+      expect(doeOrg.lines[19]).toEqual({ line: 21, pos: 4 })
+      expect(result[0].lines).toEqual([
+        { line: 2, pos: 4 },
+        { line: 3, pos: 45 },
+        { line: 4, pos: 4 },
+        { line: 7, pos: 4 },
+        { line: 9, pos: 4 }
+      ])
+    })
   })
 
   describe('XML Document Type', () => {
