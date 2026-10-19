@@ -879,9 +879,8 @@ describe('document should have valid RFC2119 keywords', () => {
 
         const result = await validate2119Keywords(doc, { mode: MODES.NORMAL })
         const finding = result.find((e) => e.name === 'INCORRECT_KEYWORD_SPELLING')
-        // The parser still gives this position counting from 0 (to be changed with its other positions)
-        expect(finding.lines).toEqual([{ line: 2, pos: 11 }])
-        expect(at(doc, { line: 2, pos: 12 })).toMatch(/^SHOULD not be placed/)
+        expect(finding.lines).toEqual([{ line: 2, pos: 12 }])
+        expect(at(doc, finding.lines[0])).toMatch(/^SHOULD not be placed/)
       })
     })
   })
@@ -1271,6 +1270,8 @@ describe('document should have valid term spelling', () => {
       const doc = cloneDeep(baseTXTDoc)
       doc.body = 'Lorem ipsum e-mail address.'
       await expect(validateTermsStyle(doc)).resolves.toContainError('INCORRECT_TERM_SPELLING', ValidationComment)
+      // (located where the term starts, counting columns from 1)
+      expect((await validateTermsStyle(doc))[0].lines).toEqual([{ line: 1, pos: 13 }])
       await expect(validateTermsStyle(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('INCORRECT_TERM_SPELLING', ValidationComment)
       await expect(validateTermsStyle(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })

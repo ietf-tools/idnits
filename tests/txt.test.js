@@ -103,7 +103,16 @@ describe('Text document should not contain over-long lines', () => {
     doc.body = '\u{1F600}'.repeat(2) + '\u00e9'.repeat(2) + 'x'.repeat(67) + '\u{1F600}'.repeat(2) + '\n'
     const result = await validateLineLength(doc)
     expect(result).toContainError('LINE_TOO_LONG', ValidationError)
+    // (located at the 73rd code point: column 76, as columns count UTF-16 units)
+    expect(result[0].lines).toEqual([{ line: 1, pos: 76 }])
+  })
+
+  test('locates a long line at its first character beyond 72', async () => {
+    const doc = { ...baseTXTDoc }
+    doc.body = '  ' + 'x'.repeat(70) + 'y'.repeat(20) + '\n'
+    const result = await validateLineLength(doc)
     expect(result[0].lines).toEqual([{ line: 1, pos: 73 }])
+    expect(doc.body[result[0].lines[0].pos - 1]).toBe('y')
   })
 
   test('ignores trailing whitespace', async () => {
