@@ -725,9 +725,9 @@ describe('Parsing FQRN', () => {
     `
     const result = await parse(txt, 'txt')
     expect(result.data.extractedElements.locations.fqdnDomains).toEqual({
-      'starlinkisp.net': [{ line: 3, pos: 14 }, { line: 8, pos: 6 }]
+      'starlinkisp.net': [{ line: 3, pos: 15 }, { line: 8, pos: 7 }]
     })
-    expect(getLocations(result, 'fqdnDomains', 'starlinkisp.net')).toEqual([{ line: 3, pos: 14 }, { line: 8, pos: 6 }])
+    expect(getLocations(result, 'fqdnDomains', 'starlinkisp.net')).toEqual([{ line: 3, pos: 15 }, { line: 8, pos: 7 }])
     expect(getLocations(result, 'fqdnDomains', 'www.ietf.org')).toEqual([])
   })
 
@@ -807,10 +807,10 @@ describe('Parsing IPs', () => {
     const result = await parse(txt, 'txt')
     expect(result.data.extractedElements.ipv4).toEqual(['192.0.2.1', '192.0.2.1'])
     expect(result.data.extractedElements.locations.ipv4).toEqual({
-      '192.0.2.1': [{ line: 2, pos: 12 }, { line: 2, pos: 25 }]
+      '192.0.2.1': [{ line: 2, pos: 13 }, { line: 2, pos: 26 }]
     })
     expect(result.data.extractedElements.locations.ipv6).toEqual({
-      '2001:db8::1': [{ line: 4, pos: 13 }, { line: 4, pos: 30 }]
+      '2001:db8::1': [{ line: 4, pos: 14 }, { line: 4, pos: 31 }]
     })
   })
 })
@@ -878,11 +878,11 @@ describe('Testing parsing RFC2119 keywords and boilerplates', () => {
 
     const result = await parse(txt, 'txt')
     const { locations } = result.data.extractedElements
-    expect(locations.keywords2119.MUST).toEqual([{ line: 4, pos: 36 }])
-    expect(locations.keywords2119.RECOMMENDED).toEqual([{ line: 5, pos: 50 }, { line: 6, pos: 3 }])
-    expect(locations.boilerplate2119Keywords.MUST).toEqual([{ line: 4, pos: 36 }])
-    expect(locations.boilerplate2119Keywords.RECOMMENDED).toEqual([{ line: 5, pos: 50 }])
-    expect(locations.boilerplate2119Keywords['NOT RECOMMENDED']).toEqual([{ line: 5, pos: 65 }])
+    expect(locations.keywords2119.MUST).toEqual([{ line: 4, pos: 37 }])
+    expect(locations.keywords2119.RECOMMENDED).toEqual([{ line: 5, pos: 51 }, { line: 6, pos: 4 }])
+    expect(locations.boilerplate2119Keywords.MUST).toEqual([{ line: 4, pos: 37 }])
+    expect(locations.boilerplate2119Keywords.RECOMMENDED).toEqual([{ line: 5, pos: 51 }])
+    expect(locations.boilerplate2119Keywords['NOT RECOMMENDED']).toEqual([{ line: 5, pos: 66 }])
   })
 
   test('Detecting RFC2119 boilerplate', async () => {
@@ -1159,12 +1159,12 @@ Expires: 6 January 2027                                           Sky UK
 
     const result = await parse(txt, 'txt')
     expect(result.data.extractedElements.locations.updatesRfc).toEqual({
-      4191: [{ line: 3, pos: 9 }],
-      4861: [{ line: 3, pos: 15 }],
-      4862: [{ line: 3, pos: 21 }],
-      8106: [{ line: 3, pos: 27 }],
-      9096: [{ line: 3, pos: 33 }],
-      8781: [{ line: 3, pos: 39 }]
+      4191: [{ line: 3, pos: 10 }],
+      4861: [{ line: 3, pos: 16 }],
+      4862: [{ line: 3, pos: 22 }],
+      8106: [{ line: 3, pos: 28 }],
+      9096: [{ line: 3, pos: 34 }],
+      8781: [{ line: 3, pos: 40 }]
     })
   })
 })
@@ -2727,10 +2727,10 @@ Informative References
     const mention = lineNumber(txt, 'Reference:  Section 6.2.2')
     const entry = lineNumber(txt, '[RFC6350]  Perreault')
     const { locations } = result.data.extractedElements
-    expect(locations.nonReferenceSectionRfc).toEqual({ 6350: [{ line: mention, pos: 32 }] })
-    expect(locations.bracketedRfcNonReferences).toEqual({ '[RFC6350]': [{ line: mention, pos: 32 }] })
-    expect(locations.referenceSectionRfc).toEqual({ 6350: [{ line: entry, pos: 3 }, { line: entry, pos: 59 }] })
-    expect(locations.bracketedRfcReferences).toEqual({ '[RFC6350]': [{ line: entry, pos: 3 }] })
+    expect(locations.nonReferenceSectionRfc).toEqual({ 6350: [{ line: mention, pos: 33 }] })
+    expect(locations.bracketedRfcNonReferences).toEqual({ '[RFC6350]': [{ line: mention, pos: 33 }] })
+    expect(locations.referenceSectionRfc).toEqual({ 6350: [{ line: entry, pos: 4 }, { line: entry, pos: 60 }] })
+    expect(locations.bracketedRfcReferences).toEqual({ '[RFC6350]': [{ line: entry, pos: 4 }] })
     // Numbers in brackets are not reference labels here, and are not located as such
     expect(locations.nonReferenceSectionDraftReferences).toEqual({})
   })
@@ -2756,10 +2756,10 @@ Informative References
 
     const result = await parse(txt, 'txt')
     expect(getLocations(result, 'nonReferenceSectionDraftReferences', '[P12]')).toEqual([
-      { line: lineNumber(txt, 'is used by [P12]'), pos: 32 }
+      { line: lineNumber(txt, 'is used by [P12]'), pos: 33 }
     ])
     expect(getLocations(result, 'referenceSectionDraftReferences', '[P12]')).toEqual([
-      { line: lineNumber(txt, '[P12]      RSA'), pos: 3 }
+      { line: lineNumber(txt, '[P12]      RSA'), pos: 4 }
     ])
   })
 
@@ -2781,7 +2781,7 @@ Informative References
       { value: 'draft-agentic-ai-usecases-requirements', subsection: 'informative_references' }
     ])
     expect(getLocations(result, 'draftStatusReferences', 'draft-agentic-ai-usecases-requirements')).toEqual([
-      { line: lineNumber(txt, '<https://datatracker.ietf.org/doc/draft-agentic-ai-'), pos: 48 }
+      { line: lineNumber(txt, '<https://datatracker.ietf.org/doc/draft-agentic-ai-'), pos: 49 }
     ])
   })
 
@@ -2840,8 +2840,8 @@ Informative References
     expect(result.data.extractedElements.placeholderReferences).toEqual(['[This-Document]'])
     expect(result.data.extractedElements.locations.placeholderReferences).toEqual({
       '[This-Document]': [
-        { line: lineNumber(txt, '2450'), pos: 52 },
-        { line: lineNumber(txt, '2500'), pos: 52 }
+        { line: lineNumber(txt, '2450'), pos: 53 },
+        { line: lineNumber(txt, '2500'), pos: 53 }
       ]
     })
     expect(result.data.extractedElements.locations.nonReferenceSectionDraftReferences).toEqual({})
