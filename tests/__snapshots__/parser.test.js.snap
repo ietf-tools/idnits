@@ -70,6 +70,50 @@ Abstract
       "lastPageExpirationHasDay": null,
       "license6_b_i": [],
       "license6_b_ii": [],
+      "locations": {
+        "boilerplate2119Keywords": {},
+        "bracketedRfcNonReferences": {},
+        "bracketedRfcReferences": {},
+        "draftStatusReferences": {},
+        "fqdnDomains": {},
+        "ipv4": {},
+        "ipv6": {},
+        "keywords2119": {},
+        "nonReferenceSectionDraftReferences": {},
+        "nonReferenceSectionRfc": {
+          "5678": [
+            {
+              "line": 20,
+              "pos": 28,
+            },
+          ],
+        },
+        "obsoletesRfc": {
+          "1": [
+            {
+              "line": 11,
+              "pos": 49,
+            },
+          ],
+          "5678": [
+            {
+              "line": 10,
+              "pos": 12,
+            },
+          ],
+        },
+        "placeholderReferences": {},
+        "referenceSectionDraftReferences": {},
+        "referenceSectionRfc": {},
+        "updatesRfc": {
+          "1234": [
+            {
+              "line": 12,
+              "pos": 10,
+            },
+          ],
+        },
+      },
       "nonReferenceSectionDraftReferences": [],
       "nonReferenceSectionRfc": [
         "5678",
