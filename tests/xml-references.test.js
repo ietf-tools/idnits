@@ -115,7 +115,63 @@ describe('collectXmlReferences', () => {
     expect(getCitedRfcs(references, ['unclassified'])).toEqual(['6991'])
     expect(getCitedDrafts(references)).toEqual(['draft-ietf-baz-07', 'draft-ietf-foo-bar-02'])
   })
+
+  test('takes what a <reference> cites from the bibliography entry it includes', async () => {
+    const { doc } = await parse(INNER_INCLUDE_DOC, 'draft-test-references-00.xml')
+
+    expect(collectXmlReferences(doc)).toEqual([
+      { section: 'normative', rfc: '4861', draft: null, source: 'reference' },
+      { section: 'normative', rfc: '9000', draft: null, source: 'reference' },
+      { section: 'normative', rfc: '8200', draft: null, source: 'reference' },
+      { section: 'informative', rfc: null, draft: 'draft-acee-idr-lldp-peer-discovery', source: 'reference' }
+    ])
+    expect(listXmlReferences(doc).map(({ anchor, rfc, bcp, external }) => ({ anchor, rfc, bcp, external }))).toEqual([
+      { anchor: 'IPV6NEIGH', rfc: '4861', bcp: null, external: false },
+      { anchor: 'QUIC', rfc: '9000', bcp: null, external: false },
+      { anchor: 'RFC8200', rfc: '8200', bcp: null, external: false },
+      { anchor: 'KEYWORDS', rfc: null, bcp: '14', external: false },
+      { anchor: 'LOCAL', rfc: null, bcp: null, external: true },
+      { anchor: 'BGP-LLDP', rfc: null, bcp: null, external: false }
+    ])
+  })
 })
+
+// References whose content is a bibliography entry pulled in with xi:include and an xpointer, as in
+// draft-ietf-6man-sub-link-scope-multicast-01: the entry gives what the reference cites, unless the reference
+// has a <seriesInfo> of its own; an include that is no bibliography entry leaves it to the anchor
+const INNER_INCLUDE_DOC = `<?xml version="1.0" encoding="UTF-8"?>
+<rfc version="3" category="std" docName="draft-test-references-00" xmlns:xi="http://www.w3.org/2001/XInclude">
+  <front><title>Test</title></front>
+  <middle><section><name>Introduction</name><t>Text.</t></section></middle>
+  <back>
+    <references>
+      <name>Normative References</name>
+      <reference anchor="IPV6NEIGH">
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.4861.xml" xpointer="xpointer(/reference/*)"/>
+      </reference>
+      <reference anchor="QUIC">
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.4861.xml" xpointer="xpointer(/reference/*)"/>
+        <seriesInfo name="RFC" value="9000"/>
+      </reference>
+      <reference anchor="RFC8200">
+        <xi:include href="refs/ipv6.xml" xpointer="xpointer(/reference/*)"/>
+      </reference>
+      <reference anchor="KEYWORDS">
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml-rfcsubseries/reference.BCP.14.xml" xpointer="xpointer(/reference/*)"/>
+      </reference>
+      <reference anchor="LOCAL">
+        <xi:include href="refs/local.xml" xpointer="xpointer(/reference/*)"/>
+      </reference>
+    </references>
+    <references>
+      <name>Informative References</name>
+      <reference anchor="BGP-LLDP">
+        <xi:include href="https://xml2rfc.ietf.org/public/rfc/bibxml3/reference.I-D.acee-idr-lldp-peer-discovery" xpointer="xpointer(/reference/*)"/>
+      </reference>
+    </references>
+  </back>
+</rfc>
+`
 
 // Normative references of drafts: a reference to a document from elsewhere (draft-bokovoy-kitten-pkinit-pqc-02),
 // one to a draft given by its anchor and link only (draft-becker-cnsa2-ssh-profile-05), one whose content is
@@ -185,7 +241,7 @@ describe('listXmlReferences', () => {
       { section: 'normative', rfc: null, draft: null, bcp: null, std: null, external: true, anchor: 'FIPS203', path: `${PATH}.reference[0]`, source: 'reference' },
       { section: 'normative', rfc: null, draft: null, bcp: null, std: null, external: false, anchor: 'I-D.jenkins-cnsa2-pkix-profile', path: `${PATH}.reference[1]`, source: 'reference' },
       { section: 'normative', rfc: null, draft: null, bcp: null, std: null, external: false, anchor: 'TLS', path: `${PATH}.reference[2]`, source: 'reference' },
-      { section: 'normative', rfc: null, draft: null, bcp: null, std: null, external: false, anchor: 'MCinUC', path: `${PATH}.reference[3]`, source: 'reference' },
+      { section: 'normative', rfc: '6085', draft: null, bcp: null, std: null, external: false, anchor: 'MCinUC', path: `${PATH}.reference[3]`, source: 'reference' },
       { section: 'normative', rfc: null, draft: null, bcp: null, std: null, external: false, anchor: 'RIFT-KV', path: `${PATH}.reference[4]`, source: 'reference' },
       { section: 'normative', rfc: null, draft: null, bcp: null, std: '69', external: false, anchor: 'STD.0069', path: `${PATH}.xi:include[0]`, source: 'xi:include' },
       { section: 'normative', rfc: null, draft: null, bcp: '38', std: null, external: false, anchor: 'BCP.38', path: `${PATH}.xi:include[1]`, source: 'xi:include' },
