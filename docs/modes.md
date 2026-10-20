@@ -61,6 +61,7 @@ It runs on the staged copy of the upload, named after the name the document decl
 
 - Errors are what an Internet-Draft must have from its first upload: a valid name, an abstract, the Internet-Draft boilerplate, the copyright and IPR notices. Some are more severe here than in `normal`, such as an invalid name or the `prepTime` attribute of a prepped XML document.
 - It is silent about what only matters before publication: the status of cited documents and downrefs, BCP 14 keyword usage, example domains, IP addresses, term spelling, whether the Introduction, Security Considerations, IANA Considerations, References and Authors' Addresses sections are there, and most layout nits.
+- An Abstract, Introduction, Security Considerations or IANA Considerations section that is there but empty is a Warning rather than an Error, so an early draft with a placeholder section can still be uploaded.
 - It checks the revision against Datatracker (`DUPLICATE_DOC_VERSION`, `UNEXPECTED_DOC_VERSION`), which the other modes don't.
 
 ## Severity of each finding
@@ -150,8 +151,8 @@ A document that can't be parsed isn't checked: the CLI exits with code `1`, and 
 |---|---|---|---|---|---|
 | `INVALID_DOCUMENT_STRUCTURE` | Error | Error | Error | text | No header or title found |
 | `MISSING_ABSTRACT_SECTION` | Error | Error | Error | both | |
-| `EMPTY_ABSTRACT_SECTION` | Error | Error | Error | text | |
-| `INVALID_ABSTRACT_SECTION` | Error | Error | Error | XML | Empty `<abstract>` |
+| `EMPTY_ABSTRACT_SECTION` | Error | Error | Warning | text | |
+| `INVALID_ABSTRACT_SECTION` | Error | Error | Warning | XML | Empty `<abstract>` |
 | `INVALID_ABSTRACT_SECTION_CHILD` | Error | Error | Error | XML | |
 | `INVALID_ABSTRACT_SECTION_REF` | Error | Warning | — | both | Citation or section reference in the abstract |
 | `INVALID_ABSTRACT_SECTION_URL` | Error | Warning | — | text | |
@@ -161,16 +162,16 @@ A document that can't be parsed isn't checked: the CLI exits with code `1`, and 
 | `STATUS_OF_THIS_MEMO_SECTION_IS_NUMBERED` | Error | Error | Error | text | |
 | `COPYRIGHT_NOTICE_SECTION_IS_NUMBERED` | Error | Error | Error | text | |
 | `MISSING_INTRODUCTION_SECTION` | Error | Warning | — | both | |
-| `EMPTY_INTRODUCTION_SECTION` | Error | Error | Error | text | |
-| `INVALID_INTRODUCTION_SECTION` | Error | Error | Error | XML | Empty section |
+| `EMPTY_INTRODUCTION_SECTION` | Error | Error | Warning | text | |
+| `INVALID_INTRODUCTION_SECTION` | Error | Error | Warning | XML | Empty section |
 | `INVALID_INTRODUCTION_SECTION_CHILD` | Error | Error | Error | XML | |
 | `MISSING_SECURITY_CONSIDERATIONS_SECTION` | Error | Warning | — | both | |
-| `EMPTY_SECURITY_CONSIDERATIONS_SECTION` | Error | Error | Error | text | |
-| `INVALID_SECURITY_CONSIDERATIONS_SECTION` | Error | Error | Error | XML | Empty section |
+| `EMPTY_SECURITY_CONSIDERATIONS_SECTION` | Error | Error | Warning | text | |
+| `INVALID_SECURITY_CONSIDERATIONS_SECTION` | Error | Error | Warning | XML | Empty section |
 | `INVALID_SECURITY_CONSIDERATIONS_SECTION_CHILD` | Error | Error | Error | XML | |
 | `MISSING_IANA_CONSIDERATIONS_SECTION` | Error | Warning | — | both | (drafts) |
 | `MISSING_IANA_CONSIDERATIONS_SECTION` | Comment | Comment | — | both | (RFCs) |
-| `INVALID_IANA_CONSIDERATIONS_SECTION` | Error | Error | Error | both | Empty section |
+| `INVALID_IANA_CONSIDERATIONS_SECTION` | Error | Error | Warning | both | Empty section |
 | `INVALID_IANA_CONSIDERATIONS_SECTION_CHILD` | Error | Error | Error | XML | |
 | `MISSING_AUTHOR_SECTION` | Error | Warning | — | both | |
 | `MISUSED_POSSESSIVE_MARK` | Warning | Warning | — | text | In the Authors' Addresses title |

@@ -1952,3 +1952,112 @@ a very long \\
     })
   })
 })
+
+describe('an empty section is a Warning in submission mode, an Error in the other modes', () => {
+  // -> The class of each finding with this code, in each mode
+  const severities = async (validate, doc, code) => {
+    const out = {}
+    for (const [label, mode] of [['normal', MODES.NORMAL], ['forgive-checklist', MODES.FORGIVE_CHECKLIST], ['submission', MODES.SUBMISSION]]) {
+      out[label] = (await validate(doc, { mode })).filter(e => e.name === code).map(e => e.constructor.name)
+    }
+    return out
+  }
+  const expected = { normal: ['ValidationError'], 'forgive-checklist': ['ValidationError'], submission: ['ValidationWarning'] }
+
+  describe('TXT Document Type', () => {
+    test('EMPTY_ABSTRACT_SECTION', async () => {
+      const doc = await parseTXT(CANONICAL_TXT.replace('   This document obsoletes RFC 5678.\n', '\nStatus of This Memo\n'), '')
+      await expect(severities(validateAbstractSection, doc, 'EMPTY_ABSTRACT_SECTION')).resolves.toEqual(expected)
+    })
+
+    test('EMPTY_INTRODUCTION_SECTION', async () => {
+      const doc = await parseTXT(`${CANONICAL_TXT}
+1.  Introduction
+
+2.  Terminology
+
+   The key words "MUST" and "MUST NOT" are to be interpreted as described.
+`, '')
+      await expect(severities(validateIntroductionSection, doc, 'EMPTY_INTRODUCTION_SECTION')).resolves.toEqual(expected)
+    })
+
+    // From draft-chen-rdma-windowless-ack-00
+    test('EMPTY_SECURITY_CONSIDERATIONS_SECTION', async () => {
+      const doc = await parseTXT(`${CANONICAL_TXT}
+1.  Introduction
+
+      Fallback timeout mechanism serves only as safety backup; primary
+      loss recovery relies on extended T/C AETH SACK reports.
+
+7.  Security Considerations
+
+8.  IANA Considerations
+
+   This document has no requests to IANA.
+`, '')
+      await expect(severities(validateSecurityConsiderationsSection, doc, 'EMPTY_SECURITY_CONSIDERATIONS_SECTION')).resolves.toEqual(expected)
+    })
+
+    // From draft-hdong-dnsop-ml-dsa-mtl-dnssec-sigtag-ext-00
+    test('INVALID_IANA_CONSIDERATIONS_SECTION', async () => {
+      const doc = await parseTXT(`${CANONICAL_TXT}
+1.  Introduction
+
+   This document defines a SigTag extension for ML-DSA-MTL signatures.
+
+8.  IANA Considerations
+
+9.  Implementation Status
+
+   NOTE: Please remove this section and the reference to RFC 7942 prior
+   to publication as an RFC.
+`, '')
+      await expect(severities(validateIANAConsiderationsSection, doc, 'INVALID_IANA_CONSIDERATIONS_SECTION')).resolves.toEqual(expected)
+    })
+  })
+
+  describe('XML Document Type', () => {
+    const parseMiddle = async (middle) => {
+      const { doc } = await parse(`<rfc version="3" docName="draft-test-sections-00"><front><abstract><t>Text.</t></abstract></front><middle>${middle}</middle></rfc>`, 'draft-test-sections-00.xml')
+      return doc
+    }
+
+    test('INVALID_ABSTRACT_SECTION', async () => {
+      const { doc } = await parse('<rfc version="3" docName="draft-test-sections-00"><front><abstract/></front></rfc>', 'draft-test-sections-00.xml')
+      await expect(severities(validateAbstractSection, doc, 'INVALID_ABSTRACT_SECTION')).resolves.toEqual(expected)
+    })
+
+    test('INVALID_INTRODUCTION_SECTION', async () => {
+      const doc = await parseMiddle('<section anchor="intro" title="Introduction"/><section title="Other"><t>Text.</t></section>')
+      await expect(severities(validateIntroductionSection, doc, 'INVALID_INTRODUCTION_SECTION')).resolves.toEqual(expected)
+    })
+
+    // From draft-chen-rdma-windowless-ack-00
+    test('INVALID_SECURITY_CONSIDERATIONS_SECTION', async () => {
+      const doc = await parseMiddle(`<section anchor="Security" title="Security Considerations"/>
+
+    <section anchor="IANA" title="IANA Considerations">
+      <t>This document has no requests to IANA.</t>
+    </section>`)
+      await expect(severities(validateSecurityConsiderationsSection, doc, 'INVALID_SECURITY_CONSIDERATIONS_SECTION')).resolves.toEqual(expected)
+    })
+
+    // From draft-hdong-dnsop-ml-dsa-mtl-dnssec-sigtag-ext-00
+    test('INVALID_IANA_CONSIDERATIONS_SECTION', async () => {
+      const doc = await parseMiddle(`<section anchor="iana_considerations"><name>IANA Considerations</name>
+</section>
+
+<section anchor="implementations"><name>Implementation Status</name>
+<t>NOTE: Please remove this section and the reference to RFC 7942 prior to publication as an RFC.</t>
+</section>`)
+      await expect(severities(validateIANAConsiderationsSection, doc, 'INVALID_IANA_CONSIDERATIONS_SECTION')).resolves.toEqual(expected)
+    })
+
+    test('a disallowed child stays an Error in submission mode', async () => {
+      const doc = await parseMiddle('<section><name>Security Considerations</name><t>Text.</t><list><t>Item.</t></list></section>')
+      await expect(validateSecurityConsiderationsSection(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('INVALID_SECURITY_CONSIDERATIONS_SECTION_CHILD', ValidationError)
+      const abstract = await parse('<rfc version="3" docName="draft-test-sections-00"><front><abstract><t>Text.</t><figure><artwork>x</artwork></figure></abstract></front></rfc>', 'draft-test-sections-00.xml')
+      await expect(validateAbstractSection(abstract.doc, { mode: MODES.SUBMISSION })).resolves.toContainError('INVALID_ABSTRACT_SECTION_CHILD', ValidationError)
+    })
+  })
+})
