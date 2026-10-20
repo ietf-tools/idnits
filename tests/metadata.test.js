@@ -82,7 +82,8 @@ describe('document should have valid date', () => {
           },
           extractedElements: {
             obsoletesRfc: ['5678'],
-            updatesRfc: ['1234']
+            updatesRfc: ['1234'],
+            locations: { obsoletesRfc: { 5678: [{ line: 10, pos: 12 }] }, updatesRfc: {} }
           }
         }
       }
@@ -95,7 +96,7 @@ describe('document should have valid date', () => {
           'RFC 5678 is listed as "obsoleted" in metadata but is not mentioned in the abstract.',
           {
             ref: 'https://authors.ietf.org/en/required-content#abstract',
-            path: 'data.content.abstract'
+            lines: [{ line: 10, pos: 12 }]
           }
         )
       )
@@ -122,8 +123,7 @@ describe('document should have valid date', () => {
           'UPDATES_NOT_IN_ABSTRACT',
           'RFC 1234 is listed as "updated" in metadata but is not mentioned in the abstract.',
           {
-            ref: 'https://authors.ietf.org/en/required-content#abstract',
-            path: 'data.content.abstract'
+            ref: 'https://authors.ietf.org/en/required-content#abstract'
           }
         )
       )
@@ -150,8 +150,7 @@ describe('document should have valid date', () => {
           'MENTIONED_NOT_IN_OBSOLETES',
           'RFC 5678 is mentioned as "obsoleted" or "replaced" in the abstract but not listed in metadata.',
           {
-            ref: 'https://authors.ietf.org/en/required-content#abstract',
-            path: 'data.content.abstract'
+            ref: 'https://authors.ietf.org/en/required-content#abstract'
           }
         )
       ])
@@ -178,8 +177,7 @@ describe('document should have valid date', () => {
           'MENTIONED_NOT_IN_UPDATES',
           'RFC 1234 is mentioned as "updated" in the abstract but not listed in metadata.',
           {
-            ref: 'https://authors.ietf.org/en/required-content#abstract',
-            path: 'data.content.abstract'
+            ref: 'https://authors.ietf.org/en/required-content#abstract'
           }
         )
       ])
@@ -206,8 +204,7 @@ describe('document should have valid date', () => {
           'OBSOLETES_NOT_IN_ABSTRACT',
           'RFC 5678 is listed as "obsoleted" in metadata but is not mentioned in the abstract.',
           {
-            ref: 'https://authors.ietf.org/en/required-content#abstract',
-            path: 'data.content.abstract'
+            ref: 'https://authors.ietf.org/en/required-content#abstract'
           }
         )
       )
@@ -216,8 +213,7 @@ describe('document should have valid date', () => {
           'UPDATES_NOT_IN_ABSTRACT',
           'RFC 1234 is listed as "updated" in metadata but is not mentioned in the abstract.',
           {
-            ref: 'https://authors.ietf.org/en/required-content#abstract',
-            path: 'data.content.abstract'
+            ref: 'https://authors.ietf.org/en/required-content#abstract'
           }
         )
       )
