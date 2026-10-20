@@ -7,7 +7,6 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { pad } from 'lodash-es'
 import { readFile } from 'node:fs/promises'
-import { DateTime } from 'luxon'
 import { gte } from 'semver'
 import { Listr, ListrDefaultRendererLogLevels } from 'listr2'
 import { checkNits, finalizeFindings, getAllValidations, getDocType } from './lib/index.mjs'
@@ -44,7 +43,7 @@ const argv = yargs(hideBin(process.argv))
   .usage('$0 [args] <file-path|http-url>')
   .example([
     ['$0 draft-ietf-abcd-01.xml', ''],
-    [`$0 -m submission -y ${DateTime.now().year} draft-ietf-abcd-01.xml`, ''],
+    ['$0 -m submission draft-ietf-abcd-01.xml', ''],
     ['$0 https://www.rfc-editor.org/rfc/rfc2549', '']
   ])
   .option('datatracker-url', {
