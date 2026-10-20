@@ -120,14 +120,14 @@ const documentFileName = 'draft-ietf-abcd-efgh-01.xml'
 const results = await checkNits(documentRawBuffer, documentFileName)
 ```
 
-For XML documents, results that have a `path` (e.g. `rfc.middle.section[2].section[1].t[0]`) also get a human-readable `label` describing that location (e.g. `Section 3.2 (Security Considerations), paragraph 1`). The CLI shows it next to the path, and includes it as `label` in the `json` output.
+For XML documents, results that have a `path` (e.g. `rfc.middle.section[2].section[1].t[0]`) also get a human-readable `label` describing that location (e.g. `Section 3.2 (Security Considerations), paragraph 1`). The CLI shows it next to the path, and includes it as `label` in the `json` output. They also get the source line and column of that element in `lines` (e.g. `[{ line: 42, pos: 7 }]`), unless the check already gave one.
 
 #### Task Runner
 
 You can implement your own task runner to have full control over how the validations are executed. The `getAllValidations()` method returns a list of all validations that should be run.
 
 ```js
-import { getAllValidations, labelFindings } from '@ietf-tools/idnits'
+import { finalizeFindings, getAllValidations } from '@ietf-tools/idnits'
 
 const ext = filename.endsWith('.xml') ? 'xml' : 'txt'
 const result = []
@@ -169,8 +169,8 @@ for (const valGroup of validations) {
   }
 }
 
-// Optionally, add human-readable locations to XML results
-labelFindings(result, ctx.doc)
+// Add human-readable locations and source lines to XML results, as checkNits() does
+finalizeFindings(result, ctx.doc)
 
 return result
 ```
