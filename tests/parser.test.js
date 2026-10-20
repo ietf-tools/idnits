@@ -48,6 +48,7 @@ import {
   BCP14BoilerplateTXTBlock
 } from './fixtures/txt-blocks/section-blocks.mjs'
 import { getLocations, pageBreakLineType, parse } from '../lib/parsers/txt.mjs'
+import { validateReferencesInText } from '../lib/modules/sections.mjs'
 
 beforeAll(() => {
   vi.spyOn(console, 'info').mockImplementation(() => {})
@@ -1851,6 +1852,165 @@ Contributed Freeze-Race Fixture Summary
     expect(result.data.extractedElements.referenceEntries).toEqual([
       entry('[SCHROCK-FIXTURE-MSG]', 'normative_references', { external: true })
     ])
+  })
+
+  // From draft-ietf-nfsv4-internationalization-17
+  test('Keeps the section going past a wrapped line of an entry that starts with a year', async () => {
+    const txt = `${metaTXTBlock}
+15.  References
+
+15.1.  Normative References
+
+   [RFC8881]  Noveck, D., Ed. and C. Lever, "Network File System (NFS)
+              Version 4 Minor Version 1 Protocol", RFC 8881,
+              DOI 10.17487/RFC8881, August 2020,
+              <https://www.rfc-editor.org/info/rfc8881>.
+
+   [UNICODE]  The Unicode Consortium, "The Unicode Standard, Version
+              17.0.0", (South San Francisco: The Unicode Consortium,
+              2025. ISBN 978-1-936213-15-1), September 2025,
+              <http://www.unicode.org/versions/Unicode17.0.0/>.
+
+   [UNICODE-CASEF]
+              The Unicode Consortium, "CaseFolding-17.0.0.txt", (South
+              San Franciso: The Unicode Consortium, 2024 ISBN
+              978-1-936213-26-9), July 2025,
+              <https://www.unicode.org/Public/17.0.0/ucd/
+              CaseFolding.txt>.
+
+15.2.  Informative References
+
+   [RFC6943]  Thaler, D., Ed., "Issues in Identifier Comparison for
+              Security Purposes", RFC 6943, DOI 10.17487/RFC6943, May
+              2013, <https://www.rfc-editor.org/info/rfc6943>.
+`
+
+    const result = await parse(txt, 'txt')
+    const lines = txt.split('\n')
+    // -> "2025. ISBN ..." continues [UNICODE]: the entries after it, and the next subsection, are still references
+    expect(result.data.markers.references.end).toBe(lines.length)
+    expect(result.data.extractedElements.referenceEntries).toEqual([
+      entry('[RFC8881]', 'normative_references', { rfcs: ['8881'] }),
+      entry('[UNICODE]', 'normative_references', { external: true }),
+      entry('[UNICODE-CASEF]', 'normative_references', { external: true }),
+      entry('[RFC6943]', 'informative_references', { rfcs: ['6943'] })
+    ])
+    expect(result.data.extractedElements.referenceSectionDraftReferences.map((el) => el.value)).toContain('[UNICODE-CASEF]')
+    expect(result.data.extractedElements.referenceSectionRfc.map((el) => el.value)).toContain('6943')
+  })
+
+  // From draft-gueron-cfrg-dndkgcm-05
+  test('Ends the section at the next numbered heading when the headings are indented', async () => {
+    const txt = `${metaTXTBlock}
+   9. References
+
+   9.1. Normative References
+
+  [AES]     National Institute of Standards and Technology, "Advanced
+            Encryption Standard (AES)", FIPS 197, November 2001.
+
+   9.2. Informative References
+
+  [ADG+22]  Albertini, A., Duong, T., Gueron, S., Kolbl, S., Luykx, A.,
+            Schmieg, S., "How to Abuse and Fix Authenticated Encryption
+            Without Key Commitment", in Proceedings of the 31st USENIX
+            Security Symposium (USENIX Security 22), pp. 3291-3308,
+            2022. [Online]. Available:
+            https://www.usenix.org/system/files/usenixsecurity22-
+            albertini.pdf
+
+  [DGRW18]  Dodis, J., Grubbs, P., Ristenpart, T., Woodage, J., "Fast
+            Message Franking: From Invisible Salamanders to
+            Encryptment", CRYPTO 2018, Proceedings, Part I, Lecture
+            Notes in Computer Science, vol. 10991, pp. 155-186,
+            Springer, 2018. [Online]. Available:
+            https://doi.org/10.1007/978-3-319-96884-1_6
+
+   10. Acknowledgments
+
+   The author would like to thank Jean Paul Degabriele, Gerald Doussot,
+`
+
+    const result = await parse(txt, 'txt')
+    const lines = txt.split('\n')
+    expect(result.data.markers.references.start).toBe(lines.indexOf('   9. References') + 1)
+    expect(result.data.markers.references.end).toBe(lines.indexOf('   10. Acknowledgments'))
+    expect(result.data.content.references).not.toContain('10. Acknowledgments')
+    expect(result.data.extractedElements.referenceEntries).toEqual([
+      entry('[AES]', 'normative_references', { external: true }),
+      entry('[ADG+22]', 'informative_references', { external: true }),
+      entry('[DGRW18]', 'informative_references', { external: true })
+    ])
+  })
+
+  // From draft-gueron-cfrg-dndkgcm-05
+  test('Declares only the labels starting an entry, not bracketed text starting a wrapped line of one', async () => {
+    const txt = `${metaTXTBlock}
+   1. Introduction
+
+   b) Reusing vetted and optimized AES-GCM implementations to leverage
+     existing hardware instructions (e.g., AES-NI [Gue10] and PCLMULQDQ
+     [GK08]).
+
+   9. References
+
+   9.2. Informative References
+
+  [Gue10]   Gueron, S., "Intel Advanced Encryption Standard (AES)
+            Instructions Set", Intel White Paper, Rev. 3, 1-94, 2010.
+            [Online]. Available:
+            https://www.intel.com/content/dam/doc/white-paper/advanced-
+            encryption-standard-new-instructions-set-paper.pdf
+
+  [GK08]    Gueron, S., Kounavis, M., "Carry-Less Multiplication and
+            Its Usage for Computing the GCM Mode", Intel White Paper,
+            Rev. 2.02, 1-84, 2014. [Online]. Available:
+            https://www.intel.com/content/dam/develop/external/us/en/do
+            cuments/clmul-wp-rev-2-02-2014-04-20.pdf
+`
+
+    const result = await parse(txt, 'txt')
+    const lineOf = (text) => txt.split('\n').findIndex((line) => line.startsWith(`  ${text}`)) + 1
+    expect(result.data.extractedElements.referenceSectionDraftReferences).toEqual([
+      { value: '[Gue10]', subsection: 'informative_references' },
+      { value: '[GK08]', subsection: 'informative_references' }
+    ])
+    expect(getLocations(result, 'referenceSectionDraftReferences', '[Gue10]')).toEqual([{ line: lineOf('[Gue10]'), pos: 3 }])
+    expect(getLocations(result, 'referenceSectionDraftReferences', '[Online]')).toEqual([])
+    expect(await validateReferencesInText(result)).toEqual([])
+  })
+
+  // From draft-dunbar-dmsc-gw-scenarios-gap-analysis-04
+  test('Takes the entries after a running header without a date', async () => {
+    const txt = `${metaTXTBlock}
+11. References
+
+11.1. Normative References
+
+   [RFC2119] Bradner, S., "Key words for use in RFCs to Indicate
+             Requirement Levels", BCP 14, RFC 2119, March 1997.
+
+
+11.2. Informative References
+
+   [MCP]      Model Context Protocol, "Model Context Protocol
+             Specification",
+             https://modelcontextprotocol.io/specification/
+
+
+Dunbar, et al.           Expires Dec 14, 2027           [Page 35]
+\f
+Internet-Draft          GW Deployment Scenario
+
+
+   [CAID] Schrock, I., "The Canonical Action Identifier (CAID)",
+             draft-schrock-canonical-action-identifier-02,
+             August 2026, work in progress.
+`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.referenceEntries.map((el) => el.value)).toEqual(['[RFC2119]', '[MCP]', '[CAID]'])
+    expect(result.data.extractedElements.referenceSectionDraftReferences.map((el) => el.value)).toEqual(['[MCP]', '[CAID]'])
   })
 })
 
