@@ -89,12 +89,6 @@ Abstract
           ],
         },
         "obsoletesRfc": {
-          "1": [
-            {
-              "line": 11,
-              "pos": 49,
-            },
-          ],
           "5678": [
             {
               "line": 10,
@@ -121,7 +115,6 @@ Abstract
       ],
       "obsoletesRfc": [
         "5678",
-        "1",
       ],
       "placeholderReferences": [],
       "referenceEntries": [],
