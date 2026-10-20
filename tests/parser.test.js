@@ -1640,6 +1640,220 @@ Author's Address
   })
 })
 
+describe('Parsing the entries of the references section', () => {
+  const entry = (value, subsection, cites = {}) => ({ value, subsection, rfcs: [], bcps: [], stds: [], drafts: [], external: false, ...cites })
+
+  // From draft-rosomakho-tls-cert-update-02
+  test('Splits each subsection into entries, located at their label, across a page break', async () => {
+    const txt = `${metaTXTBlock}
+10.  References
+
+10.1.  Normative References
+
+   [DTLS]     Rescorla, E., Tschofenig, H., and N. Modadugu, "The
+              Datagram Transport Layer Security (DTLS) Protocol Version
+              1.3", RFC 9147, DOI 10.17487/RFC9147, April 2022,
+              <https://www.rfc-editor.org/rfc/rfc9147>.
+
+   [EXPORTED-AUTH]
+              Sullivan, N., "Exported Authenticators in TLS", RFC 9261,
+              DOI 10.17487/RFC9261, July 2022,
+              <https://www.rfc-editor.org/rfc/rfc9261>.
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119,
+              DOI 10.17487/RFC2119, March 1997,
+              <https://www.rfc-editor.org/rfc/rfc2119>.
+
+
+
+
+Rosomakho & Reddy       Expires 20 December 2026               [Page 13]
+
+Internet-Draft        Certificate Update in TLS 1.3            June 2026
+
+
+   [RFC8174]  Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC
+              2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
+              May 2017, <https://www.rfc-editor.org/rfc/rfc8174>.
+
+   [TLS]      Rescorla, E., "The Transport Layer Security (TLS) Protocol
+              Version 1.3", RFC 8446, DOI 10.17487/RFC8446, August 2018,
+              <https://www.rfc-editor.org/rfc/rfc8446>.
+
+10.2.  Informative References
+
+   [QUIC]     Iyengar, J., Ed. and M. Thomson, Ed., "QUIC: A UDP-Based
+              Multiplexed and Secure Transport", RFC 9000,
+              DOI 10.17487/RFC9000, May 2021,
+              <https://www.rfc-editor.org/rfc/rfc9000>.
+`
+
+    const result = await parse(txt, 'txt')
+    const lineOf = (text) => txt.split('\n').findIndex((line) => line.startsWith(`   ${text}`)) + 1
+
+    // -> RFCs cited under another label are found ([TLS] is RFC 8446), and an RFC named in a title is not cited
+    expect(result.data.extractedElements.referenceEntries).toEqual([
+      entry('[DTLS]', 'normative_references', { rfcs: ['9147'] }),
+      entry('[EXPORTED-AUTH]', 'normative_references', { rfcs: ['9261'] }),
+      entry('[RFC2119]', 'normative_references', { rfcs: ['2119'], bcps: ['14'] }),
+      entry('[RFC8174]', 'normative_references', { rfcs: ['8174'], bcps: ['14'] }),
+      entry('[TLS]', 'normative_references', { rfcs: ['8446'] }),
+      entry('[QUIC]', 'informative_references', { rfcs: ['9000'] })
+    ])
+    for (const label of ['[DTLS]', '[EXPORTED-AUTH]', '[RFC8174]', '[TLS]', '[QUIC]']) {
+      expect(getLocations(result, 'referenceEntries', label)).toEqual([{ line: lineOf(label), pos: 4 }])
+    }
+  })
+
+  // From draft-bokovoy-kitten-pkinit-pqc-02 and draft-abak-ai-evaluation-claim-preservation-00
+  test('Finds the Internet-Drafts and BCPs entries cite, and the entries that cite none of these nor an RFC', async () => {
+    const txt = `${metaTXTBlock}
+17.  References
+
+17.1.  Normative References
+
+   [BCP14]    Best Current Practice 14,
+              <https://www.rfc-editor.org/info/bcp14>.
+              At the time of writing, this BCP comprises the following:
+
+              Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119,
+              DOI 10.17487/RFC2119, March 1997,
+              <https://www.rfc-editor.org/info/rfc2119>.
+
+              Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC
+              2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
+              May 2017, <https://www.rfc-editor.org/info/rfc8174>.
+
+   [FIPS203]  National Institute of Standards and Technology (NIST),
+              "Module-Lattice-Based Key-Encapsulation Mechanism
+              Standard", FIPS PUB 203, August 2024,
+              <https://doi.org/10.6028/NIST.FIPS.203>.
+
+   [I-D.ietf-lamps-pq-composite-kem]
+              Ounsworth, M., Gray, J., Pala, M., Klaußner, J., and S.
+              Fluhrer, "Composite ML-KEM for use in X.509 Public Key
+              Infrastructure", Work in Progress, Internet-Draft, draft-
+              ietf-lamps-pq-composite-kem-21, 1 September 2026,
+              <https://datatracker.ietf.org/doc/html/draft-ietf-lamps-
+              pq-composite-kem-21>.
+
+   [RFC5652]  Housley, R., "Cryptographic Message Syntax (CMS)", STD 70,
+              RFC 5652, DOI 10.17487/RFC5652, September 2009,
+              <https://www.rfc-editor.org/rfc/rfc5652>.
+`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.referenceEntries).toEqual([
+      entry('[BCP14]', 'normative_references', { rfcs: ['2119', '8174'], bcps: ['14'] }),
+      entry('[FIPS203]', 'normative_references', { external: true }),
+      entry('[I-D.ietf-lamps-pq-composite-kem]', 'normative_references', { drafts: ['draft-ietf-lamps-pq-composite-kem-21'] }),
+      entry('[RFC5652]', 'normative_references', { rfcs: ['5652'], stds: ['70'] })
+    ])
+  })
+
+  // From draft-ietf-ccamp-layer1-types-20 and draft-wkumari-opsawg-json-geofeed-format-01
+  test('Finds no RFC in a name, of a draft or in a URL, nor in a title', async () => {
+    const txt = `${metaTXTBlock}
+12.  References
+
+12.1.  Normative References
+
+   [I-D.ietf-teas-rfc8776-update]
+              Busi, I., Guo, A., Liu, X., Saad, T., and I. Bryskin,
+              "Common YANG Data Types for Traffic Engineering", Work in
+              Progress, Internet-Draft, draft-ietf-teas-rfc8776-update-
+              24, 12 June 2026, <https://datatracker.ietf.org/doc/html/
+              draft-ietf-teas-rfc8776-update-24>.
+
+   [KLINE-GEO]
+              Kline, E., "Anecdotal History of RFC 8805", November 2025,
+              <https://www.ietf.org/slides/slides-ipgeows-paper-
+              anecdotal-history-of-rfc-00.pdf>.
+`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.referenceEntries).toEqual([
+      entry('[I-D.ietf-teas-rfc8776-update]', 'normative_references', { drafts: ['draft-ietf-teas-rfc8776-update-24'] }),
+      entry('[KLINE-GEO]', 'normative_references', { external: true })
+    ])
+  })
+
+  // From draft-dnoveck-nfsv4-rfc5662bis-08
+  test('Takes numeric labels as any other', async () => {
+    const txt = `${metaTXTBlock}
+6.  Normative References
+
+   [1]        Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119, March 1997,
+              <https://www.rfc-editor.org/rfc/rfc2119>.
+
+   [2]        IETF Trust, "Legal Provisions Relating to IETF Documents",
+              November 2008.
+
+   [3]        Eisler, M., "XDR: External Data Representation Standard",
+              STD 67, RFC 4506, May 2006,
+              <https://www.rfc-editor.org/rfc/rfc4506>.
+`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.referenceEntries).toEqual([
+      entry('[1]', 'normative_references', { rfcs: ['2119'], bcps: ['14'] }),
+      entry('[2]', 'normative_references', { external: true }),
+      entry('[3]', 'normative_references', { rfcs: ['4506'], stds: ['67'] })
+    ])
+  })
+
+  // From draft-sharif-attp-01
+  test('Takes the label of a bulleted entry', async () => {
+    const txt = `${metaTXTBlock}
+17.  References
+
+17.1.  Normative References
+
+   *  [FIPS186-5] National Institute of Standards and Technology,
+      "Digital Signature Standard (DSS)", FIPS PUB 186-5, 2023.
+`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.referenceEntries).toEqual([
+      entry('[FIPS186-5]', 'normative_references', { external: true })
+    ])
+    expect(getLocations(result, 'referenceEntries', '[FIPS186-5]')).toEqual([{ line: txt.split('\n').findIndex((line) => line.includes('[FIPS186-5]')) + 1, pos: 7 }])
+  })
+
+  // From draft-abak-agent-control-delivery-evidence-01
+  test('Ends the entries at text to the left of their labels, such as an unnumbered appendix', async () => {
+    const txt = `${metaTXTBlock}
+14.  References
+
+14.1.  Normative References
+
+   [SCHROCK-FIXTURE-MSG]
+              Schrock, I., "SCITT review: proposed freeze-race and
+              multi-target control-delivery fixture", SCITT mailing-list
+              message, 31 August 2026,
+              <https://mailarchive.ietf.org/arch/msg/scitt/
+              YcoTPgdpSl2RNWvcsB1p3c4VpAM/>.
+
+Contributed Freeze-Race Fixture Summary
+
+   This appendix summarizes the proposed format-neutral fixture
+   contributed by Iman Schrock of EMILIA Protocol in
+   [SCHROCK-FIXTURE-MSG].  The fixture identifier and SHA-256 are
+   preserved for provenance.
+
+   [RFC9943] is not an entry either.
+`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.referenceEntries).toEqual([
+      entry('[SCHROCK-FIXTURE-MSG]', 'normative_references', { external: true })
+    ])
+  })
+})
+
 describe('License validation for documents containing code blocks', () => {
   test('Detects Revised BSD License declaration in a document with code blocks', async () => {
     const txt = `

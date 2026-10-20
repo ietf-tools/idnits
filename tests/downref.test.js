@@ -482,6 +482,12 @@ async function parseXMLDraftReferences ({ category = 'std', normative = [], info
 }
 
 describe('validateDownrefs', () => {
+  const external = (name, opts) => new ValidationComment(
+    'NORMATIVE_REFERENCE_EXTERNAL',
+    `Normative reference to a document that is not an RFC or Internet-Draft: ref. '${name}'. Check that it is stable and available.`,
+    { ref: 'https://www.rfc-editor.org/rfc/rfc2026.html#section-7.1', ...opts }
+  )
+
   describe('TXT Document Type', () => {
     test('valid references with no downrefs', async () => {
       const doc = cloneDeep(baseTXTDoc)
@@ -510,47 +516,156 @@ describe('validateDownrefs', () => {
       expect(result).toHaveLength(0)
     })
 
-    test('FORGIVE_CHECKLIST mode returns warning on non RFC non draft reference', async () => {
+    test('a normative reference to a document from elsewhere is a comment in each mode but submission', async () => {
       const doc = await parseTXTReferences({ normative: ['[ISO10589]'] })
+      const expected = [external('ISO10589', { lines: locate(doc, '[ISO10589]') })]
 
-      const result = await validateDownrefs(doc, { mode: MODES.FORGIVE_CHECKLIST })
-      expect(result).toEqual([
-        new ValidationWarning('POSSIBLE_DOWNREF', 'Reference to [ISO10589] is possible downref', { ref: 'https://www.rfc-editor.org/info/bcp97', lines: locate(doc, '[ISO10589]') })
-      ])
+      await expect(validateDownrefs(doc, { mode: MODES.NORMAL })).resolves.toEqual(expected)
+      await expect(validateDownrefs(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toEqual(expected)
+      await expect(validateDownrefs(doc, { mode: MODES.SUBMISSION })).resolves.toEqual([])
     })
 
-    test('unused informative reference is not a possible downref', async () => {
+    test('unused informative reference is not reported (#222)', async () => {
       const doc = await parseTXTReferences({ informative: ['[UNUSED]'] })
 
       const result = await validateDownrefs(doc, { mode: MODES.NORMAL })
       expect(result).toHaveLength(0)
     })
 
-    test('used informative reference is not a possible downref', async () => {
+    test('used informative reference is not reported (#222)', async () => {
       const doc = await parseTXTReferences({ cited: ['[USED]'], informative: ['[USED]'] })
 
       const result = await validateDownrefs(doc, { mode: MODES.NORMAL })
       expect(result).toHaveLength(0)
     })
 
-    test('unused normative reference is still a possible downref', async () => {
+    test('unused normative reference is reported', async () => {
       const doc = await parseTXTReferences({ normative: ['[NORM]'], informative: ['[UNUSED]'] })
 
       const result = await validateDownrefs(doc, { mode: MODES.NORMAL })
-      expect(result).toHaveLength(1)
-      expect(result).toContainError('POSSIBLE_DOWNREF', ValidationError)
-      expect(result[0].message).toContain('[NORM]')
+      expect(result).toEqual([external('NORM', { lines: locate(doc, '[NORM]  ') })])
     })
 
-    test('used normative reference is still not a possible downref', async () => {
+    test('used normative reference is reported alike (#298)', async () => {
       const doc = await parseTXTReferences({ cited: ['[NORM]'], normative: ['[NORM]'] })
 
       const result = await validateDownrefs(doc, { mode: MODES.NORMAL })
-      expect(result).toHaveLength(0)
+      expect(result).toEqual([external('NORM', { lines: locate(doc, '[NORM]  ') })])
+    })
+
+    test('a normative reference to a document from elsewhere is not reported for a published RFC', async () => {
+      const doc = await parseTXTReferences({ normative: ['[ISO10589]'] })
+      set(doc, 'data.header.rfcNumber', '10001')
+
+      await expect(validateDownrefs(doc, { mode: MODES.NORMAL })).resolves.toEqual([])
+    })
+
+    test('a normative reference to a document from elsewhere is not reported for a document that is not Standards Track or BCP', async () => {
+      const doc = await parseTXTReferences({ normative: ['[ISO10589]'] })
+      set(doc, 'data.header.intendedStatus', 'Informational')
+
+      await expect(validateDownrefs(doc, { mode: MODES.NORMAL })).resolves.toEqual([])
+    })
+
+    // From draft-bokovoy-kitten-pkinit-pqc-02 and draft-rosomakho-tls-cert-update-02
+    test('each normative reference that is not an RFC, BCP, STD or Internet-Draft is reported once, at its label', async () => {
+      const doc = await parseTXT(`${CANONICAL_TXT}
+1.  Introduction
+
+   This document uses [FIPS203] and [SP800-90A], and [TLS].
+
+2.  References
+
+2.1.  Normative References
+
+   [FIPS203]  National Institute of Standards and Technology (NIST),
+              "Module-Lattice-Based Key-Encapsulation Mechanism
+              Standard", FIPS PUB 203, August 2024,
+              <https://doi.org/10.6028/NIST.FIPS.203>.
+
+   [SP800-90A]
+              Barker, E. and J. Kelsey, "Recommendation for Random
+              Number Generation Using Deterministic Random Bit
+              Generators", NIST Special Publication 800-90A Rev. 1, June
+              2015, <https://doi.org/10.6028/NIST.SP.800-90Ar1>.
+
+   [TLS]      Rescorla, E., "The Transport Layer Security (TLS) Protocol
+              Version 1.3", RFC 8446, DOI 10.17487/RFC8446, August 2018,
+              <https://www.rfc-editor.org/rfc/rfc8446>.
+
+2.2.  Informative References
+
+   [FIPS204]  National Institute of Standards and Technology (NIST),
+              "Module-Lattice-Based Digital Signature Standard", FIPS PUB
+              204, August 2024, <https://doi.org/10.6028/NIST.FIPS.204>.
+`, 'draft-ietf-beep-boop-01.txt')
+
+      const result = await validateDownrefs(doc, { mode: MODES.NORMAL })
+      expect(result.filter((finding) => finding.name === 'NORMATIVE_REFERENCE_EXTERNAL')).toEqual([
+        external('FIPS203', { lines: locate(doc, '[FIPS203]  ', '[FIPS203]') }),
+        external('SP800-90A', { lines: locate(doc, '   [SP800-90A]', '[SP800-90A]') })
+      ])
     })
   })
 
   describe('XML Document Type', () => {
+    // From draft-bokovoy-kitten-pkinit-pqc-02, draft-becker-cnsa2-ssh-profile-05 and draft-dunglas-mercure-08
+    const EXTERNAL_REFERENCES = `<references><name>References</name>
+      <references><name>Normative References</name>
+        <reference anchor="FIPS203" target="https://doi.org/10.6028/NIST.FIPS.203">
+          <front>
+            <title>Module-Lattice-Based Key-Encapsulation Mechanism Standard</title>
+            <author>
+              <organization>National Institute of Standards and Technology (NIST)</organization>
+            </author>
+            <date year="2024" month="August"/>
+          </front>
+          <seriesInfo name="FIPS PUB" value="203"/>
+        </reference>
+        <reference anchor="I-D.jenkins-cnsa2-pkix-profile" target="https://datatracker.ietf.org/doc/draft-jenkins-cnsa2-pkix-profile/">
+          <front>
+            <title>Commercial National Security Algorithm Suite Certificate and Certificate Revocation List Profile</title>
+            <author initials="M." surname="Jenkins" fullname="M. Jenkins"><organization/></author>
+            <date month="January" year="2025"/>
+          </front>
+        </reference>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml-rfcsubseries/reference.BCP.38.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml4/reference.W3C.REC-xml-20081126.xml"/>
+      </references>
+      <references><name>Informative References</name>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml4/reference.W3C.REC-websub-20180123.xml"/>
+      </references>
+    </references>`
+
+    test('each normative reference that is not an RFC, BCP, STD or Internet-Draft is a comment, at its path', async () => {
+      const doc = await parseXMLBack(EXTERNAL_REFERENCES)
+      const result = await validateDownrefs(doc, { mode: MODES.FORGIVE_CHECKLIST })
+
+      expect(result.filter((finding) => finding.name === 'NORMATIVE_REFERENCE_EXTERNAL')).toEqual([
+        external('FIPS203', { path: 'rfc.back.references[0].references[0].reference[0]' }),
+        external('W3C.REC-xml-20081126', { path: 'rfc.back.references[0].references[0].xi:include[1]' })
+      ])
+    })
+
+    test('a normative reference to a document from elsewhere is not reported for a published RFC, but is for a working copy', async () => {
+      const external = (findings) => findings.filter((finding) => finding.name === 'NORMATIVE_REFERENCE_EXTERNAL').map((finding) => finding.message)
+      const workingCopy = await parseXMLBack(EXTERNAL_REFERENCES)
+      workingCopy.data.rfc._attr.number = '10001'
+      const published = await parseXMLBack(EXTERNAL_REFERENCES)
+      Object.assign(published.data.rfc._attr, { number: '10001', prepTime: '2026-08-01T00:00:00' })
+
+      expect(external(await validateDownrefs(workingCopy, { mode: MODES.FORGIVE_CHECKLIST }))).toHaveLength(2)
+      expect(external(await validateDownrefs(published, { mode: MODES.NORMAL }))).toEqual([])
+    })
+
+    test('a normative reference to a document from elsewhere is not reported for a document that is not Standards Track or BCP', async () => {
+      const doc = await parseXMLBack(EXTERNAL_REFERENCES)
+      doc.data.rfc._attr.category = 'info'
+
+      const result = await validateDownrefs(doc, { mode: MODES.NORMAL })
+      expect(result.filter((finding) => finding.name === 'NORMATIVE_REFERENCE_EXTERNAL')).toEqual([])
+    })
+
     test('valid XML references without downrefs', async () => {
       const doc = cloneDeep(baseXMLDoc)
       set(doc, 'data.rfc.back.references.references', [
@@ -1086,6 +1201,80 @@ describe('validateNormativeReferences', () => {
         new ValidationComment('UNDEFINED_STATUS', 'RFC 3339 does not have a defined status or could not be fetched.', {
           ref: 'https://www.rfc-editor.org/info/rfc3339',
           lines: locate(doc, '[RFC3339] Klyne', '[RFC3339]')
+        })
+      ])
+    })
+
+    test('an RFC cited under another label is checked, at the label of its entry', async () => {
+      // -> Excerpt of draft-ietf-mailmaint-autoconfig-06, whose informative references list RFC 3986 again
+      const doc = await parseTXT(`${CANONICAL_TXT}
+1.  Introduction
+
+   This document uses [STARTTLS], [TLSv1.2] and [URL].
+
+2.  References
+
+2.1.  Normative References
+
+   [STARTTLS] Newman, C., "Using TLS with IMAP, POP3 and ACAP",
+              RFC 2595, DOI 10.17487/RFC2595, June 1999,
+              <https://www.rfc-editor.org/rfc/rfc2595>.
+
+   [TLSv1.2]  Dierks, T. and E. Rescorla, "The Transport Layer Security
+              (TLS) Protocol Version 1.2", RFC 5246,
+              DOI 10.17487/RFC5246, August 2008,
+              <https://www.rfc-editor.org/rfc/rfc5246>.
+
+   [URL]      Berners-Lee, T., Fielding, R., and L. Masinter, "Uniform
+              Resource Identifier (URI): Generic Syntax", STD 66,
+              RFC 3986, DOI 10.17487/RFC3986, January 2005,
+              <https://www.rfc-editor.org/rfc/rfc3986>.
+
+2.2.  Informative References
+
+   [RFC3986]  Berners-Lee, T., Fielding, R., and L. Masinter, "Uniform
+              Resource Identifier (URI): Generic Syntax", STD 66,
+              RFC 3986, DOI 10.17487/RFC3986, January 2005,
+              <https://www.rfc-editor.org/rfc/rfc3986>.
+`, 'draft-ietf-mailmaint-autoconfig-06.txt')
+      server.use(
+        http.get('https://www.rfc-editor.org/rfc/rfc2595.json', () => HttpResponse.json({ status: 'Proposed Standard', obsoleted_by: [] })),
+        http.get('https://www.rfc-editor.org/rfc/rfc5246.json', () => HttpResponse.json({ status: 'Proposed Standard', obsoleted_by: ['RFC8446'] })),
+        http.get('https://www.rfc-editor.org/rfc/rfc3986.json', () => HttpResponse.json({ status: 'Internet Standard', obsoleted_by: [] }))
+      )
+      expect(doc.data.extractedElements.referenceSectionRfc).toEqual([{ value: '3986', subsection: 'informative_references' }])
+
+      // -> RFC 3986 is checked once, as the parser records it, for the informative references
+      await expect(validateNormativeReferences(doc, { mode: MODES.NORMAL })).resolves.toEqual([
+        new ValidationError('OBSOLETE_REFERENCE', 'RFC 5246 is obsolete and has been replaced by: RFC8446.', {
+          ref: 'https://authors.ietf.org/en/required-content#references',
+          lines: locate(doc, '[TLSv1.2]  Dierks', '[TLSv1.2]')
+        })
+      ])
+    })
+
+    test('an RFC cited under a numeric label is checked for a downref, at the label of its entry', async () => {
+      // -> Excerpt of draft-dnoveck-nfsv4-rfc5662bis-08
+      const doc = await parseTXT(`${CANONICAL_TXT}
+1.  Introduction
+
+   This document uses [1] and [3].
+
+2.  Normative References
+
+   [1]        Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119, March 1997,
+              <https://www.rfc-editor.org/rfc/rfc2119>.
+
+   [3]        Eisler, M., "XDR: External Data Representation Standard",
+              STD 67, RFC 4506, May 2006,
+              <https://www.rfc-editor.org/rfc/rfc4506>.
+`, 'draft-dnoveck-nfsv4-rfc5662bis-08.txt')
+
+      await expect(validateDownrefs(doc, { mode: MODES.NORMAL })).resolves.toEqual([
+        new ValidationError('POSSIBLE_DOWNREF', 'RFC 4506 status can\'t be fetched. Reference is possible downref', {
+          ref: 'https://www.rfc-editor.org/info/bcp97',
+          lines: locate(doc, '   [3]', '[3]')
         })
       ])
     })
