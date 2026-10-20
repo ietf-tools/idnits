@@ -10,7 +10,7 @@ import { readFile } from 'node:fs/promises'
 import { DateTime } from 'luxon'
 import { gte } from 'semver'
 import { Listr, ListrDefaultRendererLogLevels } from 'listr2'
-import { checkNits, getAllValidations, getDocType, labelFindings } from './lib/index.mjs'
+import { checkNits, finalizeFindings, getAllValidations, getDocType } from './lib/index.mjs'
 import { getModeByName } from './lib/config/modes.mjs'
 import {
   DATATRACKER_URL_ENV,
@@ -269,7 +269,7 @@ try {
       }
     )
     const ctx = await tasks.run()
-    labelFindings(result, ctx.doc)
+    finalizeFindings(result, ctx.doc)
     console.info('')
   } else {
     result = await checkNits(docRaw, docPathObj.base, {
