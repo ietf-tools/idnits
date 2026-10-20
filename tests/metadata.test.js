@@ -592,6 +592,22 @@ describe('document should have valid obsoletes / updates references', () => {
       set(doc, 'data.rfc.front.abstract.t', 'This document updates RFC 1234, 2345.')
       await expect(validateObsoleteUpdateRef(doc, { offline: true })).resolves.toHaveLength(0)
     })
+    test('serial-comma lists in the abstract count every RFC', async () => {
+      // Abstracts of draft-ietf-6man-slaac-renum-14 and draft-ietf-procon-2026bis-11
+      const updates = cloneDeep(baseXMLDoc)
+      set(updates, 'data.rfc._attr', {
+        updates: '4191, 4861, 4862, 8106, 8781, 9096, 9463'
+      })
+      set(updates, 'data.rfc.front.abstract.t', 'It formally updates RFC 4191, RFC 4861,\n   RFC 4862, RFC 8106, RFC 8781, RFC 9096, and RFC 9463.')
+      await expect(validateObsoleteUpdateRef(updates, { offline: true })).resolves.toHaveLength(0)
+
+      const obsoletes = cloneDeep(baseXMLDoc)
+      set(obsoletes, 'data.rfc._attr', {
+        obsoletes: '2026, 5657, 6410, 7100, 7127, 8789, 9282'
+      })
+      set(obsoletes, 'data.rfc.front.abstract.t', 'This document obsoletes RFC 2026, RFC 5657, RFC 6410, RFC 7100, RFC\n   7127, RFC 8789, and RFC 9282.')
+      await expect(validateObsoleteUpdateRef(obsoletes, { offline: true })).resolves.toHaveLength(0)
+    })
     test('obsoletes in rfc but missing in abstract', async () => {
       const doc = cloneDeep(baseXMLDoc)
       set(doc, 'data.rfc._attr', {
