@@ -7,7 +7,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { pad } from 'lodash-es'
 import { readFile } from 'node:fs/promises'
-import { gte } from 'semver'
+import { satisfies } from 'semver'
 import { Listr, ListrDefaultRendererLogLevels } from 'listr2'
 import { checkNits, finalizeFindings, getAllValidations, getDocType } from './lib/index.mjs'
 import { getModeByName } from './lib/config/modes.mjs'
@@ -27,15 +27,15 @@ import {
   setRemoteUrls
 } from './lib/config/remote.mjs'
 
-// Check Node.js version
-if (!gte(process.version, '18.0.0')) {
-  console.error('idnits3 requires Node.js v18 or later.')
-  process.exit(1)
-}
-
 // Get package version
 const cliDir = path.dirname(fileURLToPath(import.meta.url))
 const pkgInfo = JSON.parse(await readFile(path.join(cliDir, 'package.json'), 'utf8'))
+
+// Check Node.js version against the engines field of package.json
+if (!satisfies(process.version, pkgInfo.engines.node)) {
+  console.error(`idnits3 requires Node.js ${pkgInfo.engines.node}.`)
+  process.exit(1)
+}
 
 // Define CLI arguments config
 const argv = yargs(hideBin(process.argv))
