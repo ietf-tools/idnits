@@ -58,21 +58,24 @@ idnits [args] <file path|url>
 | `--datatracker-url` |  | Base URL of the Datatracker used for remote lookups. Overrides the `IDNITS_DATATRACKER_URL` environment variable. | `https://datatracker.ietf.org` |
 | `--fail-on` |  | Exit with code `2` if there is at least one nit of the given severity or higher (`errors` > `warnings` > `comments`).<br>Accepted values: `errors`, `warnings`, `comments` |  |
 | `--filter` | `-f` | Filter output to only certain severity types. Can be declared multiple times to filter multiple severity types.<br>Accepted values: `errors`, `warnings`, `comments` |  |
-| `--mode` | `-m` | Validation mode, must be either `normal`, `forgive-checklist` or `submission`<br>Accepted shorthands: `norm`, `n`, `f-c`, `fc`, `f`, `sub`, `s` | `normal` |
+| `--mode` | `-m` | Validation mode: the stage of the document's life it is checked for, either `normal` (before RFC publication), `forgive-checklist` (RFC Editor conversion of an approved draft) or `submission` (Internet-Draft submission). See [Validation modes](docs/modes.md).<br>Accepted shorthands: `norm`, `n`, `f-c`, `fc`, `f`, `sub`, `s` | `normal` |
 | `--no-color` |  | Disable colors in `pretty` output.<br>No effect in other output formats. |  |
 | `--no-progress` |  | Disable progress messages / animations in `pretty` output.<br>No effect in other output formats. |  |
-| `--offline` |  | Disable validations that require an internet connection. |  |
+| `--offline` |  | Skip the lookups about the document itself (its stream, its revision, the RFCs it updates or obsoletes). The status of the documents it references is still looked up: see [Remote lookups and `--offline`](docs/modes.md#remote-lookups-and---offline). |  |
 | `--output` | `-o` | Output format, must be either `pretty`, `simple`, `json` or `count` | `pretty` |
 | `--remote-timeout` |  | Seconds allowed for each remote lookup before it fails. Overrides the `IDNITS_REMOTE_TIMEOUT` environment variable. | `10` |
 | `--rfceditor-url` |  | Base URL of the RFC Editor site used for remote lookups. Overrides the `IDNITS_RFCEDITOR_URL` environment variable. | `https://www.rfc-editor.org` |
 | `--solarized` |  | Use alternate colors for a solarized light theme terminal.<br>Only used with the `pretty` output format. |  |
-| `--year` | `-y` | Expect the given year in the boilerplate |  |
 | `--help` | `-h` | Print the help text and exit |  |
 | `--version` |  | Print the version and exit |  |
 
+#### Validation modes
+
+The mode says at which stage of its life the document is checked, not how strictly: `normal` before RFC publication, `forgive-checklist` when the RFC Editor converts an approved draft into an RFC, and `submission` when an Internet-Draft is uploaded to Datatracker. [Validation modes](docs/modes.md) explains each mode and lists every finding with its severity in each one.
+
 #### Remote lookups
 
-Unless `--offline` is used, some validations look up the document and the documents it references on the Datatracker (e.g. its latest revision and stream) and the RFC Editor site (e.g. the status of RFCs). The lookups of a document are made once per run, with a `User-Agent` header naming idnits3 and its version (e.g. `idnits3/3.0.0 (+https://github.com/ietf-tools/idnits)`).
+Some validations look up the document and the documents it references on the Datatracker (e.g. its latest revision and stream) and the RFC Editor site (e.g. the status of RFCs). `--offline` skips only some of them: see [Remote lookups and `--offline`](docs/modes.md#remote-lookups-and---offline). The lookups of a document are made once per run, with a `User-Agent` header naming idnits3 and its version (e.g. `idnits3/3.0.0 (+https://github.com/ietf-tools/idnits)`).
 
 The services they are sent to, and the time each lookup is allowed, can be changed with these environment variables, or the matching flags, which take precedence. URLs must be `http` or `https` URLs, a trailing slash is ignored. The timeout is a positive number of seconds; it covers the whole request, response included.
 
@@ -94,7 +97,7 @@ The environment variables also apply when idnits is used as a library in Node.js
 | Code | Meaning |
 |---|---|
 | `0` | Validation completed (whatever nits were found, unless `--fail-on` is used) |
-| `1` | Validation could not be completed (e.g. the document could not be read or parsed) |
+| `1` | Validation could not be completed (e.g. the document could not be read or parsed). Datatracker treats any nonzero code this way. |
 | `2` | Validation completed and found at least one nit at or above the `--fail-on` severity |
 
 ### Library Usage
