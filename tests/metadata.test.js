@@ -291,6 +291,7 @@ describe('document should have valid date', () => {
       doc.data.content.abstract = abstractTXTBlock.split('\n')
 
       await expect(validateObsoleteUpdateRef(doc)).resolves.toContainError('OBSOLETES_RFC_NOT_FOUND', ValidationWarning)
+      expect((await validateObsoleteUpdateRef(doc)).find(r => r.name === 'OBSOLETES_RFC_NOT_FOUND').message).toMatch(/^The Obsoletes header line lists RFC .+ but /)
       await expect(validateObsoleteUpdateRef(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('OBSOLETES_RFC_NOT_FOUND', ValidationWarning)
       await expect(validateObsoleteUpdateRef(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
@@ -301,6 +302,7 @@ describe('document should have valid date', () => {
       doc.data.content.abstract = abstractTXTBlock.split('\n')
 
       await expect(validateObsoleteUpdateRef(doc)).resolves.toContainError('OBSOLETES_OBSOLETED_RFC', ValidationWarning)
+      expect((await validateObsoleteUpdateRef(doc)).find(r => r.name === 'OBSOLETES_OBSOLETED_RFC').message).toMatch(/^The Obsoletes header line lists RFC .+ but /)
       await expect(validateObsoleteUpdateRef(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('OBSOLETES_OBSOLETED_RFC', ValidationWarning)
       await expect(validateObsoleteUpdateRef(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
@@ -311,6 +313,7 @@ describe('document should have valid date', () => {
       doc.data.content.abstract = abstractTXTBlock.split('\n')
 
       await expect(validateObsoleteUpdateRef(doc)).resolves.toContainError('UPDATES_RFC_NOT_FOUND', ValidationWarning)
+      expect((await validateObsoleteUpdateRef(doc)).find(r => r.name === 'UPDATES_RFC_NOT_FOUND').message).toMatch(/^The Updates header line lists RFC .+ but /)
       await expect(validateObsoleteUpdateRef(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('UPDATES_RFC_NOT_FOUND', ValidationWarning)
       await expect(validateObsoleteUpdateRef(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
@@ -322,6 +325,7 @@ describe('document should have valid date', () => {
       doc.data.content.abstract = abstractTXTBlock.split('\n')
 
       await expect(validateObsoleteUpdateRef(doc)).resolves.toContainError('UPDATES_OBSOLETED_RFC', ValidationWarning)
+      expect((await validateObsoleteUpdateRef(doc)).find(r => r.name === 'UPDATES_OBSOLETED_RFC').message).toMatch(/^The Updates header line lists RFC .+ but /)
       await expect(validateObsoleteUpdateRef(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('UPDATES_OBSOLETED_RFC', ValidationWarning)
       await expect(validateObsoleteUpdateRef(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
@@ -633,6 +637,7 @@ describe('document should have valid obsoletes / updates references', () => {
       })
       set(doc, 'data.rfc.front.abstract.t', 'This document obsoletes RFC 1234 and 2345.')
       await expect(validateObsoleteUpdateRef(doc)).resolves.toContainError('OBSOLETES_RFC_NOT_FOUND', ValidationWarning)
+      expect((await validateObsoleteUpdateRef(doc)).find(r => r.name === 'OBSOLETES_RFC_NOT_FOUND').message).toMatch(/^The <rfc> field states that it obsoletes RFC \d+ but /)
       await expect(validateObsoleteUpdateRef(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('OBSOLETES_RFC_NOT_FOUND', ValidationWarning)
       await expect(validateObsoleteUpdateRef(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
