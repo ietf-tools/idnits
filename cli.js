@@ -362,7 +362,8 @@ try {
           ValidationComment: 'Comment'
         }
         for (const entry of result) {
-          const location = entry.label ? ` | ${entry.label} (${entry.path})` : ''
+          const location = (entry.label ? ` | ${entry.label} (${entry.path})` : '') +
+            (entry.lines ? ` | ${entry.lines.map(line => `Ln ${line.line} Col ${line.pos}`).join(', ')}` : '')
           console.log(`[${entryIdx}] ${validationSeverity[entry.constructor.name]} | ${entry.name} | ${entry.message}${location}`)
           entryIdx++
         }
