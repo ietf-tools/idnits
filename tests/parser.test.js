@@ -1197,14 +1197,52 @@ Expires: 6 January 2027                                           Sky UK
 `
 
     const result = await parse(txt, 'txt')
+    // The list wraps past the second author, the number on the next line still part of it
+    expect(result.data.extractedElements.updatesRfc).toEqual(['4191', '4861', '4862', '8106', '9096', '8781', '9463'])
     expect(result.data.extractedElements.locations.updatesRfc).toEqual({
       4191: [{ line: 3, pos: 10 }],
       4861: [{ line: 3, pos: 16 }],
       4862: [{ line: 3, pos: 22 }],
       8106: [{ line: 3, pos: 28 }],
       9096: [{ line: 3, pos: 34 }],
-      8781: [{ line: 3, pos: 40 }]
+      8781: [{ line: 3, pos: 40 }],
+      9463: [{ line: 4, pos: 10 }]
     })
+  })
+
+  test('Ends the list of RFCs a document updates at its left column', async () => {
+    // From draft-dekok-protocol-error-01
+    const txt = `RADEXT Working Group                                            A. DeKok
+Internet-Draft                                        InkBridge Networks
+Updates: 2865, 2866, 5176, 6613, 6614, 7360,                 3 July 2026
+         7930 (if approved)
+Intended status: Best Current Practice
+Expires: 4 January 2027
+`
+
+    const result = await parse(txt, 'txt')
+    // The day of the date in the right column is no RFC
+    expect(result.data.extractedElements.updatesRfc).toEqual(['2865', '2866', '5176', '6613', '6614', '7360', '7930'])
+    expect(result.data.extractedElements.locations.updatesRfc['7360']).toEqual([{ line: 3, pos: 40 }])
+    expect(result.data.extractedElements.locations.updatesRfc['7930']).toEqual([{ line: 4, pos: 10 }])
+  })
+
+  test('Ends the list of RFCs a document obsoletes at the next header field', async () => {
+    // From draft-ietf-procon-2026bis-11
+    const txt = `procon                                                           R. Salz
+Internet-Draft                                       Akamai Technologies
+Obsoletes: 2026, 5657, 6410, 7100, 7127, 8789,                S. Bradner
+           9282 (if approved)               Harvard University (retired)
+Updates: 7475 (if approved)                                  1 July 2026
+Intended status: Best Current Practice
+Expires: 2 January 2027
+`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.obsoletesRfc).toEqual(['2026', '5657', '6410', '7100', '7127', '8789', '9282'])
+    expect(result.data.extractedElements.updatesRfc).toEqual(['7475'])
+    expect(result.data.extractedElements.locations.obsoletesRfc['9282']).toEqual([{ line: 4, pos: 12 }])
+    expect(result.data.extractedElements.locations.updatesRfc).toEqual({ 7475: [{ line: 5, pos: 10 }] })
   })
 })
 
