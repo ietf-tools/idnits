@@ -938,7 +938,6 @@ Authors" Addresses
       await expect(validateAuthorSection(doc)).resolves.toEqual([
         new ValidationWarning('MISUSED_POSSESSIVE_MARK', 'The author\'s address section title "Authors" Addresses" uses an incorrect possessive mark or character other than a single quote.', {
           ref: 'https://authors.ietf.org/en/required-content#authors-addresses',
-          path: 'data.content.authorAddress[0]',
           lines: [{ line: 26, pos: 1 }]
         })
       ])

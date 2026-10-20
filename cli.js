@@ -7,8 +7,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { pad } from 'lodash-es'
 import { readFile } from 'node:fs/promises'
-import { DateTime } from 'luxon'
-import { gte } from 'semver'
+import { satisfies } from 'semver'
 import { Listr, ListrDefaultRendererLogLevels } from 'listr2'
 import { checkNits, finalizeFindings, getAllValidations, getDocType } from './lib/index.mjs'
 import { getModeByName } from './lib/config/modes.mjs'
@@ -28,15 +27,15 @@ import {
   setRemoteUrls
 } from './lib/config/remote.mjs'
 
-// Check Node.js version
-if (!gte(process.version, '18.0.0')) {
-  console.error('idnits3 requires Node.js v18 or later.')
-  process.exit(1)
-}
-
 // Get package version
 const cliDir = path.dirname(fileURLToPath(import.meta.url))
 const pkgInfo = JSON.parse(await readFile(path.join(cliDir, 'package.json'), 'utf8'))
+
+// Check Node.js version against the engines field of package.json
+if (!satisfies(process.version, pkgInfo.engines.node)) {
+  console.error(`idnits3 requires Node.js ${pkgInfo.engines.node}.`)
+  process.exit(1)
+}
 
 // Define CLI arguments config
 const argv = yargs(hideBin(process.argv))
@@ -44,7 +43,7 @@ const argv = yargs(hideBin(process.argv))
   .usage('$0 [args] <file-path|http-url>')
   .example([
     ['$0 draft-ietf-abcd-01.xml', ''],
-    [`$0 -m submission -y ${DateTime.now().year} draft-ietf-abcd-01.xml`, ''],
+    ['$0 -m submission draft-ietf-abcd-01.xml', ''],
     ['$0 https://www.rfc-editor.org/rfc/rfc2549', '']
   ])
   .option('datatracker-url', {
@@ -363,7 +362,8 @@ try {
           ValidationComment: 'Comment'
         }
         for (const entry of result) {
-          const location = entry.label ? ` | ${entry.label} (${entry.path})` : ''
+          const location = (entry.label ? ` | ${entry.label} (${entry.path})` : '') +
+            (entry.lines ? ` | ${entry.lines.map(line => `Ln ${line.line} Col ${line.pos}`).join(', ')}` : '')
           console.log(`[${entryIdx}] ${validationSeverity[entry.constructor.name]} | ${entry.name} | ${entry.message}${location}`)
           entryIdx++
         }

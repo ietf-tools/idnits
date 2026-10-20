@@ -231,7 +231,7 @@ These checks apply to text drafts only. An XML draft gets this boilerplate from 
 | `COPYRIGHT_LINE_MISSING` | Error | Error | Error | text | |
 | `COPYRIGHT_MORE_THAN_ONE_LINE` | Warning | Warning | Warning | text | |
 | `COPYRIGHT_YEAR_MISMATCH` | Warning | Warning | Warning | text | Not the current year, or the library's `year` option |
-| `OBSELETE_COPYRIGHT_LINE` | Error | Error | Error | text | |
+| `OBSOLETE_COPYRIGHT_LINE` | Error | Error | Error | text | |
 | `TLP5_LICENSE_RESTRICTION_NOTICE_MISSING` | Error | Error | Error | text | |
 | `TLP5_LICENSE_RESTRICTION_NOTICE` | Warning | Warning | Warning | text | `draft-ietf-` names only; TLP Section 6.c(i) |
 | `TLP5_LICENSE_RESTRICTION_NOTICE` | Error | Error | Error | text | `draft-ietf-` names only; TLP Section 6.c(ii) |

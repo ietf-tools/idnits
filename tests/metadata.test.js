@@ -82,7 +82,8 @@ describe('document should have valid date', () => {
           },
           extractedElements: {
             obsoletesRfc: ['5678'],
-            updatesRfc: ['1234']
+            updatesRfc: ['1234'],
+            locations: { obsoletesRfc: { 5678: [{ line: 10, pos: 12 }] }, updatesRfc: {} }
           }
         }
       }
@@ -95,7 +96,7 @@ describe('document should have valid date', () => {
           'RFC 5678 is listed as "obsoleted" in metadata but is not mentioned in the abstract.',
           {
             ref: 'https://authors.ietf.org/en/required-content#abstract',
-            path: 'data.content.abstract'
+            lines: [{ line: 10, pos: 12 }]
           }
         )
       )
@@ -122,8 +123,7 @@ describe('document should have valid date', () => {
           'UPDATES_NOT_IN_ABSTRACT',
           'RFC 1234 is listed as "updated" in metadata but is not mentioned in the abstract.',
           {
-            ref: 'https://authors.ietf.org/en/required-content#abstract',
-            path: 'data.content.abstract'
+            ref: 'https://authors.ietf.org/en/required-content#abstract'
           }
         )
       )
@@ -150,8 +150,7 @@ describe('document should have valid date', () => {
           'MENTIONED_NOT_IN_OBSOLETES',
           'RFC 5678 is mentioned as "obsoleted" or "replaced" in the abstract but not listed in metadata.',
           {
-            ref: 'https://authors.ietf.org/en/required-content#abstract',
-            path: 'data.content.abstract'
+            ref: 'https://authors.ietf.org/en/required-content#abstract'
           }
         )
       ])
@@ -178,8 +177,7 @@ describe('document should have valid date', () => {
           'MENTIONED_NOT_IN_UPDATES',
           'RFC 1234 is mentioned as "updated" in the abstract but not listed in metadata.',
           {
-            ref: 'https://authors.ietf.org/en/required-content#abstract',
-            path: 'data.content.abstract'
+            ref: 'https://authors.ietf.org/en/required-content#abstract'
           }
         )
       ])
@@ -206,8 +204,7 @@ describe('document should have valid date', () => {
           'OBSOLETES_NOT_IN_ABSTRACT',
           'RFC 5678 is listed as "obsoleted" in metadata but is not mentioned in the abstract.',
           {
-            ref: 'https://authors.ietf.org/en/required-content#abstract',
-            path: 'data.content.abstract'
+            ref: 'https://authors.ietf.org/en/required-content#abstract'
           }
         )
       )
@@ -216,8 +213,7 @@ describe('document should have valid date', () => {
           'UPDATES_NOT_IN_ABSTRACT',
           'RFC 1234 is listed as "updated" in metadata but is not mentioned in the abstract.',
           {
-            ref: 'https://authors.ietf.org/en/required-content#abstract',
-            path: 'data.content.abstract'
+            ref: 'https://authors.ietf.org/en/required-content#abstract'
           }
         )
       )
@@ -291,6 +287,7 @@ describe('document should have valid date', () => {
       doc.data.content.abstract = abstractTXTBlock.split('\n')
 
       await expect(validateObsoleteUpdateRef(doc)).resolves.toContainError('OBSOLETES_RFC_NOT_FOUND', ValidationWarning)
+      expect((await validateObsoleteUpdateRef(doc)).find(r => r.name === 'OBSOLETES_RFC_NOT_FOUND').message).toMatch(/^The Obsoletes header line lists RFC .+ but /)
       await expect(validateObsoleteUpdateRef(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('OBSOLETES_RFC_NOT_FOUND', ValidationWarning)
       await expect(validateObsoleteUpdateRef(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
@@ -301,6 +298,7 @@ describe('document should have valid date', () => {
       doc.data.content.abstract = abstractTXTBlock.split('\n')
 
       await expect(validateObsoleteUpdateRef(doc)).resolves.toContainError('OBSOLETES_OBSOLETED_RFC', ValidationWarning)
+      expect((await validateObsoleteUpdateRef(doc)).find(r => r.name === 'OBSOLETES_OBSOLETED_RFC').message).toMatch(/^The Obsoletes header line lists RFC .+ but /)
       await expect(validateObsoleteUpdateRef(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('OBSOLETES_OBSOLETED_RFC', ValidationWarning)
       await expect(validateObsoleteUpdateRef(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
@@ -311,6 +309,7 @@ describe('document should have valid date', () => {
       doc.data.content.abstract = abstractTXTBlock.split('\n')
 
       await expect(validateObsoleteUpdateRef(doc)).resolves.toContainError('UPDATES_RFC_NOT_FOUND', ValidationWarning)
+      expect((await validateObsoleteUpdateRef(doc)).find(r => r.name === 'UPDATES_RFC_NOT_FOUND').message).toMatch(/^The Updates header line lists RFC .+ but /)
       await expect(validateObsoleteUpdateRef(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('UPDATES_RFC_NOT_FOUND', ValidationWarning)
       await expect(validateObsoleteUpdateRef(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
@@ -322,6 +321,7 @@ describe('document should have valid date', () => {
       doc.data.content.abstract = abstractTXTBlock.split('\n')
 
       await expect(validateObsoleteUpdateRef(doc)).resolves.toContainError('UPDATES_OBSOLETED_RFC', ValidationWarning)
+      expect((await validateObsoleteUpdateRef(doc)).find(r => r.name === 'UPDATES_OBSOLETED_RFC').message).toMatch(/^The Updates header line lists RFC .+ but /)
       await expect(validateObsoleteUpdateRef(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('UPDATES_OBSOLETED_RFC', ValidationWarning)
       await expect(validateObsoleteUpdateRef(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
@@ -592,6 +592,22 @@ describe('document should have valid obsoletes / updates references', () => {
       set(doc, 'data.rfc.front.abstract.t', 'This document updates RFC 1234, 2345.')
       await expect(validateObsoleteUpdateRef(doc, { offline: true })).resolves.toHaveLength(0)
     })
+    test('serial-comma lists in the abstract count every RFC', async () => {
+      // Abstracts of draft-ietf-6man-slaac-renum-14 and draft-ietf-procon-2026bis-11
+      const updates = cloneDeep(baseXMLDoc)
+      set(updates, 'data.rfc._attr', {
+        updates: '4191, 4861, 4862, 8106, 8781, 9096, 9463'
+      })
+      set(updates, 'data.rfc.front.abstract.t', 'It formally updates RFC 4191, RFC 4861,\n   RFC 4862, RFC 8106, RFC 8781, RFC 9096, and RFC 9463.')
+      await expect(validateObsoleteUpdateRef(updates, { offline: true })).resolves.toHaveLength(0)
+
+      const obsoletes = cloneDeep(baseXMLDoc)
+      set(obsoletes, 'data.rfc._attr', {
+        obsoletes: '2026, 5657, 6410, 7100, 7127, 8789, 9282'
+      })
+      set(obsoletes, 'data.rfc.front.abstract.t', 'This document obsoletes RFC 2026, RFC 5657, RFC 6410, RFC 7100, RFC\n   7127, RFC 8789, and RFC 9282.')
+      await expect(validateObsoleteUpdateRef(obsoletes, { offline: true })).resolves.toHaveLength(0)
+    })
     test('obsoletes in rfc but missing in abstract', async () => {
       const doc = cloneDeep(baseXMLDoc)
       set(doc, 'data.rfc._attr', {
@@ -633,6 +649,7 @@ describe('document should have valid obsoletes / updates references', () => {
       })
       set(doc, 'data.rfc.front.abstract.t', 'This document obsoletes RFC 1234 and 2345.')
       await expect(validateObsoleteUpdateRef(doc)).resolves.toContainError('OBSOLETES_RFC_NOT_FOUND', ValidationWarning)
+      expect((await validateObsoleteUpdateRef(doc)).find(r => r.name === 'OBSOLETES_RFC_NOT_FOUND').message).toMatch(/^The <rfc> field states that it obsoletes RFC \d+ but /)
       await expect(validateObsoleteUpdateRef(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('OBSOLETES_RFC_NOT_FOUND', ValidationWarning)
       await expect(validateObsoleteUpdateRef(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
