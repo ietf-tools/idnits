@@ -310,6 +310,7 @@ For text documents, `SUBMISSION_TYPE_UNEXPECTED` compares the stream implied by 
 | `DOWNREF_TO_LOWER_STATUS` | Error | Warning | — | both | (lookup) Not in the Downref Registry |
 | `DOWNREF_TO_LOWER_STATUS_IN_REGISTRY` | Warning | Warning | — | both | (lookup) |
 | `POSSIBLE_DOWNREF` | Error | Warning | — | both | (lookup) Status of a normative RFC can't be fetched |
+| `DOWNREF_REGISTRY_UNAVAILABLE` | Comment | Comment | — | both | (lookup) The Downref Registry can't be fetched |
 | `NORMATIVE_REFERENCE_TO_DRAFT` | Warning | Warning | — | both | (lookup) Not in published RFCs |
 | `NORMATIVE_REFERENCE_TO_LOWER_STATUS_DRAFT` | Warning | Warning | — | both | (lookup) |
 | `NORMATIVE_REFERENCE_EXTERNAL` | Comment | Comment | — | both | Standards Track and BCP documents, not published RFCs |
@@ -343,11 +344,11 @@ Some checks look up the document, and the documents it cites, on Datatracker and
 | The RFCs the document updates or obsoletes, on Datatracker and the RFC Editor site | `CROSS_STREAM_OBSOLETES_UPDATES`, `OBSOLETES_*_RFC`, `UPDATES_*_RFC` | Yes |
 | Status of the cited RFCs, on the RFC Editor site | downref, obsolete and status findings of [References](#references) | No |
 | State and revisions of the cited drafts, on Datatracker | `NORMATIVE_REFERENCE_TO_*`, `UNDEFINED_STATE`, `INVALID_STATE_FOR_DRAFT`, `OUTDATED_DRAFT` | No |
-| The Downref Registry, on Datatracker | `DOWNREF_TO_LOWER_STATUS*` | No |
+| The Downref Registry, on Datatracker | `DOWNREF_TO_LOWER_STATUS*`, `DOWNREF_REGISTRY_UNAVAILABLE` | No |
 
 The lookups about cited documents are only made in `normal` and `forgive-checklist`, as `submission` doesn't run those checks.
 
-A lookup that fails, or times out, prints a warning and the check goes on without its result: an RFC whose status can't be fetched is reported as `UNDEFINED_STATUS` (and, if normative, `POSSIBLE_DOWNREF`), a draft as `UNDEFINED_STATE`. A Downref Registry that can't be fetched when it is needed currently stops the check (exit code `1`).
+A lookup that fails, or times out, prints a warning and the check goes on without its result: an RFC whose status can't be fetched is reported as `UNDEFINED_STATUS` (and, if normative, `POSSIBLE_DOWNREF`), a draft as `UNDEFINED_STATE`. A Downref Registry that can't be fetched when it is needed (an error or a timeout) doesn't stop the check either: each downref is reported as `DOWNREF_TO_LOWER_STATUS`, without telling whether it is in the registry, and one `DOWNREF_REGISTRY_UNAVAILABLE` comment per document names the reason.
 
 The services used and the time allowed for each lookup can be changed: see [Remote lookups](../README.md#remote-lookups) in the README.
 
