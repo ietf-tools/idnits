@@ -85,7 +85,7 @@ The services they are sent to, and the time each lookup is allowed, can be chang
 | `IDNITS_RFCEDITOR_URL` | `--rfceditor-url` | `https://www.rfc-editor.org` |
 | `IDNITS_REMOTE_TIMEOUT` | `--remote-timeout` | `10` |
 
-A lookup that times out fails like one to a service that can't be reached: a warning naming the host is printed once, and the validations carry on without its result.
+A lookup that times out fails like one to a service that can't be reached: a warning naming the host is printed once, and the validations carry on without its result. If the Downref Registry can't be fetched (an error or a timeout), downrefs are reported as `DOWNREF_TO_LOWER_STATUS` without telling whether they are listed in it, and a `DOWNREF_REGISTRY_UNAVAILABLE` comment names the reason. A failed fetch of the registry is not retried for a minute, so the checks of a run don't each wait for it.
 
 The environment variables also apply when idnits is used as a library in Node.js. In the browser, lookups go through the `/idnits3/api/` endpoints of the page's server instead.
 
