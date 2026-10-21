@@ -45,11 +45,32 @@ jobs:
       - name: Publish to NPM
         run: npm publish --access public --tag latest
 
-      - name: Create GH Release
+      - name: Create Draft Release
         uses: ncipollo/release-action@v1.21.0
         with:
-          makeLatest: true
+          prerelease: true
+          draft: false
           commit: ${{ github.sha }}
+          tag: ${{ steps.semver.outputs.nextStrict }}
+          name: ${{ steps.semver.outputs.nextStrict }}
+          body: '*pending*'
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate CHANGELOG
+        id: changelog
+        uses: requarks/changelog-action@v1
+        with:
+          token: ${{ github.token }}
+          tag: ${{ steps.semver.outputs.nextStrict }}
+          writeToFile: false
+
+      - name: Finalize Release
+        uses: ncipollo/release-action@v1.21.0
+        with:
+          allowUpdates: true
+          makeLatest: true
+          draft: false
+          body: ${{ steps.changelog.outputs.changes }}
           tag: ${{ steps.semver.outputs.nextStrict }}
           name: ${{ steps.semver.outputs.nextStrict }}
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -75,6 +96,23 @@ jobs:
         with:
           node-version: 22.x
           registry-url: https://registry.npmjs.org/
+
+      - name: Wait for package to be available on npm
+        env:
+          VERSION: ${{ needs.npm.outputs.next_version }}
+        run: |
+          for i in $(seq 1 30); do
+            if curl -sf -H "Accept: application/vnd.npm.install-v1+json" \
+                "https://registry.npmjs.org/@ietf-tools%2Fidnits" \
+                | jq -e --arg v "$VERSION" '.versions[$v]' > /dev/null; then
+              echo "@ietf-tools/idnits@$VERSION is available"
+              exit 0
+            fi
+            echo "Not available yet (attempt $i), retrying in 10s..."
+            sleep 10
+          done
+          echo "Timed out waiting for @ietf-tools/idnits@$VERSION"
+          exit 1
 
       - name: Bump idnits package version
         run: npm install && npm install @ietf-tools/idnits@${{needs.npm.outputs.next_version}}
