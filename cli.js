@@ -90,7 +90,7 @@ const argv = yargs(hideBin(process.argv))
   })
   .option('offline', {
     default: false,
-    describe: 'Disable validations that require an internet connection',
+    describe: 'Skip the lookups about the document itself (its stream, its revision, the RFCs it updates or obsoletes). The status of the documents it references is still looked up',
     type: 'boolean'
   })
   .option('output', {
