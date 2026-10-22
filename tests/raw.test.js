@@ -3,6 +3,8 @@ import { MODES } from '../lib/config/modes.mjs'
 import { toContainError, ValidationComment, ValidationError, ValidationWarning } from '../lib/helpers/error.mjs'
 import { validateContent, validateEncoding, decodeBufferToUTF8 } from '../lib/modules/raw.mjs'
 import { Buffer } from 'node:buffer'
+import { checkNits } from '../lib/index.mjs'
+import { parse as parseXML } from '../lib/parsers/xml.mjs'
 
 expect.extend({
   toContainError
@@ -137,6 +139,82 @@ describe('non-ASCII characters should follow draft-rswg-rfc7997bis', () => {
     const [result] = await validateContent(data)
     expect(result.message).toContain('Document contains non-ASCII characters: (U+00A0, NO-BREAK SPACE) x1, ü (U+00FC, LATIN SMALL LETTER U WITH DIAERESIS) x2, ก (U+0E01, Thai letter) x1, — (U+2014, EM DASH) x1, ≤ (U+2264, LESS-THAN OR EQUAL TO) x1, 一 (U+4E00, CJK UNIFIED IDEOGRAPH-4E00) x1, 한 (U+D55C, HANGUL SYLLABLE HAN) x1, 😀 (U+1F600, symbol) x1.')
     expect(result.refUrl).toBe('https://datatracker.ietf.org/doc/draft-rswg-rfc7997bis/#section-3')
+  })
+})
+
+describe('XML characters written as numeric character references', () => {
+  const CHAR_CODES = ['NON_DISPLAYABLE_CHARACTER', 'NON_NFC_TEXT', 'NON_ASCII_CHARACTERS']
+  // -> A whole draft: line 10 is the <t> holding the text given
+  const draft = (text, extra = '') => `<?xml version="1.0" encoding="UTF-8"?>
+${extra}<rfc version="3" docName="draft-test-charref-00" ipr="trust200902" category="info" submissionType="IETF">
+  <front>
+    <title>Character References</title>
+    <author fullname="Jane Doe" initials="J." surname="Doe"/>
+    <date year="2026" month="1" day="1"/>
+    <abstract><t>An abstract.</t></abstract>
+  </front>
+  <middle><section><name>Text</name>
+      <t>${text}</t>
+  </section></middle>
+</rfc>
+`
+  const findings = async (xml) => (await checkNits(Buffer.from(xml), 'draft-test-charref-00.xml', { offline: true }))
+    .filter(r => CHAR_CODES.includes(r.name))
+
+  test('a draft with references parses, and the parsed text keeps them as written', async () => {
+    const { doc } = await parseXML(draft('a&#x202E;b'), 'draft-test-charref-00.xml')
+    expect(doc.data.rfc.middle.section.t).toEqual('a&#x202E;b')
+  })
+  test('a bidi control written as a reference is reported at the reference', async () => {
+    for (const ref of ['&#x202E;', '&#x202e;', '&#8238;', '&#x0202E;']) {
+      const result = await findings(draft(`one ${ref} two`))
+      expect(result).toHaveLength(1)
+      expect(result).toContainError('NON_DISPLAYABLE_CHARACTER', ValidationWarning)
+      expect(result[0].message).toContain('a RIGHT-TO-LEFT OVERRIDE (U+202E) character')
+      expect(result[0].lines).toEqual([{ line: 10, pos: 14 }])
+    }
+  })
+  test('references and literal characters are reported together, in order', async () => {
+    const [result] = await findings(draft('\u202Ea&#x202E;b\u202E'))
+    expect(result.message).toContain('3 RIGHT-TO-LEFT OVERRIDE (U+202E) characters')
+    expect(result.lines).toEqual([{ line: 10, pos: 10 }, { line: 10, pos: 12 }, { line: 10, pos: 21 }])
+  })
+  test('zero width space and word joiner references are not reported, as the literal characters', async () => {
+    await expect(findings(draft('a&#x200B;b&#8203;c&#x2060;d&#8288;e'))).resolves.toHaveLength(0)
+  })
+  test('a byte order mark written as a reference is reported', async () => {
+    const result = await findings(draft('a&#xFEFF;b'))
+    expect(result.map(r => r.lines)).toEqual([[{ line: 10, pos: 11 }]])
+  })
+  test('a decomposed sequence written with references is not in NFC, located at the reference', async () => {
+    for (const text of ['Cafe&#x301;', 'Caf&#x65;&#x301;', 'Cafe\u0301']) {
+      const result = await findings(draft(text))
+      expect(result.find(r => r.name === 'NON_NFC_TEXT')?.lines).toEqual([{ line: 10, pos: 13 }])
+    }
+    // -> (where it first differs from NFC: the e, here written as a reference in the second)
+    // -> The composed character is NFC
+    expect((await findings(draft('Caf&#xE9;'))).find(r => r.name === 'NON_NFC_TEXT')).toBeUndefined()
+  })
+  test('references in attribute values are decoded', async () => {
+    const xml = draft('a').replace('<t>a</t>', '<t anchor="x">a</t><artwork alt="&#x202E;">art</artwork>')
+    const [result] = await findings(xml)
+    expect(result.name).toBe('NON_DISPLAYABLE_CHARACTER')
+    expect(result.lines).toEqual([{ line: 10, pos: 40 }])
+  })
+  test('references in comments, CDATA, processing instructions and the DOCTYPE are not decoded', async () => {
+    const xml = draft('<!-- &#x202E; --><![CDATA[&#x202E;]]><?pi &#x202E;?>x', '<!DOCTYPE rfc [\n<!ENTITY rlo "&#x202E;">\n]>\n')
+    await expect(findings(xml)).resolves.toHaveLength(0)
+  })
+  test('the non-ASCII characters listed are only those written literally', async () => {
+    const [result] = (await findings(draft('&#xE9; \u00E9 &#x202E;'))).filter(f => f.name === 'NON_ASCII_CHARACTERS')
+    expect(result.message).toContain('(U+00E9, LATIN SMALL LETTER E WITH ACUTE) x1.')
+    await expect(findings(draft('&#xE9;'))).resolves.toHaveLength(0)
+  })
+  test('text documents are unchanged', async () => {
+    await expect(validateContent('a &#x202E; b', { type: 'txt' })).resolves.toHaveLength(0)
+  })
+  test('references that are not characters are ignored', async () => {
+    await expect(validateContent('<t>&#xD800; &#x110000; &#xZZ; &#;</t>', { type: 'xml' })).resolves.toHaveLength(0)
   })
 })
 
