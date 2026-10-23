@@ -48,7 +48,7 @@ import {
   BCP14BoilerplateTXTBlock
 } from './fixtures/txt-blocks/section-blocks.mjs'
 import { getLocations, pageBreakLineType, parse } from '../lib/parsers/txt.mjs'
-import { validateReferencesInText } from '../lib/modules/sections.mjs'
+import { validateReferencesInText, validateReferencesSection } from '../lib/modules/sections.mjs'
 
 beforeAll(() => {
   vi.spyOn(console, 'info').mockImplementation(() => {})
@@ -1483,13 +1483,77 @@ describe('Parsing references with categorization', () => {
       ${abstractWithReferencesTXTBlock}
       ${introductionTXTBlock}
       ${securityConsiderationsTXTBlock}
-      References
+References
       [RFC1234] Example, E., "Example RFC", RFC 1234, January 2023.
     `
 
     const result = await parse(txt, 'txt')
 
     expect(result.data.markers.references.start).toBeTruthy()
+  })
+
+  test('An indented "references" ending a sentence is no references heading', async () => {
+    // From draft-havel-nmop-simap-yang-03
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${introductionTXTBlock}
+
+   TODO - Check if there is alternative proposal with some simple
+   references
+
+      ${securityConsiderationsTXTBlock}
+    `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.markers.references.start).toBeFalsy()
+  })
+
+  test('An indented REFERENCES heading in capitals is a references heading', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+
+                               REFERENCES
+
+[1]  Example, E., "Example RFC", RFC 1234, January 2023.
+    `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.markers.references.start).toBeTruthy()
+  })
+
+  test('A wrapped line of an appendix starting with a section number is no references subsection', async () => {
+    // From draft-gaikwad-agent-proxy-modes-00
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+16.  Informative References
+
+   [RFC1234]  Example, E., "Example RFC", RFC 1234, January 2023.
+
+Appendix D.  Example Bindings
+
+   invocation is a long-running task with its own lifecycle does not map
+   cleanly onto the single request/response assumed by Sections 6.3 and
+   11.2.  Partial-failure semantics for fan-out are defined here in
+   terms of responses that arrive or fail, as in [RFC9110].
+`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.nonReferenceSectionRfc).toContain('9110')
+    const findings = await validateReferencesSection(result)
+    const codes = findings.map((el) => el.name)
+    expect(codes).not.toContain('UNCLASSIFIED_REFERENCES_SUBSECTION')
   })
 
   test('Parses reference with square brackets', async () => {
