@@ -2076,6 +2076,31 @@ Internet-Draft          GW Deployment Scenario
     expect(result.data.extractedElements.referenceEntries.map((el) => el.value)).toEqual(['[RFC2119]', '[MCP]', '[CAID]'])
     expect(result.data.extractedElements.referenceSectionDraftReferences.map((el) => el.value)).toEqual(['[MCP]', '[CAID]'])
   })
+
+  // From draft-ietf-pim-evpn-multicast-yang-06: the running header is the document's name alone
+  test('Skips a running header that is the document name', async () => {
+    const txt = `${metaTXTBlock}
+11. References
+
+11.1. Normative References
+
+   [RFC3688]  Mealling, M., "The IETF XML Registry", BCP 81, RFC 3688,
+
+
+Zhao & Liu, etc                                               [Page 10]
+\f
+                 draft-ietf-idr-rt-derived-community-05
+
+
+              DOI 10.17487/RFC3688, January 2004.
+`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.slug).toBe('draft-ietf-idr-rt-derived-community-05')
+    expect(result.data.extractedElements.referenceEntries).toEqual([
+      expect.objectContaining({ value: '[RFC3688]', rfcs: ['3688'], drafts: [] })
+    ])
+  })
 })
 
 describe('License validation for documents containing code blocks', () => {
