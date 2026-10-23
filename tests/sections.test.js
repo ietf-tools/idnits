@@ -1238,6 +1238,39 @@ describe('document should have valid references sections', () => {
       )
     })
 
+    test('"Informational References" subsection', async () => {
+      const doc = {
+        type: 'txt',
+        data: {
+          markers: { references: { start: 2 } },
+          content: {
+            references: [
+              '7. References',
+              '7.1. Normative References',
+              '[RFC4360] Sangli, S., "BGP Extended Communities Attribute", RFC 4360, February 2006.',
+              '7.2. Informational References',
+              '[RFC7153] Rosen, E., "IANA Registries for BGP Extended Communities", RFC 7153, March 2014.'
+            ]
+          }
+        },
+        body: `
+7. References
+
+7.1. Normative References
+[RFC4360] Sangli, S., "BGP Extended Communities Attribute", RFC 4360, February 2006.
+
+7.2. Informational References
+[RFC7153] Rosen, E., "IANA Registries for BGP Extended Communities", RFC 7153, March 2014.
+`
+      }
+      await expect(validateReferencesSection(doc)).resolves.toContainError('UNCLASSIFIED_REFERENCES_SUBSECTION', ValidationError)
+      await expect(validateReferencesSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('UNCLASSIFIED_REFERENCES_SUBSECTION', ValidationWarning)
+      const result = await validateReferencesSection(doc, { mode: MODES.SUBMISSION })
+      expect(result).toHaveLength(1)
+      expect(result).toContainError('INFORMATIONAL_REFERENCES_HEADING', ValidationComment)
+      expect(result[0].lines).toEqual([{ line: 7, pos: 1 }])
+    })
+
     test('Should throw an error on bare reference section with no classified subsection', async () => {
       const doc = {
         type: 'txt',
@@ -1432,6 +1465,16 @@ ${entry}
       await expect(validateReferencesSection(doc)).resolves.toContainError('INVALID_REFERENCES_NAME', ValidationError)
       await expect(validateReferencesSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('INVALID_REFERENCES_NAME', ValidationWarning)
       await expect(validateReferencesSection(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+    })
+    test('"Informational References" section name', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      set(doc, 'data.rfc.back.references[0].name', 'Informational References')
+      await expect(validateReferencesSection(doc)).resolves.toContainError('INVALID_REFERENCES_NAME', ValidationError)
+      await expect(validateReferencesSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('INVALID_REFERENCES_NAME', ValidationWarning)
+      const result = await validateReferencesSection(doc, { mode: MODES.SUBMISSION })
+      expect(result).toHaveLength(1)
+      expect(result).toContainError('INFORMATIONAL_REFERENCES_HEADING', ValidationComment)
+      expect(result[0].path).toBe('rfc.back.references[0].name')
     })
     describe('parsed XML layouts', () => {
       const parseBack = async (back) => {
