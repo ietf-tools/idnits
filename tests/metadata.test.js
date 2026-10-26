@@ -1,4 +1,4 @@
-import { beforeAll, afterEach, afterAll, describe, expect, test } from 'vitest'
+import { beforeAll, afterEach, afterAll, describe, expect, test, vi } from 'vitest'
 import { MODES } from '../lib/config/modes.mjs'
 import { toContainError, ValidationWarning, ValidationComment } from '../lib/helpers/error.mjs'
 import {
@@ -491,6 +491,32 @@ describe('document should have valid date', () => {
         day: today.day
       }
       await expect(validateDate(doc)).resolves.toContainError('MISSING_DOC_DATE', ValidationWarning)
+    })
+    test('impossible date is reported', async () => {
+      for (const day of [31, 30, 99]) {
+        const doc = cloneDeep(baseTXTDoc)
+        doc.data.header.date = { year: 2026, month: 'February', day }
+        for (const mode of [MODES.NORMAL, MODES.FORGIVE_CHECKLIST, MODES.SUBMISSION]) {
+          await expect(validateDate(doc, { mode })).resolves.toContainError('MISSING_DOC_DATE', ValidationWarning)
+        }
+      }
+    })
+    test('month-year date checked on the 31st takes the last day of the month', async () => {
+      vi.useFakeTimers({ toFake: ['Date'] })
+      vi.setSystemTime(new Date('2026-03-31T12:00:00Z'))
+      vi.resetModules()
+      try {
+        const { validateDate: validateDateOn31st } = await import('../lib/modules/metadata.mjs')
+        const doc = cloneDeep(baseTXTDoc)
+        doc.data.header.date = { year: 2026, month: 'February' }
+        const result = await validateDateOn31st(doc)
+        expect(result).not.toContainError('MISSING_DOC_DATE', ValidationWarning)
+        expect(result).toContainError('DOC_DATE_IN_PAST', ValidationWarning)
+        expect(result[0].message).toContain('31 days')
+      } finally {
+        vi.useRealTimers()
+        vi.resetModules()
+      }
     })
     test('month written as "Sept", "Sep." or "September,"', async () => {
       for (const month of ['Sept', 'Sep.', 'September,']) {
