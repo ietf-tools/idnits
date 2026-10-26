@@ -94,6 +94,35 @@ function parseAllowedDomains (values) {
   return domains
 }
 
+/**
+ * For an option that takes one value: when it is given more than once, the last occurrence wins,
+ * as for yargs' boolean flags and most command-line tools (so a wrapper's defaults can be overridden).
+ * Every occurrence is still checked, by the option's own coerce and against its choices (yargs
+ * checks only the value this returns, the last one).
+ *
+ * @param {Object} [opts]
+ * @param {string} [opts.name] Option name, for the error message
+ * @param {string[]} [opts.choices] Accepted values
+ * @param {Function} [opts.coerce] The option's coerce, applied to each occurrence
+ * @returns {Function} Coerce function returning the last occurrence's value
+ */
+function lastOccurrence ({ name, choices, coerce = val => val } = {}) {
+  return (values) => {
+    const occurrences = [values].flat()
+    const lastIndex = occurrences.length - 1
+    let coerced
+    for (const [idx, val] of occurrences.entries()) {
+      coerced = coerce(val)
+      // (yargs checks the last one against the choices, with its usual message)
+      if (choices && idx < lastIndex && !choices.includes(coerced)) {
+        const accepted = choices.map(choice => `"${choice}"`).join(', ')
+        throw new Error(`--${name}: "${val}" is not one of ${accepted}`)
+      }
+    }
+    return coerced
+  }
+}
+
 // Define CLI arguments config
 const argv = yargs(hideBin(process.argv))
   .scriptName('idnits')
@@ -112,12 +141,13 @@ const argv = yargs(hideBin(process.argv))
   })
   .option('datatracker-url', {
     describe: `Base URL of the Datatracker used for remote lookups (overrides ${DATATRACKER_URL_ENV}, default ${DEFAULT_DATATRACKER_URL})`,
-    coerce: val => normalizeBaseUrl(val, '--datatracker-url'),
+    coerce: lastOccurrence({ coerce: val => normalizeBaseUrl(val, '--datatracker-url') }),
     type: 'string'
   })
   .option('fail-on', {
     describe: 'Exit with code 2 if there is at least one nit of the given severity or higher (errors > warnings > comments).',
     choices: ['errors', 'warnings', 'comments'],
+    coerce: lastOccurrence({ name: 'fail-on', choices: ['errors', 'warnings', 'comments'] }),
     type: 'string'
   })
   .option('filter', {
@@ -131,14 +161,18 @@ const argv = yargs(hideBin(process.argv))
   .option('mode', {
     alias: 'm',
     describe: 'Validation mode to use',
-    coerce: val => {
-      try {
-        const mode = getModeByName(val)
-        return mode.name
-      } catch (err) {
-        return val
+    coerce: lastOccurrence({
+      name: 'mode',
+      choices: ['normal', 'forgive-checklist', 'submission'],
+      coerce: val => {
+        try {
+          const mode = getModeByName(val)
+          return mode.name
+        } catch (err) {
+          return val
+        }
       }
-    },
+    }),
     choices: ['normal', 'forgive-checklist', 'submission'],
     default: 'normal',
     type: 'string'
@@ -161,17 +195,18 @@ const argv = yargs(hideBin(process.argv))
     alias: 'o',
     describe: 'Output format',
     choices: ['pretty', 'simple', 'json', 'count'],
+    coerce: lastOccurrence({ name: 'output', choices: ['pretty', 'simple', 'json', 'count'] }),
     default: 'pretty',
     type: 'string'
   })
   .option('remote-timeout', {
     describe: `Seconds allowed for each remote lookup before it fails (overrides ${REMOTE_TIMEOUT_ENV}, default ${DEFAULT_REMOTE_TIMEOUT})`,
-    coerce: val => normalizeTimeout(val, '--remote-timeout'),
+    coerce: lastOccurrence({ coerce: val => normalizeTimeout(val, '--remote-timeout') }),
     type: 'string'
   })
   .option('rfceditor-url', {
     describe: `Base URL of the RFC Editor site used for remote lookups (overrides ${RFCEDITOR_URL_ENV}, default ${DEFAULT_RFCEDITOR_URL})`,
-    coerce: val => normalizeBaseUrl(val, '--rfceditor-url'),
+    coerce: lastOccurrence({ coerce: val => normalizeBaseUrl(val, '--rfceditor-url') }),
     type: 'string'
   })
   .option('solarized', {
@@ -191,13 +226,15 @@ const argv = yargs(hideBin(process.argv))
   .option('year', {
     alias: 'y',
     describe: 'Expect the given year in the boilerplate (default: the current year)',
-    coerce: val => {
-      const year = String(val).trim()
-      if (!/^[0-9]{4}$/.test(year)) {
-        throw new Error(`--year must be a 4-digit year, got "${val}"`)
+    coerce: lastOccurrence({
+      coerce: val => {
+        const year = String(val).trim()
+        if (!/^[0-9]{4}$/.test(year)) {
+          throw new Error(`--year must be a 4-digit year, got "${val}"`)
+        }
+        return Number(year)
       }
-      return Number(year)
-    },
+    }),
     type: 'string'
   })
   .command('* <file>', 'parse and validate document', (y) => {
