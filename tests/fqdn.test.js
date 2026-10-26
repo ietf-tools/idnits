@@ -109,6 +109,22 @@ describe('document should have valid FQDN mentions', () => {
       expect(result).toHaveLength(0)
     })
 
+    test('allowed domains and their subdomains are not reported', async () => {
+      const doc = {
+        type: 'txt',
+        data: {
+          extractedElements: {
+            fqdnDomains: ['datatracker.ietf.org', 'WWW.RFC-EDITOR.ORG', 'github.com', 'foo.org', 'a.b.foo.org', 'notfoo.org']
+          }
+        }
+      }
+
+      const result = await validateFQDNs(doc, { mode: MODES.NORMAL, offline: true, allowedDomains: ['ietf.org', 'rfc-editor.org', 'github.com', 'foo.org'] })
+      expect(result.map(({ name, text }) => [name, text])).toEqual([
+        ['INVALID_DOMAIN_TLD', 'notfoo.org']
+      ])
+    })
+
     test('Ignore domain matches that are dotdot sequences', async () => {
       const doc = {
         type: 'txt',
@@ -138,7 +154,7 @@ describe('document should have valid FQDN mentions', () => {
         }
       }
 
-      const result = await validateFQDNs(doc, { mode: MODES.NORMAL, offline: true })
+      const result = await validateFQDNs(doc, { mode: MODES.NORMAL, offline: true, allowedDomains: [] })
       expect(result).toEqual([
         new ValidationComment('POSSIBLE_INVALID_TLD', 'Ensure "github.com" isn\'t used as a example. For example domains, consider using ".example.(com|org|net)" instead.', {
           ref: 'https://www.rfc-editor.org/rfc/rfc6761',
@@ -238,7 +254,7 @@ SEQUENCE (1 elem)
       PrintableString github.com
       `, 'draft-mahy-mimi-credential-preauth-00.txt')
 
-      const result = await validateFQDNs(doc, { mode: MODES.NORMAL, offline: true })
+      const result = await validateFQDNs(doc, { mode: MODES.NORMAL, offline: true, allowedDomains: [] })
       expect(result).toEqual([
         new ValidationComment('POSSIBLE_INVALID_TLD', 'Ensure "github.com" isn\'t used as a example. For example domains, consider using ".example.(com|org|net)" instead.', {
           ref: 'https://www.rfc-editor.org/rfc/rfc6761',
@@ -318,9 +334,27 @@ SEQUENCE (1 elem)
     test('github-like domain', async () => {
       const doc = cloneDeep(baseXMLDoc)
       set(doc, 'data.rfc.middle.t', 'Lorem ipsum abcdef.github.com lorem ipsum.')
+      await expect(validateFQDNs(doc, { allowedDomains: [] })).resolves.toContainError('POSSIBLE_INVALID_TLD', ValidationComment)
+      await expect(validateFQDNs(doc, { mode: MODES.FORGIVE_CHECKLIST, allowedDomains: [] })).resolves.toContainError('POSSIBLE_INVALID_TLD', ValidationComment)
+      await expect(validateFQDNs(doc, { mode: MODES.SUBMISSION, allowedDomains: [] })).resolves.toHaveLength(0)
+    })
+    test('allowed domains and their subdomains are not reported', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      set(doc, 'data.rfc.middle.t', 'See datatracker.ietf.org, www.rfc-editor.org, abcdef.github.com, www.foo.org and notfoo.org.')
+      const result = await validateFQDNs(doc, { allowedDomains: ['ietf.org', 'rfc-editor.org', 'github.com', 'foo.org'] })
+      expect(result.map(({ name, text }) => [name, text])).toEqual([
+        ['INVALID_DOMAIN_TLD', 'notfoo.org']
+      ])
+    })
+    test('the default allowed domains cover IETF and RFC Editor sites', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      set(doc, 'data.rfc.middle.t', 'See datatracker.ietf.org and www.rfc-editor.org.')
+      await expect(validateFQDNs(doc)).resolves.toHaveLength(0)
+    })
+    test('github-like domains still get a Comment by default', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      set(doc, 'data.rfc.middle.t', 'Lorem ipsum github.com lorem ipsum.')
       await expect(validateFQDNs(doc)).resolves.toContainError('POSSIBLE_INVALID_TLD', ValidationComment)
-      await expect(validateFQDNs(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('POSSIBLE_INVALID_TLD', ValidationComment)
-      await expect(validateFQDNs(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
     test('invalid TLD in a section with sibling <t> elements', async () => {
       const doc = cloneDeep(baseXMLDoc)
