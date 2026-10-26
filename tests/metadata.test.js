@@ -672,6 +672,41 @@ describe('document should have valid obsoletes / updates references', () => {
       await expect(validateObsoleteUpdateRef(doc, { offline: true, mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('UPDATES_NOT_IN_RFC', ValidationWarning)
       await expect(validateObsoleteUpdateRef(doc, { offline: true, mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
+    // From draft-ietf-grow-bmp-tlv-21
+    test('an RFC named by an <xref> in the abstract is mentioned', async () => {
+      const xml = (abstract, attrs) => `<?xml version="1.0" encoding="UTF-8"?>
+<rfc version="3" docName="draft-foo-bar-00" ${attrs}>
+  <front>
+    <title>Foo</title>
+    <!-- <abstract><t>This document updates RFC 9999.</t></abstract> -->
+    <abstract>
+      <t>${abstract}</t>
+    </abstract>
+  </front>
+  <middle/>
+</rfc>`
+      const contentXml = xml('This document updates <xref target="RFC7854">RFC\n      7854</xref> to support TLV data.', 'updates="7854" obsoletes="1234"')
+      const { doc: withContent } = await parse(contentXml, 'draft-foo-bar-00.xml')
+      const result = await validateObsoleteUpdateRef(withContent, { offline: true })
+      expect(result).not.toContainError('UPDATES_NOT_IN_ABSTRACT')
+      expect(result).toContainError('OBSOLETES_NOT_IN_ABSTRACT', ValidationWarning)
+      expect(result).not.toContainError('UPDATES_NOT_IN_RFC')
+
+      const targetXml = xml('This document obsoletes <xref target="RFC1234"/> and updates <xref target="RFC7854"/>&#160;and <xref target="RFC8000"/>.', 'updates="7854"')
+      const { doc: withTarget } = await parse(targetXml, 'draft-foo-bar-00.xml')
+      const result2 = await validateObsoleteUpdateRef(withTarget, { offline: true })
+      expect(result2).not.toContainError('UPDATES_NOT_IN_ABSTRACT')
+      const names = result2.map(r => r.name).sort()
+      expect(names).toEqual(['OBSOLETES_NOT_IN_RFC', 'UPDATES_NOT_IN_RFC'])
+      expect(result2.find(r => r.name === 'UPDATES_NOT_IN_RFC').message).toContain('RFC 8000')
+
+      // From draft-ietf-mailmaint-imap-objectid-bis-06: attributes written "RFC8474"
+      const prefixedXml = xml('This document obsoletes <xref target="RFC8474"/> and updates <xref target="RFC9698"/>.', 'obsoletes="RFC8474" updates="RFC3501, RFC9698"')
+      const { doc: prefixed } = await parse(prefixedXml, 'draft-foo-bar-00.xml')
+      const result3 = await validateObsoleteUpdateRef(prefixed, { offline: true })
+      const messages = result3.map(r => r.message)
+      expect(messages).toEqual(["The document states that it updates RFC 3501 but doesn't explicitely mention it in the <abstract> section."])
+    })
     test('obsoletes a non-existant RFC', async () => {
       const doc = cloneDeep(baseXMLDoc)
       set(doc, 'data.rfc._attr', {
