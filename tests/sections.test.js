@@ -1634,74 +1634,68 @@ describe('document should have a valid IANA considerations section', () => {
 
 describe('validateReferencesInText', () => {
   describe('TXT documents', () => {
-    test('should return warnings for unused references in a TXT document', async () => {
-      const txtDoc = {
-        type: 'txt',
-        data: {
-          extractedElements: {
-            referenceSectionRfc: [{ value: '2119' }, { value: '8174' }, { value: '1234' }],
-            referenceSectionDraftReferences: [{ value: 'draft-ietf-abc-01' }],
-            nonReferenceSectionRfc: ['2119'],
-            nonReferenceSectionDraftReferences: []
-          }
-        }
-      }
+    // From draft-eastlake-6man-hide-options-11 and draft-ietf-pim-rfc1112bis-09
+    test('an RFC number inside an entry is not a reference of its own', async () => {
+      const doc = await parseTXT(`${CANONICAL_TXT}
+1.  Introduction
 
-      const result = await validateReferencesInText(txtDoc)
+   IPv4 [RFC0791] numbers are listed in [RFC3232].
 
-      expect(result).toEqual([
-        new ValidationWarning(
-          'REFERENCE_NOT_USED',
-          'The reference 8174 is listed in the References section but is not mentioned in the document text.',
-          { ref: 'https://authors.ietf.org/en/required-content#references' }
-        ),
-        new ValidationWarning(
-          'REFERENCE_NOT_USED',
-          'The reference 1234 is listed in the References section but is not mentioned in the document text.',
-          { ref: 'https://authors.ietf.org/en/required-content#references' }
-        ),
-        new ValidationWarning(
-          'REFERENCE_NOT_USED',
-          'The reference draft-ietf-abc-01 is listed in the References section but is not mentioned in the document text.',
-          { ref: 'https://authors.ietf.org/en/required-content#references' }
-        )
+2.  Normative References
+
+   [RFC0791]  Postel, J., "Internet Protocol", STD 5, RFC 791,
+              DOI 10.17487/RFC0791, September 1981.
+
+   [RFC3232]  Reynolds, J., Ed., "Assigned Numbers: RFC 1700 is Replaced
+              by an On-line Database", RFC 3232, January 2002.
+
+Author's Address
+`, '')
+      await expect(validateReferencesInText(doc)).resolves.toEqual([])
+    })
+
+    test('an unused entry is named by its label, whatever its kind', async () => {
+      const doc = await parseTXT(`${CANONICAL_TXT}
+1.  Introduction
+
+   This document uses [RFC8446] and [QUIC].
+
+2.  Normative References
+
+   [RFC8446]  Rescorla, E., "The Transport Layer Security (TLS) Protocol
+              Version 1.3", RFC 8446, August 2018.
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119, March 1997.
+
+   [QUIC]     Iyengar, J., Ed. and M. Thomson, Ed., "QUIC", RFC 9000,
+              May 2021.
+
+   [TLS]      Rescorla, E., "TLS 1.3", RFC 8446, August 2018.
+
+Author's Address
+`, '')
+      await expect(validateReferencesInText(doc)).resolves.toEqual([
+        new ValidationWarning('REFERENCE_NOT_USED', 'The reference [RFC2119] is listed in the References section but is not mentioned in the document text.', {
+          ref: 'https://authors.ietf.org/en/required-content#references',
+          lines: [{ line: 31, pos: 4 }]
+        }),
+        new ValidationWarning('REFERENCE_NOT_USED', 'The reference [TLS] is listed in the References section but is not mentioned in the document text.', {
+          ref: 'https://authors.ietf.org/en/required-content#references',
+          lines: [{ line: 37, pos: 4 }]
+        })
       ])
     })
 
-    test('should return an empty array if all references are used in a TXT document', async () => {
-      const txtDoc = {
-        type: 'txt',
-        data: {
-          extractedElements: {
-            referenceSectionRfc: [{ value: '2119' }],
-            referenceSectionDraftReferences: [{ value: 'draft-ietf-abc-01' }],
-            nonReferenceSectionRfc: ['2119'],
-            nonReferenceSectionDraftReferences: ['draft-ietf-abc-01']
-          }
-        }
-      }
+    test('should handle a document without references', async () => {
+      const doc = await parseTXT(`${CANONICAL_TXT}
+1.  Introduction
 
-      const result = await validateReferencesInText(txtDoc)
+   Nothing is cited.
 
-      expect(result).toEqual([])
-    })
-
-    test('should handle empty references in a TXT document', async () => {
-      const txtDoc = {
-        type: 'txt',
-        data: {
-          extractedElements: {
-            referenceSectionRfc: [],
-            referenceSectionDraftReferences: [],
-            nonReferenceSectionRfc: [],
-            nonReferenceSectionDraftReferences: []
-          }
-        }
-      }
-
-      const result = await validateReferencesInText(txtDoc)
-
-      expect(result).toEqual([])
+Author's Address
+`, '')
+      await expect(validateReferencesInText(doc)).resolves.toEqual([])
     })
 
     test('should filter appendix references and don\'t return warnings for them', async () => {
@@ -1753,7 +1747,7 @@ describe('validateReferencesInText', () => {
 Author's Address
 `, '')
       await expect(validateReferencesInText(doc)).resolves.toEqual([
-        new ValidationWarning('REFERENCE_NOT_USED', 'The reference 1591 is listed in the References section but is not mentioned in the document text.', {
+        new ValidationWarning('REFERENCE_NOT_USED', 'The reference [RFC1591] is listed in the References section but is not mentioned in the document text.', {
           ref: 'https://authors.ietf.org/en/required-content#references',
           lines: [{ line: 29, pos: 4 }]
         })
@@ -1777,7 +1771,7 @@ Author's Address
 Author's Address
 `, '')
       await expect(validateReferencesInText(doc)).resolves.toEqual([
-        new ValidationWarning('REFERENCE_NOT_USED', 'The reference 5246 is listed in the References section but is not mentioned in the document text.', {
+        new ValidationWarning('REFERENCE_NOT_USED', 'The reference [RFC5246] is listed in the References section but is not mentioned in the document text.', {
           ref: 'https://authors.ietf.org/en/required-content#references',
           lines: [{ line: 31, pos: 4 }]
         })
@@ -1878,6 +1872,96 @@ Author's Address
       }
     })
 
+    describe('included references', () => {
+      const unusedWarning = (ref, path) => new ValidationWarning(
+        'REFERENCE_NOT_USED',
+        `The reference ${ref} is listed in the References section but is not mentioned in the document text.`,
+        { ref: 'https://authors.ietf.org/en/required-content#references', ...(path ? { path } : {}) }
+      )
+      const parseDoc = async (text, references) => (await parse(`<rfc version="3" xmlns:xi="http://www.w3.org/2001/XInclude">
+          <middle><section><name>Terminology</name><t>${text}</t></section></middle>
+          <back><references><name>Normative References</name>${references}</references></back>
+        </rfc>`, 'draft-test-references-00.xml')).doc
+      const includes = `<xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8174.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml3/reference.I-D.ietf-foo-bar.xml"/>`
+
+      test('reports an included RFC or draft that is not cited', async () => {
+        const doc = await parseDoc('See <xref target="RFC2119"/>.', includes)
+        await expect(validateReferencesInText(doc)).resolves.toEqual([
+          unusedWarning('RFC8174', 'rfc.back.references[0].xi:include[1]'),
+          unusedWarning('I-D.ietf-foo-bar', 'rfc.back.references[0].xi:include[2]')
+        ])
+      })
+
+      test('matches an included reference to <xref> by the document it cites', async () => {
+        const doc = await parseDoc('See <xref target="RFC2119"/>, <xref target="RFC8174"/> and <xref target="I-D.draft-ietf-foo-bar-03"/>.', includes)
+        await expect(validateReferencesInText(doc)).resolves.toEqual([])
+      })
+
+      const citedAsText = (ref, path) => new ValidationWarning(
+        'REFERENCE_CITED_AS_TEXT',
+        `${ref} is mentioned only as typed text; cite it with <xref>.`,
+        { ref: 'https://authors.ietf.org/en/references-in-rfcxml', path }
+      )
+
+      test('reports a reference mentioned only as typed text in prose', async () => {
+        const doc = await parseDoc('See [RFC2119], RFC 8174 and draft-ietf-foo-bar.', includes)
+        await expect(validateReferencesInText(doc)).resolves.toEqual([
+          citedAsText('RFC2119', 'rfc.back.references[0].xi:include[0]'),
+          citedAsText('RFC8174', 'rfc.back.references[0].xi:include[1]'),
+          citedAsText('I-D.ietf-foo-bar', 'rfc.back.references[0].xi:include[2]')
+        ])
+      })
+
+      test('counts a typed mention in <artwork> or <sourcecode> as a use', async () => {
+        const doc = await parseDoc('See <xref target="RFC2119"/>.</t><artwork>-- RFC 8174</artwork><sourcecode>reference "draft-ietf-foo-bar";</sourcecode><t>End.', includes)
+        await expect(validateReferencesInText(doc)).resolves.toEqual([])
+      })
+
+      test('reports a <reference> mentioned only as typed text, and not one cited with <xref>', async () => {
+        const doc = await parseDoc('See [TLS13] and <xref target="RFC2119"/>; nothing else.', `<reference anchor="TLS13"><front><title>TLS</title></front></reference>
+          <reference anchor="RFC2119"><front><title>Key words</title></front></reference>
+          <reference anchor="QUIC"><front><title>QUIC</title></front></reference>`)
+        await expect(validateReferencesInText(doc)).resolves.toEqual([
+          new ValidationWarning('REFERENCE_CITED_AS_TEXT', 'TLS13 is mentioned only as typed text; cite it with <xref>.', {
+            ref: 'https://authors.ietf.org/en/references-in-rfcxml'
+          }),
+          new ValidationWarning('REFERENCE_NOT_USED', 'The reference QUIC is listed in the References section but is not mentioned in the document text.', {
+            ref: 'https://authors.ietf.org/en/required-content#references'
+          })
+        ])
+      })
+
+      // From draft-ietf-nfsv4-internationalization-17
+      test('leaves <?rfc include?> members of a <referencegroup> to the group', async () => {
+        const doc = await parseDoc('See <xref target="IDNA2008"/>.', `<referencegroup anchor="IDNA2008">
+          <?rfc include="reference.RFC.5890.xml"?>
+          <?rfc include="reference.RFC.5891.xml"?>
+        </referencegroup>`)
+        await expect(validateReferencesInText(doc)).resolves.toEqual([])
+      })
+
+      test('counts the RFCs the document updates as mentioned, as the text header names them', async () => {
+        // From draft-dahm-tacacs-sshpk-00
+        const { doc } = await parse(`<rfc version="3" updates="RFC8907" xmlns:xi="http://www.w3.org/2001/XInclude">
+          <middle><section><name>Introduction</name><t>Nothing cited.</t></section></middle>
+          <back><references><name>Normative References</name>
+            <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8907.xml"/>
+          </references></back>
+        </rfc>`, 'draft-test-references-00.xml')
+        await expect(validateReferencesInText(doc)).resolves.toEqual([])
+      })
+
+      test('leaves the members of a <referencegroup> to the group', async () => {
+        const doc = await parseDoc('See <xref target="BCP14"/>.', `<referencegroup anchor="BCP14">
+          <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml"/>
+          <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8174.xml"/>
+        </referencegroup>`)
+        await expect(validateReferencesInText(doc)).resolves.toEqual([])
+      })
+    })
+
     describe('RFC 8792 folding header', () => {
       const references = `<references><name>Informative References</name>
         <reference anchor="RFC2119"/>
@@ -1920,11 +2004,21 @@ a very long \\
 
       test('should still report RFC 8792 as unused without the folding header', async () => {
         const doc = await parseWithFigure(`<sourcecode type="json">
-{"key": "RFC 8792 is mentioned here but this is not a folding header"}
+{"key": "a very long value, not folded"}
 </sourcecode>`)
         await expect(validateReferencesInText(doc)).resolves.toEqual([
           unusedWarning('RFC8174'),
           unusedWarning('RFC8792'),
+          unusedWarning('LONG-LINES')
+        ])
+      })
+
+      test('should treat a reference mentioned as typed text in <sourcecode> as used, as in text', async () => {
+        const doc = await parseWithFigure(`<sourcecode type="json">
+{"key": "RFC 8792 is mentioned here but this is not a folding header"}
+</sourcecode>`)
+        await expect(validateReferencesInText(doc)).resolves.toEqual([
+          unusedWarning('RFC8174'),
           unusedWarning('LONG-LINES')
         ])
       })
