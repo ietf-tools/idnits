@@ -136,6 +136,28 @@ ${body}`, 'draft-ietf-beep-boop-00.xml')
   })
 })
 
+describe('XML parser should handle internal entities', () => {
+  // From draft-ietf-grow-bmp-rel-06 (#316): names fxp's validator can't read on its own
+  test('entities with long names or with - and . in them', async () => {
+    const { doc } = await parse(`<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE rfc [
+<!ENTITY IANA_REL_CODE_ET_ROUTING "1">
+<!ENTITY tbd-type.v2 'TBD2'>
+<!ENTITY short "3">
+]>
+<rfc docName="draft-ietf-beep-boop-00">
+  <front><title>Test</title></front>
+  <middle><section title="Code &tbd-type.v2;">
+    <t>Event type &IANA_REL_CODE_ET_ROUTING; and &short;.</t>
+    <sourcecode><![CDATA[&IANA_REL_CODE_ET_ROUTING;]]></sourcecode>
+  </section></middle>
+</rfc>`, 'draft-ietf-beep-boop-00.xml')
+    expect(doc.data.rfc.middle.section.t).toBe('Event type 1 and 3.')
+    expect(doc.data.rfc.middle.section._attr.title).toBe('Code TBD2')
+    expect(doc.data.rfc.middle.section.sourcecode).toBe('&IANA_REL_CODE_ET_ROUTING;')
+  })
+})
+
 describe('XML parser should handle processing instructions', () => {
   test('unbalanced quotes in processing instructions', async () => {
     const { doc } = await parse(`<?xml version="1.0" encoding="UTF-8"?>
