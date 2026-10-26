@@ -2007,6 +2007,67 @@ Contributed Freeze-Race Fixture Summary
     ])
   })
 
+  // From RFC 2497 (#314)
+  test('A sentence starting with Appendix is no appendix heading: the references after it are declared', async () => {
+    const txt = `${metaTXTBlock}
+   When a node has no EUI-64 available for forming its ARCnet Interface
+   Identifier, it MUST form that identifier as specified in [AARCH],
+   Appendix A, section "Links with Non-Global Identifier".  That is, the
+   8 bit manually configured ARCnet address is appended to the 56 zero
+   bits.
+
+10. References
+
+   [AARCH]   Hinden, R. and S. Deering, "IP Version 6 Addressing
+             Architecture", RFC 2373, July 1998.
+`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.referenceEntries).toEqual([
+      entry('[AARCH]', 'unclassified_references', { rfcs: ['2373'] })
+    ])
+    expect(result.data.extractedElements.referenceSectionDraftReferences).toEqual([{ value: '[AARCH]', subsection: 'unclassified_references' }])
+  })
+
+  // From RFC 9331 and draft-devevey-cfrg-silithium-00 (follow-up 8)
+  test('A wrapped line of an entry starting with Appendix is no appendix heading', async () => {
+    const txt = `${metaTXTBlock}
+10.  References
+
+10.1.  Normative References
+
+   [ISO14888] ISO/IEC, "IT Security techniques - Digital signatures with
+              appendix - Part 3: Discrete logarithm based mechanisms",
+              ISO/IEC 14888-3:2018, 2018.
+
+10.2.  Informative References
+
+   [BRISCOE]  Briscoe, B., "Insights from Curvy RED (Random Early Detection)",
+              Appendix C.2: "Up to Speed with Queue View", September
+              2015.
+
+   [RFC9000]  Iyengar, J., Ed. and M. Thomson, Ed., "QUIC: A UDP-Based
+              Multiplexed and Secure Transport", RFC 9000,
+              DOI 10.17487/RFC9000, May 2021,
+              <https://www.rfc-editor.org/info/rfc9000>.
+
+Appendix A.  Rationale.
+
+   [RFC9000] is cited here.
+`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.referenceEntries).toEqual([
+      entry('[ISO14888]', 'normative_references', { external: true }),
+      entry('[BRISCOE]', 'informative_references', { external: true }),
+      entry('[RFC9000]', 'informative_references', { rfcs: ['9000'] }),
+      // (a label starting a line in an appendix is listed, but not declared)
+      entry('[RFC9000]', 'appendix', { rfcs: ['9000'] })
+    ])
+    // -> The appendix at the margin is one, even with a period at the end of its title
+    expect(result.data.extractedElements.nonReferenceSectionRfc).toEqual(['9000'])
+  })
+
   // From draft-ietf-nfsv4-internationalization-17
   test('Keeps the section going past a wrapped line of an entry that starts with a year', async () => {
     const txt = `${metaTXTBlock}
