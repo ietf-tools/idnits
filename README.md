@@ -50,8 +50,10 @@ npx @ietf-tools/idnits <args>
 ### CLI Usage
 
 ```sh
-idnits [args] <file path|url>
+idnits [args] [--] <file path|url>
 ```
+
+Everything after `--` is the document, never an option, so `idnits -- -draft.xml` checks a file whose name starts with `-`.
 
 | Arguments | Alias | Description | Default |
 |---|---|---|---|

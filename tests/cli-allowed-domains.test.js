@@ -158,14 +158,14 @@ describe.concurrent('--allowed-domains', () => {
   })
 
   test('a document right after the option is its value, never the document', async () => {
-    // yargs reports the missing document before the invalid --allowed-domains value
+    // (the value is checked before yargs counts the documents)
     const [alone, withDocument] = await Promise.all([
       runCli(['--allowed-domains', 'draft-test-allowed-domains-00.xml']),
       runCli(['--allowed-domains', 'draft-test-allowed-domains-00.xml', draft])
     ])
     expect(alone.code).toBe(1)
     expect(alone.stdout).toBe('')
-    expect(alone.stderr).toContain('Not enough non-option arguments: got 0, need at least 1')
+    expect(alone.stderr).toContain('--allowed-domains: "draft-test-allowed-domains-00.xml" (in "draft-test-allowed-domains-00.xml") is not a domain.')
 
     expect(withDocument.code).toBe(1)
     expect(withDocument.stdout).toBe('')

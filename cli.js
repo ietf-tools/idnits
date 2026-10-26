@@ -126,7 +126,7 @@ function lastOccurrence ({ name, choices, coerce = val => val } = {}) {
 // Define CLI arguments config
 const argv = yargs(hideBin(process.argv))
   .scriptName('idnits')
-  .usage('$0 [args] <file-path|http-url>')
+  .usage('$0 [args] [--] <file-path|http-url>\n\nParse and validate the document at a path or URL. Words after "--" are never options, so a path starting with "-" can follow it.')
   .example([
     ['$0 draft-ietf-abcd-01.xml', ''],
     [`$0 -m submission -y ${new Date().getFullYear()} draft-ietf-abcd-01.xml`, ''],
@@ -237,12 +237,11 @@ const argv = yargs(hideBin(process.argv))
     }),
     type: 'string'
   })
-  .command('* <file>', 'parse and validate document', (y) => {
-    y.positional('file', {
-      type: 'string',
-      describe: 'Path / URL of the document to validate'
-    })
-  })
+  // The document is the one non-option argument. A default command with a <file> positional
+  // would be filled before yargs adds back the words after "--", so "idnits -- -draft.xml"
+  // failed; demandCommand counts them, and the words after "--" are never options.
+  .demandCommand(1, 1)
+  .parserConfiguration({ 'parse-positional-numbers': false })
   .strict()
   .alias({ h: 'help' })
   .help()
@@ -271,16 +270,17 @@ if (argv.output === 'pretty') {
 }
 
 // Read document
+const docArg = String(argv._[0])
 let docRaw = ''
 let docPath = ''
 let docPathObj = null
-if (argv.file.startsWith('http://') || argv.file.startsWith('https://')) {
+if (docArg.startsWith('http://') || docArg.startsWith('https://')) {
   // -> Remote: --offline means no network access, the document included
   if (argv.offline) {
-    console.error(chalk.redBright(`--offline: can't fetch ${argv.file.trim()} without network access. Save it locally and check the file instead.`))
+    console.error(chalk.redBright(`--offline: can't fetch ${docArg.trim()} without network access. Save it locally and check the file instead.`))
     process.exit(1)
   }
-  docPath = argv.file.trim()
+  docPath = docArg.trim()
   const docPathUrl = new URL(docPath)
   docPathObj = path.parse(docPathUrl.pathname)
   if (argv.output === 'pretty') {
@@ -301,7 +301,7 @@ if (argv.file.startsWith('http://') || argv.file.startsWith('https://')) {
   }
 } else {
   // -> Local
-  docPath = path.resolve(process.cwd(), argv.file)
+  docPath = path.resolve(process.cwd(), docArg)
   docPathObj = path.parse(docPath)
   if (argv.output === 'pretty') {
     console.log(chalk.bgWhite.black(' Path ') + ` ${docPath}`)
