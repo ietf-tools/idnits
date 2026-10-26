@@ -3651,6 +3651,21 @@ Informative References
     expect(result.data.extractedElements.nonReferenceSectionDraftReferences).toEqual([])
   })
 
+  // From draft-g00se-honk-00
+  test('Does not take a command-line option, an ellipsis or a range as a reference label', async () => {
+    const txt = `${metaTXTBlock}
+   Usage:
+
+   honk server [-addr :24565]
+   honk send   [-addr host:24565] [-priv] [text...]
+
+   The value is in the range [0..15], or [first..last].
+`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.nonReferenceSectionDraftReferences).toEqual([])
+  })
+
   // From draft-ietf-oauth-v2-1-16 and draft-ietf-cdni-logging-extensions-04
   test('Does not take a character range or class as a reference label', async () => {
     const txt = `${metaTXTBlock}
