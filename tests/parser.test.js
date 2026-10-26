@@ -1750,7 +1750,7 @@ Authors' Addresses
       { value: '8347', subsection: 'informative_references' }
     ])
     expect(result.data.extractedElements.draftStatusReferences).toEqual([
-      { value: 'draft-ietf-rtgwg-vrrp-rfc8347bis', subsection: 'informative_references' }
+      { value: 'draft-ietf-rtgwg-vrrp-rfc8347bis-15', subsection: 'informative_references' }
     ])
     expect(result.data.extractedElements.nonReferenceSectionRfc).toContain('9568')
   })
@@ -3560,7 +3560,7 @@ Informative References
    [I-D.agentic-ai-usecases-requirements]
               Reddy.K, T., Sarker, Z., and K. Yao, "Agentic AI Use Cases
               and Requirements", Work in Progress, Internet-Draft,
-              draft-agentic-ai-usecases-requirements-02, 25 August 2026,
+              25 August 2026,
               <https://datatracker.ietf.org/doc/draft-agentic-ai-
               usecases-requirements/>.
 `
@@ -3571,6 +3571,84 @@ Informative References
     ])
     expect(getLocations(result, 'draftStatusReferences', 'draft-agentic-ai-usecases-requirements')).toEqual([
       { line: lineNumber(txt, '<https://datatracker.ietf.org/doc/draft-agentic-ai-'), pos: 49 }
+    ])
+  })
+
+  // From draft-das-rats-attestation-bnd-execution-finality-04
+  test('Takes the revision of a draft linked to without one from the entry, where the entry names it', async () => {
+    const txt = `${metaTXTBlock}
+18.  Informative References
+
+   [EAT-DA]   Poirier, M., Birkholz, H., and T. Fossati, "An EAT Profile
+              for Trustworthy Device Assignment", Work in Progress,
+              Internet-Draft, draft-poirier-rats-eat-da-10, 2026,
+              <https://datatracker.ietf.org/doc/draft-poirier-rats-eat-
+              da/>.
+
+   [ARM-CCA-TOKEN]
+              Frost, S., Fossati, T., and G. Mandyam, "Arm's
+              Confidential Compute Architecture Reference Attestation
+              Token", Work in Progress, Internet-Draft, draft-ffm-rats-
+              cca-token-03, March 2026,
+              <https://datatracker.ietf.org/doc/draft-ffm-rats-cca-
+              token/>.
+
+   [NO-REV]   Doe, J., "Foo", Work in Progress, Internet-Draft, 2026,
+              <https://datatracker.ietf.org/doc/draft-doe-no-rev/>.
+
+   [TWO-REVS] Doe, J., "Bar", Work in Progress, Internet-Draft,
+              draft-doe-two-revs-02, draft-doe-two-revs-03, 2026,
+              <https://datatracker.ietf.org/doc/draft-doe-two-revs/>.
+
+   [OTHER-HOST]
+              Doe, J., "Baz", Work in Progress, Internet-Draft, 2026,
+              https://example.github.io/draft-doe-baz-04.html,
+              <https://datatracker.ietf.org/doc/draft-doe-baz/>.
+`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.draftStatusReferences).toEqual([
+      { value: 'draft-poirier-rats-eat-da-10', subsection: 'informative_references' },
+      { value: 'draft-ffm-rats-cca-token-03', subsection: 'informative_references' },
+      { value: 'draft-doe-no-rev', subsection: 'informative_references' },
+      { value: 'draft-doe-two-revs', subsection: 'informative_references' },
+      { value: 'draft-doe-baz', subsection: 'informative_references' }
+    ])
+    // -> Located where the entry names the draft with its revision, also when the name is broken across lines
+    expect(getLocations(result, 'draftStatusReferences', 'draft-poirier-rats-eat-da-10')).toEqual([
+      { line: lineNumber(txt, 'Internet-Draft, draft-poirier-rats-eat-da-10'), pos: 31 }
+    ])
+    expect(getLocations(result, 'draftStatusReferences', 'draft-ffm-rats-cca-token-03')).toEqual([
+      { line: lineNumber(txt, 'Internet-Draft, draft-ffm-rats-'), pos: 57 }
+    ])
+    expect(getLocations(result, 'draftStatusReferences', 'draft-poirier-rats-eat-da')).toEqual([])
+  })
+
+  test('Keeps the revision of a draft a link gives, whatever revision the entry names', async () => {
+    const txt = `${metaTXTBlock}
+18.  Normative References
+
+   [I-D.ietf-foo-bar]
+              Doe, J., "Bar", Work in Progress, Internet-Draft,
+              draft-ietf-foo-bar-03, 2026,
+              <https://datatracker.ietf.org/doc/html/draft-ietf-foo-bar-04>.
+
+   [I-D.ietf-foo-baz]
+              Doe, J., "Baz", Work in Progress, Internet-Draft,
+              draft-ietf-foo-baz-05, 2026,
+              <https://datatracker.ietf.org/doc/draft-ietf-foo-baz/>,
+              <https://www.ietf.org/archive/id/draft-ietf-foo-baz-05.txt>.
+`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.draftStatusReferences).toEqual([
+      { value: 'draft-ietf-foo-bar-04', subsection: 'normative_references' },
+      { value: 'draft-ietf-foo-baz-05', subsection: 'normative_references' }
+    ])
+    // -> A draft linked to twice, with and without its revision, is checked once, located once
+    expect(getLocations(result, 'draftStatusReferences', 'draft-ietf-foo-baz-05')).toEqual([
+      { line: lineNumber(txt, 'draft-ietf-foo-baz-05, 2026,'), pos: 15 },
+      { line: lineNumber(txt, '<https://www.ietf.org/archive/id/draft-ietf-foo-baz-05.txt>'), pos: 48 }
     ])
   })
 
