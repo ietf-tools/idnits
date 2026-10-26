@@ -43,7 +43,7 @@ const argv = yargs(hideBin(process.argv))
   .usage('$0 [args] <file-path|http-url>')
   .example([
     ['$0 draft-ietf-abcd-01.xml', ''],
-    ['$0 -m submission draft-ietf-abcd-01.xml', ''],
+    [`$0 -m submission -y ${new Date().getFullYear()} draft-ietf-abcd-01.xml`, ''],
     ['$0 https://www.rfc-editor.org/rfc/rfc2549', '']
   ])
   .option('datatracker-url', {
@@ -123,6 +123,18 @@ const argv = yargs(hideBin(process.argv))
   .option('no-color', {
     describe: 'Disable color in pretty output',
     type: 'boolean'
+  })
+  .option('year', {
+    alias: 'y',
+    describe: 'Expect the given year in the boilerplate (default: the current year)',
+    coerce: val => {
+      const year = String(val).trim()
+      if (!/^[0-9]{4}$/.test(year)) {
+        throw new Error(`--year must be a 4-digit year, got "${val}"`)
+      }
+      return Number(year)
+    },
+    type: 'string'
   })
   .command('* <file>', 'parse and validate document', (y) => {
     y.positional('file', {
@@ -255,7 +267,8 @@ try {
           filename: docPathObj.base,
           options: {
             mode,
-            offline: argv.offline
+            offline: argv.offline,
+            year: argv.year
           }
         },
         collectErrors: 'minimal',
@@ -277,7 +290,8 @@ try {
   } else {
     result = await checkNits(docRaw, docPathObj.base, {
       mode,
-      offline: argv.offline
+      offline: argv.offline,
+      year: argv.year
     })
   }
 

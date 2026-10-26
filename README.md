@@ -66,6 +66,7 @@ idnits [args] <file path|url>
 | `--remote-timeout` |  | Seconds allowed for each remote lookup before it fails. Overrides the `IDNITS_REMOTE_TIMEOUT` environment variable. | `10` |
 | `--rfceditor-url` |  | Base URL of the RFC Editor site used for remote lookups. Overrides the `IDNITS_RFCEDITOR_URL` environment variable. | `https://www.rfc-editor.org` |
 | `--solarized` |  | Use alternate colors for a solarized light theme terminal.<br>Only used with the `pretty` output format. |  |
+| `--year` | `-y` | Expect the given year (4 digits) in the copyright line of a text document's boilerplate | current year |
 | `--help` | `-h` | Print the help text and exit |  |
 | `--version` |  | Print the version and exit |  |
 
