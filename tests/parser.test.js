@@ -1977,6 +1977,55 @@ Internet-Draft        Certificate Update in TLS 1.3            June 2026
     expect(getLocations(result, 'referenceEntries', '[FIPS186-5]')).toEqual([{ line: txt.split('\n').findIndex((line) => line.includes('[FIPS186-5]')) + 1, pos: 7 }])
   })
 
+  // From draft-ietf-httpbis-unprompted-auth-09 (#315)
+  test('Ends the references section at the next unnumbered section heading', async () => {
+    const txt = `${metaTXTBlock}
+6.  References
+
+6.1.  Normative References
+
+   [RFC9110]  Fielding, R., Ed., Nottingham, M., Ed., and J. Reschke,
+              Ed., "HTTP Semantics", STD 97, RFC 9110,
+              DOI 10.17487/RFC9110, June 2022,
+              <https://www.rfc-editor.org/rfc/rfc9110>.
+
+The original FIPS 197 standard (2001) was superseded in May 2023; the
+              updated DOI is https://doi.org/10.6028/NIST.FIPS.197-upd1.
+
+6.2.  Informative References
+
+   [I-D.ietf-masque-connect-udp-listen]
+              Schinazi, D. and A. Singh, "Proxying Listener UDP in HTTP",
+              Work in Progress, Internet-Draft,
+              draft-ietf-masque-connect-udp-listen-10, 23 June 2025.
+
+Acknowledgments
+
+   The authors would like to thank many members of the IETF community, as
+   this document is the fruit of many hallway conversations.  In
+   particular, the authors would like to thank David Benjamin, Reese Levine,
+   Lucas Pardue and the [MASQUE-ORIGINAL] authors, see [RFC9110].
+
+Appendix A.  Changes
+
+   [RFC9298] was published.
+
+Authors' Addresses
+
+   David Schinazi
+`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.markers.references).toEqual({ start: lineNumber(txt, '6.  References'), end: lineNumber(txt, 'Acknowledgments') - 1, closed: true })
+    expect(result.data.extractedElements.referenceEntries.map(({ value, subsection }) => [value, subsection])).toEqual([
+      ['[RFC9110]', 'normative_references'],
+      ['[I-D.ietf-masque-connect-udp-listen]', 'informative_references']
+    ])
+    expect(result.data.extractedElements.referenceSectionDraftReferences).toEqual([])
+    expect(result.data.extractedElements.nonReferenceSectionDraftReferences).toEqual(expect.arrayContaining(['[MASQUE-ORIGINAL]']))
+    expect(result.data.extractedElements.nonReferenceSectionRfc).toEqual(expect.arrayContaining(['9110', '9298']))
+  })
+
   // From draft-abak-agent-control-delivery-evidence-01
   test('Ends the entries at text to the left of their labels, such as an unnumbered appendix', async () => {
     const txt = `${metaTXTBlock}
@@ -2060,11 +2109,11 @@ Appendix A.  Rationale.
     expect(result.data.extractedElements.referenceEntries).toEqual([
       entry('[ISO14888]', 'normative_references', { external: true }),
       entry('[BRISCOE]', 'informative_references', { external: true }),
-      entry('[RFC9000]', 'informative_references', { rfcs: ['9000'] }),
-      // (a label starting a line in an appendix is listed, but not declared)
-      entry('[RFC9000]', 'appendix', { rfcs: ['9000'] })
+      entry('[RFC9000]', 'informative_references', { rfcs: ['9000'] })
     ])
-    // -> The appendix at the margin is one, even with a period at the end of its title
+    // -> The appendix at the margin is one, even with a period at the end of its title, and it ends the
+    //    references section (#315)
+    expect(result.data.markers.references.end).toBe(lineNumber(txt, 'Appendix A.  Rationale.') - 1)
     expect(result.data.extractedElements.nonReferenceSectionRfc).toEqual(['9000'])
   })
 
