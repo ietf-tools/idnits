@@ -458,7 +458,7 @@ describe('XML document should not contain <CODE BEGINS> tags', () => {
   })
   test('<CODE BEGINS> without <sourcecode> tag', async () => {
     const doc = cloneDeep(baseXMLDoc)
-    set(doc, 'data.rfc.t', '<CODE BEGINS>test')
+    set(doc, 'data.rfc.t', '<CODE BEGINS> file "test.yang"')
     await expect(validateCodeBlocks(doc)).resolves.toContainError('MISSING_SOURCECODE_TAG', ValidationWarning)
     await expect(validateCodeBlocks(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('MISSING_SOURCECODE_TAG', ValidationWarning)
     await expect(validateCodeBlocks(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
@@ -475,6 +475,25 @@ describe('XML document should not contain <CODE BEGINS> tags', () => {
     expect(result.map(r => [r.name, r.path])).toEqual([
       ['UNNECESSARY_CODE_BEGINS', 'rfc.middle.section[0].sourcecode'],
       ['MISSING_SOURCECODE_TAG', 'rfc.middle.section[1].t[1]']
+    ])
+  })
+  test('<CODE BEGINS> in elements with markup or attributes', async () => {
+    const { doc } = await parse(`<rfc version="3"><middle><section><name>Code</name>
+      <t>&lt;CODE BEGINS&gt; <em>x</em></t>
+      <sourcecode type="yang" markers="true">&lt;CODE BEGINS&gt; file "a.yang"</sourcecode>
+      <artwork type="ascii-art">&lt;CODE BEGINS&gt;</artwork>
+      <t>The &lt;CODE BEGINS&gt; and &lt;CODE ENDS&gt; tags are not part of the schema.</t>
+      <t>The
+        &lt;CODE BEGINS&gt; and &lt;CODE ENDS&gt; tags are not part of the XML Schema.</t>
+      <t>The "<tt>&lt;CODE BEGINS&gt;</tt>" tag is followed by a file name.</t>
+      <t keepWithNext="true">&lt;CODE BEGINS&gt; file ietf-foo@2026-01-01.yang</t>
+    </section></middle></rfc>`, 'draft-test.xml')
+    const result = await validateCodeBlocks(doc)
+    expect(result.map(r => [r.name, r.path])).toEqual([
+      ['MISSING_SOURCECODE_TAG', 'rfc.middle.section.t[0]'],
+      ['MISSING_SOURCECODE_TAG', 'rfc.middle.section.t[4]'],
+      ['UNNECESSARY_CODE_BEGINS', 'rfc.middle.section.sourcecode'],
+      ['MISSING_SOURCECODE_TAG', 'rfc.middle.section.artwork']
     ])
   })
 })
@@ -737,12 +756,10 @@ describe('XML document should not contain text document refs', () => {
     set(doc, 'data.rfc.t', 'test <eref> test')
     await expect(validateTextLikeRefs(doc)).resolves.toHaveLength(0)
   })
-  test('invalid ref in [1] format', async () => {
+  test('bare number in brackets, e.g. an array index', async () => {
     const doc = cloneDeep(baseXMLDoc)
     set(doc, 'data.rfc.t', 'test [1] test')
-    await expect(validateTextLikeRefs(doc)).resolves.toContainError('TEXT_DOC_REF', ValidationWarning)
-    await expect(validateTextLikeRefs(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('TEXT_DOC_REF', ValidationWarning)
-    await expect(validateTextLikeRefs(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+    await expect(validateTextLikeRefs(doc)).resolves.toHaveLength(0)
   })
   test('invalid ref in [RFC1234] format', async () => {
     const doc = cloneDeep(baseXMLDoc)
@@ -756,10 +773,43 @@ describe('XML document should not contain text document refs', () => {
       <t>See [RFC1234].</t>
     </section><section><name>Details</name>
       <t>First</t>
-      <t>See [2].</t>
+      <t>See [RFC2].</t>
     </section></middle></rfc>`, 'draft-test.xml')
     const result = await validateTextLikeRefs(doc)
     expect(result.map(r => r.path)).toEqual(['rfc.middle.section[0].t', 'rfc.middle.section[1].t[1]'])
+  })
+  test('typed citations in text with markup or attributes', async () => {
+    const { doc } = await parse(`<rfc version="3"><middle><section><name>Introduction</name>
+      <t>See [RFC1234] and <xref target="RFC5678"/>.</t>
+      <t>Implementations <bcp14>MUST</bcp14> follow [RFC1234].</t>
+      <ul><li>An <em>item</em> citing [RFC1234].</li></ul>
+      <t indent="3">See [RFC3].</t>
+    </section></middle></rfc>`, 'draft-test.xml')
+    const result = await validateTextLikeRefs(doc)
+    expect(result.map(r => r.path)).toEqual([
+      'rfc.middle.section.t[0]',
+      'rfc.middle.section.t[1]',
+      'rfc.middle.section.t[2]',
+      'rfc.middle.section.ul.li'
+    ])
+    expect(result[0].message).toBe('Text looks like a typed citation ([RFC1234]). Cite the reference with an <xref> to its anchor instead.')
+  })
+  test('bracketed text that is not a typed citation', async () => {
+    const { doc } = await parse(`<rfc version="3" number="8782"><front><seriesInfo name="RFC" value="8782"/></front><middle><section><name>Code</name>
+      <t>The element a<xref target="X"/>[0] is the first.</t>
+      <t>This document [RFC8782] and <tt>x[1]</tt> and <tt>[RFC1234]</tt>.</t>
+      <t>Verbatim <spanx style="verb">[RFC1234]</spanx>.</t>
+      <t>Index [1] in a plain paragraph, and in markup a<xref target="X"/>[2].</t>
+      <blockquote>Quoted text citing [RFC1234].</blockquote>
+      <artwork>[RFC1234]</artwork>
+      <artwork type="ascii-art">[1]</artwork>
+      <sourcecode type="c">a[0] = 1; /* [RFC1234] */</sourcecode>
+      <artwork><svg xmlns="http://www.w3.org/2000/svg"><text x="1">[RFC1234]</text></svg></artwork>
+    </section></middle><back><references><name>Normative</name>
+      <reference anchor="X"><front><title>X</title></front><annotation>See [RFC1234].</annotation></reference>
+      <referencegroup anchor="Y"><reference anchor="Z"><front><title>Z [RFC1234]</title></front></reference></referencegroup>
+    </references></back></rfc>`, 'rfc8782.xml')
+    await expect(validateTextLikeRefs(doc)).resolves.toHaveLength(0)
   })
 })
 
