@@ -285,9 +285,9 @@ For text documents, `SUBMISSION_TYPE_UNEXPECTED` compares the stream implied by 
 
 | Code | normal | forgive-checklist | submission | Format | Notes |
 |---|---|---|---|---|---|
-| `INVALID_DOMAIN_TLD` | Warning | Warning | — | both | Not an example domain |
+| `INVALID_DOMAIN_TLD` | Warning | Warning | — | both | Not an example domain, nor in `--allowed-domains` (the library's `allowedDomains` option; by default `ietf.org` and `rfc-editor.org`) or a subdomain of one |
 | `INVALID_ARPA_DOMAIN` | Warning | Warning | — | both | |
-| `POSSIBLE_INVALID_TLD` | Comment | Comment | — | both | GitHub or GitLab domain |
+| `POSSIBLE_INVALID_TLD` | Comment | Comment | — | both | GitHub or GitLab domain, not in `--allowed-domains` |
 | `INVALID_IPV4_ADDRESS` | Warning | Warning | — | both | |
 | `INVALID_IPV6_ADDRESS` | Warning | Warning | — | both | |
 

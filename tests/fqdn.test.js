@@ -95,18 +95,18 @@ describe('document should have valid FQDN mentions', () => {
       expect(result).toHaveLength(0)
     })
 
-    test('www.ietf.org is always valid', async () => {
+    test('www.ietf.org is valid through the allowed domains only', async () => {
       const doc = {
         type: 'txt',
         data: {
           extractedElements: {
-            fqdnDomains: []
+            fqdnDomains: ['www.ietf.org']
           }
         }
       }
 
-      const result = await validateFQDNs(doc, { mode: MODES.NORMAL, offline: true })
-      expect(result).toHaveLength(0)
+      await expect(validateFQDNs(doc, { mode: MODES.NORMAL, offline: true })).resolves.toHaveLength(0)
+      await expect(validateFQDNs(doc, { mode: MODES.NORMAL, offline: true, allowedDomains: [] })).resolves.toContainError('INVALID_DOMAIN_TLD', ValidationWarning)
     })
 
     test('allowed domains and their subdomains are not reported', async () => {
