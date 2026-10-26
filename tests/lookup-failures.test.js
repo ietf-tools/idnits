@@ -134,7 +134,8 @@ describe('REFERENCE_STATUS_UNAVAILABLE', () => {
     const doc = await parseRefs({ attrs: ' obsoletes="draft-foo-bar-00" updates="2026-5-29"' })
     const result = await checkReferences(doc, { mode: MODES.NORMAL })
     server.events.removeAllListeners()
-    expect(names(result).filter(n => /_RFC_NOT_FOUND$|UNAVAILABLE/.test(n)).sort()).toEqual(['OBSOLETES_RFC_NOT_FOUND', 'UPDATES_RFC_NOT_FOUND'])
+    // -> A draft name is allowed there; the other value is reported as not an RFC number
+    expect(names(result).filter(n => /_RFC_NOT_FOUND$|UNAVAILABLE|_NOT_RFC_NUMBER$/.test(n))).toEqual(['UPDATES_NOT_RFC_NUMBER'])
     expect(requested.filter(url => url.startsWith('https://www.rfc-editor.org/'))).toEqual([])
   })
 
