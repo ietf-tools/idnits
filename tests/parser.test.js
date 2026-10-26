@@ -3652,6 +3652,50 @@ Informative References
     ])
   })
 
+  // From draft-reilly-resilience-protocol-02, draft-paxton-aicp-00 and draft-ross-mercurius-06
+  test('Takes the revision a Datatracker link gives as a path segment', async () => {
+    const txt = `${metaTXTBlock}
+18.  Informative References
+
+   [DRAFT-RRP-00]
+              Reilly, L.J., "Reilly Resilience Protocol (RRP):
+              Tamper-Evident Proof of System Resilience",
+              Work in Progress, Internet-Draft,
+              draft-reilly-resilience-protocol-00,
+              September 2025,
+              <https://datatracker.ietf.org/doc/
+              draft-reilly-resilience-protocol/00/>.
+
+   [VIRP]     Howard, N., "VIRP", Work in Progress, Internet-Draft,
+              <https://datatracker.ietf.org/doc/draft-howard-virp/06/>.
+
+   [SARATOGA] Wood, L., "Saratoga", Work in Progress, Internet-Draft,
+              draft-wood-tsvwg-saratoga-22, 17 December 2017,
+              <https://datatracker.ietf.org/doc/draft-wood-tsvwg-saratoga/22>.
+
+   [HISTORY]  Doe, J., "Foo", Work in Progress, Internet-Draft,
+              <https://datatracker.ietf.org/doc/draft-doe-foo/history/>.
+
+   [REPO]     Doe, J., "Bar", <https://github.com/doe/draft-doe-bar/12/>.
+`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.draftStatusReferences).toEqual([
+      { value: 'draft-reilly-resilience-protocol-00', subsection: 'informative_references' },
+      { value: 'draft-howard-virp-06', subsection: 'informative_references' },
+      { value: 'draft-wood-tsvwg-saratoga-22', subsection: 'informative_references' },
+      { value: 'draft-doe-foo', subsection: 'informative_references' },
+      { value: 'draft-doe-bar', subsection: 'informative_references' }
+    ])
+    // -> Located where the link names the draft
+    expect(getLocations(result, 'draftStatusReferences', 'draft-reilly-resilience-protocol-00')).toEqual([
+      { line: lineNumber(txt, 'draft-reilly-resilience-protocol/00/>.'), pos: 15 }
+    ])
+    expect(getLocations(result, 'draftStatusReferences', 'draft-howard-virp-06')).toEqual([
+      { line: lineNumber(txt, 'doc/draft-howard-virp/06/>.'), pos: 49 }
+    ])
+  })
+
   test('Takes the drafts an entry names without a link, once, and a linked name containing -draft- whole', async () => {
     const txt = `${metaTXTBlock}
 18.  Normative References
