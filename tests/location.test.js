@@ -1,9 +1,33 @@
-import { describe, expect, test } from 'vitest'
+import { afterAll, afterEach, beforeAll, describe, expect, test } from 'vitest'
+import { setupServer } from 'msw/node'
+import { http, HttpResponse } from 'msw'
 import { parse } from '../lib/parsers/xml.mjs'
 import { addXmlSourceLines, findXmlSourceOffset, getXmlLocationLabel, labelFindings, parsePath } from '../lib/helpers/location.mjs'
 import { scanXmlSource } from '../lib/helpers/xml-source.mjs'
 import { ValidationWarning } from '../lib/helpers/error.mjs'
 import { checkNits } from '../lib/index.mjs'
+import { clearRemoteCache } from '../lib/remote/common.mjs'
+
+// -> checkNits looks up the RFCs SAMPLE_XML cites (offline skips only the document's own lookups).
+//    Any other request fails the test that made it.
+const server = setupServer(
+  http.get('https://www.rfc-editor.org/rfc/rfc2119.json', () => HttpResponse.json({ status: 'BEST CURRENT PRACTICE' })),
+  http.get('https://www.rfc-editor.org/rfc/rfc8174.json', () => HttpResponse.json({ status: 'BEST CURRENT PRACTICE' })),
+  http.get('https://www.rfc-editor.org/rfc/rfc9999.json', () => new HttpResponse(null, { status: 404 }))
+)
+const unhandledRequests = []
+beforeAll(() => server.listen({
+  onUnhandledRequest: (request, print) => {
+    unhandledRequests.push(`${request.method} ${request.url}`)
+    print.error()
+  }
+}))
+afterEach(() => {
+  server.resetHandlers()
+  clearRemoteCache()
+  expect(unhandledRequests.splice(0), 'requests without a handler').toEqual([])
+})
+afterAll(() => server.close())
 
 const SAMPLE_XML = `<?xml version="1.0" encoding="UTF-8"?>
 <rfc version="3" docName="draft-test-location-00" ipr="trust200902" category="std" submissionType="IETF">
