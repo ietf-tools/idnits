@@ -3,7 +3,8 @@ import { MODES } from '../lib/config/modes.mjs'
 import { ValidationComment, ValidationWarning } from '../lib/helpers/error.mjs'
 import { parse } from '../lib/parsers/xml.mjs'
 import { parse as parseTXT } from '../lib/parsers/txt.mjs'
-import { validateRfcReferenceUrls } from '../lib/modules/references.mjs'
+import { validateDraftReferenceRevisions, validateRfcReferenceUrls } from '../lib/modules/references.mjs'
+import { metaTXTBlock } from './fixtures/txt-blocks/section-blocks.mjs'
 
 const REF = 'https://www.rfc-editor.org/styleguide/part2/#ref_rfcs'
 
@@ -224,6 +225,136 @@ Appendix A.  Example
 `, 'draft-test-references-00.txt')
 
       await expect(validateRfcReferenceUrls(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
+    })
+  })
+})
+
+const DRAFT_REF = 'https://www.rfc-editor.org/rfc/rfc7322.html#section-4.8.6.4'
+
+/**
+ * Line (1-based) of the first line of a text holding a string
+ *
+ * @param {string} txt Text
+ * @param {string} str String
+ * @returns {number} Line
+ */
+const lineNumber = (txt, str) => txt.split('\n').findIndex((line) => line.includes(str)) + 1
+
+/**
+ * Expect findings of the draft revision check in normal and forgive-checklist mode, and none in submission mode
+ *
+ * @param {Object} doc Parsed document
+ * @param {ValidationWarning[]} expected Findings
+ */
+async function expectRevisionFindings (doc, expected) {
+  await expect(validateDraftReferenceRevisions(doc, { mode: MODES.NORMAL })).resolves.toEqual(expected)
+  await expect(validateDraftReferenceRevisions(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toEqual(expected)
+  await expect(validateDraftReferenceRevisions(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+}
+
+describe('A reference to a draft links to the revision it names', () => {
+  describe('TXT Document Type', () => {
+    test('an entry linking to another revision than its text names is reported at its label', async () => {
+      // From draft-ietf-grow-routing-ops-terms-03 and RFC 9414
+      const txt = `${metaTXTBlock}
+9. References
+
+9.1. Informative References
+
+   [I-D.ietf-sidrops-aspa-verification]
+              Azimov, A., Bogomazov, E., Bush, R., Patel, K., Snijders,
+              J., and K. Sriram, "BGP AS_PATH Verification Based on
+              Autonomous System Provider Authorization (ASPA) Objects",
+              Work in Progress, Internet-Draft, draft-ietf-sidrops-aspa-
+              verification-23, 23 September 2025,
+              <https://datatracker.ietf.org/doc/html/draft-ietf-sidrops-
+              aspa-verification-17>.
+
+   [draft-ietf-ntp-port-randomization-08]
+              Gont, F., Gont, G., and M. Lichvar, "Port Randomization in
+              the Network Time Protocol Version 4", Work in Progress,
+              Internet-Draft, draft-ietf-ntp-port-randomization-00, 10
+              June 2021, <https://www.ietf.org/archive/id/draft-ietf-
+              ntp-port-randomization-08.txt>.
+
+   [SARATOGA] Wood, L., "Saratoga", Work in Progress, Internet-Draft,
+              draft-wood-tsvwg-saratoga-21, 17 December 2017,
+              <https://datatracker.ietf.org/doc/
+              draft-wood-tsvwg-saratoga/22/>.
+`
+      const doc = await parseTXT(txt, 'draft-ietf-grow-routing-ops-terms-03.txt')
+
+      await expectRevisionFindings(doc, [
+        new ValidationWarning('DRAFT_REFERENCE_REVISION_MISMATCH', 'Reference [I-D.ietf-sidrops-aspa-verification] links to draft-ietf-sidrops-aspa-verification-17 but its text names draft-ietf-sidrops-aspa-verification-23. Make both name the revision meant.', {
+          ref: DRAFT_REF,
+          lines: [{ line: lineNumber(txt, '[I-D.ietf-sidrops-aspa-verification]'), pos: 4 }]
+        }),
+        new ValidationWarning('DRAFT_REFERENCE_REVISION_MISMATCH', 'Reference [draft-ietf-ntp-port-randomization-08] links to draft-ietf-ntp-port-randomization-08 but its text names draft-ietf-ntp-port-randomization-00. Make both name the revision meant.', {
+          ref: DRAFT_REF,
+          lines: [{ line: lineNumber(txt, '[draft-ietf-ntp-port-randomization-08]'), pos: 4 }]
+        }),
+        new ValidationWarning('DRAFT_REFERENCE_REVISION_MISMATCH', 'Reference [SARATOGA] links to draft-wood-tsvwg-saratoga-22 but its text names draft-wood-tsvwg-saratoga-21. Make both name the revision meant.', {
+          ref: DRAFT_REF,
+          lines: [{ line: lineNumber(txt, '[SARATOGA]'), pos: 4 }]
+        })
+      ])
+    })
+
+    test('entries whose link and text agree, or whose link names no revision or is to another host, are not reported', async () => {
+      const doc = await parseTXT(`${metaTXTBlock}
+9. References
+
+9.1. Informative References
+
+   [I-D.ietf-foo-bar]
+              Doe, J., "Bar", Work in Progress, Internet-Draft,
+              draft-ietf-foo-bar-03, 2026,
+              <https://datatracker.ietf.org/doc/html/draft-ietf-foo-bar-03>.
+
+   [I-D.ietf-foo-baz]
+              Doe, J., "Baz", Work in Progress, Internet-Draft,
+              draft-ietf-foo-baz-05, 2026,
+              <https://datatracker.ietf.org/doc/draft-ietf-foo-baz/>.
+
+   [REPO]     Doe, J., "Qux", Work in Progress, Internet-Draft,
+              draft-doe-qux-02, <https://example.github.io/draft-doe-qux-01>.
+`, 'draft-doe-foo-00.txt')
+
+      await expectRevisionFindings(doc, [])
+    })
+  })
+
+  describe('XML Document Type', () => {
+    test('a target linking to another revision than the Internet-Draft <seriesInfo> is reported', async () => {
+      // From draft-ietf-grow-routing-ops-terms-03
+      const { doc } = await parse(`<rfc version="3" category="info" docName="draft-ietf-grow-routing-ops-terms-03"><back>
+    <references>
+      <name>Informative References</name>
+      <reference anchor="I-D.ietf-sidrops-aspa-verification" target="https://datatracker.ietf.org/doc/html/draft-ietf-sidrops-aspa-verification-17">
+        <front><title>BGP AS_PATH Verification</title><date year="2025" month="September" day="23"/></front>
+        <seriesInfo name="Internet-Draft" value="draft-ietf-sidrops-aspa-verification-23"/>
+      </reference>
+      <reference anchor="SARATOGA" target="https://datatracker.ietf.org/doc/draft-wood-tsvwg-saratoga/22/">
+        <front><title>Saratoga</title><date year="2017" month="December"/></front>
+        <seriesInfo name="Internet-Draft" value="draft-wood-tsvwg-saratoga-22"/>
+      </reference>
+      <reference anchor="I-D.ietf-foo-bar" target="https://datatracker.ietf.org/doc/html/draft-ietf-foo-bar">
+        <front><title>Bar</title><date year="2026"/></front>
+        <seriesInfo name="Internet-Draft" value="draft-ietf-foo-bar-03"/>
+      </reference>
+      <reference anchor="REPO" target="https://example.github.io/draft-doe-qux-01.html">
+        <front><title>Qux</title><date year="2026"/></front>
+        <seriesInfo name="Internet-Draft" value="draft-doe-qux-02"/>
+      </reference>
+    </references>
+  </back></rfc>`, 'draft-ietf-grow-routing-ops-terms-03.xml')
+
+      await expectRevisionFindings(doc, [
+        new ValidationWarning('DRAFT_REFERENCE_REVISION_MISMATCH', 'Reference [I-D.ietf-sidrops-aspa-verification] links to draft-ietf-sidrops-aspa-verification-17 but its <seriesInfo> names draft-ietf-sidrops-aspa-verification-23. Make both name the revision meant.', {
+          ref: DRAFT_REF,
+          path: 'rfc.back.references[0].reference[0]'
+        })
+      ])
     })
   })
 })
