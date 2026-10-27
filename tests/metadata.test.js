@@ -959,3 +959,29 @@ describe('document should not obsolete or update RFCs of another stream without 
     ])
   })
 })
+
+describe('lookups that fail are not reported as documents that do not exist', () => {
+  const failing = (url) => http.get(url, () => new HttpResponse('down', { status: 503 }))
+
+  test('no *_RFC_NOT_FOUND when rfc-editor.org fails', async () => {
+    server.use(failing('https://www.rfc-editor.org/rfc/rfc4444.json'))
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const doc = cloneDeep(baseXMLDoc)
+    set(doc, 'data.rfc._attr', { obsoletes: '4444', updates: '4444' })
+    set(doc, 'data.rfc.front.abstract.t', 'This document obsoletes and updates RFC 4444.')
+    const result = await validateObsoleteUpdateRef(doc)
+    expect(result.filter(r => r.name.endsWith('_RFC_NOT_FOUND'))).toEqual([])
+    expect(warn).toHaveBeenCalledWith('Request to www.rfc-editor.org failed: HTTP 503')
+    warn.mockRestore()
+  })
+
+  test('no "should be version 00" when Datatracker fails', async () => {
+    server.use(failing('https://datatracker.ietf.org/api/v1/doc/document/draft-ietf-beep-bfail/'))
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const doc = cloneDeep(baseXMLDoc)
+    set(doc, 'data.rfc._attr', { docName: 'draft-ietf-beep-bfail-03' })
+    await expect(validateVersion(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+    expect(warn).toHaveBeenCalledWith('Request to datatracker.ietf.org failed: HTTP 503')
+    warn.mockRestore()
+  })
+})

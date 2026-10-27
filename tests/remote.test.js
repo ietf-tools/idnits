@@ -318,20 +318,53 @@ describe('Remote lookups that time out', () => {
     }
   })
 
-  test('let a submission check complete as when Datatracker does not know the document', async () => {
+  test('let a submission check complete as when Datatracker does not know the document, without saying it does not', async () => {
     const raw = await readFile(new URL('./fixtures/draft-ietf-ippm-ioam-ipv6-options-10.xml', import.meta.url))
     const run = () => checkNits(raw, 'draft-ietf-ippm-ioam-ipv6-options-10.xml', { mode: MODES.SUBMISSION })
     const unknown = await run()
     expect(requests.length).toBeGreaterThan(0)
     expect(requests.every(r => r.url.startsWith('https://datatracker.ietf.org/api/v1/doc/document/'))).toBe(true)
+    const shouldBe00 = unknown.filter(f => f.name === 'UNEXPECTED_DOC_VERSION' && f.message.includes('should be version 00'))
+    expect(shouldBe00).toHaveLength(1)
 
     clearRemoteCache()
     stall()
     setRemoteTimeout(0.05)
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const timedOut = await run()
-    expect(timedOut).toEqual(unknown)
+    expect(timedOut).toEqual(unknown.filter(f => !shouldBe00.includes(f)))
     expect(new Set(warn.mock.calls.map(c => c[0]))).toEqual(new Set(['Request to datatracker.ietf.org timed out after 0.05 s']))
     expect(warn.mock.calls.length).toBe(new Set(requests.slice(requests.length / 2).map(r => r.url)).size)
+  })
+})
+
+describe('Remote lookups answered with an HTTP error', () => {
+  test('give null for 404 and 410: the document does not exist', async () => {
+    server.use(http.get('https://www.rfc-editor.org/rfc/rfc9999.json', () => new HttpResponse(null, { status: 410 })))
+    await expect(remoteFetch('https://www.rfc-editor.org/rfc/rfc8888.json')).resolves.toBeNull()
+    await expect(remoteFetch('https://www.rfc-editor.org/rfc/rfc9999.json')).resolves.toBeNull()
+    await expect(fetchRemoteRfcInfo(8888)).resolves.toBeNull()
+  })
+
+  test('throw for any other status, naming the host and the status once', async () => {
+    server.use(http.get('https://www.rfc-editor.org/rfc/rfc8888.json', () => new HttpResponse('down', { status: 503 })))
+    await expect(remoteFetch('https://www.rfc-editor.org/rfc/rfc8888.json')).rejects.toThrow(/^Request to www\.rfc-editor\.org failed: HTTP 503$/)
+  })
+
+  test('fail the lookup, warning about it, instead of finding nothing', async () => {
+    server.use(
+      http.get('https://www.rfc-editor.org/rfc/rfc8888.json', () => new HttpResponse('down', { status: 500 })),
+      http.get('https://datatracker.ietf.org/api/v1/doc/document/draft-foo-baz/', () => new HttpResponse('down', { status: 502 })),
+      http.get('https://datatracker.ietf.org/doc/draft-foo-baz/doc.json', () => new HttpResponse('down', { status: 503 }))
+    )
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    await expect(fetchRemoteRfcInfo(8888)).resolves.toBeUndefined()
+    await expect(fetchRemoteDocInfo('draft-foo-baz-01')).resolves.toBeUndefined()
+    await expect(fetchRemoteDocInfoJson('draft-foo-baz-01')).resolves.toBeUndefined()
+    expect(warn.mock.calls).toEqual([
+      ['Request to www.rfc-editor.org failed: HTTP 500'],
+      ['Request to datatracker.ietf.org failed: HTTP 502'],
+      ['Request to datatracker.ietf.org failed: HTTP 503']
+    ])
   })
 })
