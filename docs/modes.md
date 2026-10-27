@@ -301,6 +301,7 @@ For text documents, `SUBMISSION_TYPE_UNEXPECTED` compares the stream implied by 
 | `MISSING_REFERENCES_NAME` | Error | Warning | — | XML | |
 | `INVALID_REFERENCES_NAME` | Error | Warning | — | XML | |
 | `REFERENCE_NOT_USED` | Warning | Warning | Warning | both | |
+| `REFERENCE_CITED_AS_TEXT` | Warning | Warning | Warning | XML | mentioned only as typed text in prose, without `<xref>` |
 | `REFERENCE_MISSING_IN_REFERENCE_SECTION` | Warning | Warning | Warning | text | |
 | `PLACEHOLDER_REFERENCE` | Comment | Comment | Comment | text | e.g. `[RFCXXXX]` |
 | `DOCUMENT_USE_NUMERIC_REFERENCES` | Comment | Comment | — | text | |
