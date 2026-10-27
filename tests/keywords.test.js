@@ -1124,6 +1124,79 @@ describe('document should have valid RFC2119 keywords', () => {
       })
     })
 
+    describe('keywords of a tagged boilerplate (parsed XML)', () => {
+      const tagged = (nr = true) => `<t>The key words "<bcp14>MUST</bcp14>", "<bcp14>MUST NOT</bcp14>", "<bcp14>REQUIRED</bcp14>",
+        "<bcp14>SHALL</bcp14>", "<bcp14>SHALL NOT</bcp14>", "<bcp14>SHOULD</bcp14>", "<bcp14>SHOULD NOT</bcp14>",
+        "<bcp14>RECOMMENDED</bcp14>", ${nr ? '"<bcp14>NOT RECOMMENDED</bcp14>", ' : ''}"<bcp14>MAY</bcp14>", and "<bcp14>OPTIONAL</bcp14>"
+        in this document are to be interpreted as described in BCP 14 <xref target="RFC2119"/> <xref target="RFC8174"/>
+        when, and only when, they appear in all capitals, as shown here.</t>`
+      const untagged = `<t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT",
+        "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in BCP 14
+        <xref target="RFC2119"/> <xref target="RFC8174"/> when, and only when, they appear in all capitals, as shown here.</t>`
+      const parseXML = async ({ abstract = '<t>An abstract.</t>', boilerplate = tagged(), body = '<t>Nothing required.</t>' } = {}) => {
+        const { doc } = await parse(`<?xml version="1.0" encoding="UTF-8"?>
+<rfc version="3" docName="draft-test-bcp14-tagged-00" category="std">
+  <front><title>Test</title><abstract>${abstract}</abstract></front>
+  <middle>
+    <section><name>Terminology</name>${boilerplate}</section>
+    <section><name>Protocol</name>${body}</section>
+  </middle>
+  <back><references><name>Normative References</name>
+    <reference anchor="RFC2119"><front><title>Key words for use in RFCs to Indicate Requirement Levels</title></front><seriesInfo name="RFC" value="2119"/></reference>
+    <reference anchor="RFC8174"><front><title>Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words</title></front><seriesInfo name="RFC" value="8174"/></reference>
+  </references></back>
+</rfc>`, 'draft-test-bcp14-tagged-00.xml')
+        return doc
+      }
+      const names = async (doc) => (await validate2119Keywords(doc)).map(r => r.name).filter(n => n !== 'MISSING_BCP14_TAGS')
+
+      test('tagged boilerplate and no keywords elsewhere', async () => {
+        expect(await names(await parseXML())).toEqual(['MISSING_REQLEVEL_KEYWORDS'])
+      })
+      test('tagged boilerplate and a keyword in a section', async () => {
+        expect(await names(await parseXML({ body: '<t>The client <bcp14>MUST</bcp14> connect.</t>' }))).toEqual([])
+      })
+      test('tagged boilerplate and an untagged keyword in a section', async () => {
+        expect(await names(await parseXML({ body: '<t>The client MUST connect.</t>' }))).toEqual([])
+      })
+      test('untagged boilerplate, as before', async () => {
+        expect(await names(await parseXML({ boilerplate: untagged }))).toEqual(['MISSING_REQLEVEL_KEYWORDS'])
+        expect(await names(await parseXML({ boilerplate: untagged, body: '<t>The client <bcp14>MUST</bcp14> connect.</t>' }))).toEqual([])
+      })
+      test('tagged boilerplate listing NOT RECOMMENDED, and NOT RECOMMENDED used', async () => {
+        const doc = await parseXML({ body: '<t>Retrying is <bcp14>NOT RECOMMENDED</bcp14>.</t>' })
+        expect(await names(doc)).toEqual([])
+      })
+      test('tagged boilerplate without NOT RECOMMENDED, and NOT RECOMMENDED used', async () => {
+        const doc = await parseXML({ boilerplate: tagged(false), body: '<t>Retrying is <bcp14>NOT RECOMMENDED</bcp14>.</t>' })
+        expect(await names(doc)).toEqual(['MISSING_NOTRECOMMENDED_IN_BOILERPLATE'])
+      })
+      test('NOT RECOMMENDED used before a boilerplate without it', async () => {
+        const doc = await parseXML({ abstract: '<t>Retrying is <bcp14>NOT RECOMMENDED</bcp14>.</t>', boilerplate: tagged(false) })
+        expect(await names(doc)).toEqual(['MISSING_NOTRECOMMENDED_IN_BOILERPLATE'])
+        const untaggedDoc = await parseXML({ abstract: '<t>Retrying is <bcp14>NOT RECOMMENDED</bcp14>.</t>', boilerplate: untagged })
+        expect(await names(untaggedDoc)).toEqual(['MISSING_NOTRECOMMENDED_IN_BOILERPLATE'])
+      })
+      test('keywords used only in a YANG module that repeats the boilerplate', async () => {
+        const yang = `<sourcecode type="yang" markers="true"><![CDATA[
+module example {
+  description
+    "The key words 'MUST', 'MUST NOT', 'REQUIRED', 'SHALL', 'SHALL NOT', 'SHOULD', 'SHOULD NOT',
+     'RECOMMENDED', 'NOT RECOMMENDED', 'MAY', and 'OPTIONAL' in this document are to be
+     interpreted as described in BCP 14 (RFC 2119) (RFC 8174) when, and only when, they
+     appear in all capitals, as shown here.";
+  leaf a { description "A server MUST reject it."; }
+}
+]]></sourcecode>`
+        expect(await names(await parseXML({ body: yang }))).toEqual([])
+        expect(await names(await parseXML({ body: yang.replace('MUST reject', 'rejects') }))).toEqual(['MISSING_REQLEVEL_KEYWORDS'])
+      })
+      test('boilerplate listing NOT RECOMMENDED but other keywords used', async () => {
+        const doc = await parseXML({ body: '<t>The client <bcp14>SHOULD</bcp14> retry.</t>' })
+        expect(await names(doc)).toEqual([])
+      })
+    })
+
     describe('BCP14 reference detection (parsed XML)', () => {
       const parsedBoilerplate = `<t>The key words "<bcp14>MUST</bcp14>", "<bcp14>MUST NOT</bcp14>", "<bcp14>REQUIRED</bcp14>",
         "<bcp14>SHALL</bcp14>", "<bcp14>SHALL NOT</bcp14>", "<bcp14>SHOULD</bcp14>", "<bcp14>SHOULD NOT</bcp14>",
