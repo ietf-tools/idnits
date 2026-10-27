@@ -3262,6 +3262,69 @@ Informative References
     ])
   })
 
+  test('Takes the drafts an entry names without a link, once, and a linked name containing -draft- whole', async () => {
+    const txt = `${metaTXTBlock}
+18.  Normative References
+
+   [FOO]      Doe, J., "Foo", Work in Progress, Internet-Draft,
+              draft-doe-foo-03, 1 January 2026.
+
+   [BAR]      Doe, J., "Bar", Work in Progress, Internet-Draft,
+              draft-doe-bar-02, 1 January 2026,
+              <https://datatracker.ietf.org/doc/html/draft-doe-bar-02>.
+
+   [NUM]      Bormann, C., "Draft numbers", Work in Progress,
+              Internet-Draft, draft-bormann-cbor-draft-numbers-07,
+              <https://datatracker.ietf.org/doc/html/draft-bormann-cbor-
+              draft-numbers-07>.
+`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.draftStatusReferences).toEqual([
+      { value: 'draft-doe-bar-02', subsection: 'normative_references' },
+      { value: 'draft-bormann-cbor-draft-numbers-07', subsection: 'normative_references' },
+      { value: 'draft-doe-foo-03', subsection: 'normative_references' }
+    ])
+    expect(getLocations(result, 'draftStatusReferences', 'draft-doe-foo-03')).toEqual([
+      { line: lineNumber(txt, '[FOO]'), pos: 4 }
+    ])
+  })
+
+  // From draft-ietf-v6ops-ipv6-app-testing-05, draft-gebauer-iacp-03 and draft-ietf-idr-sr-policy-admin-flags-00
+  test('Takes no draft named only in a link to another host than the IETF, nor the start of a longer name in the entry', async () => {
+    const txt = `${metaTXTBlock}
+18.  Informative References
+
+   [DE-BIT]   "Beschluss Nr. 2020/14", Original link is broken - cached
+              copy available at https://raw.githubusercontent.com/ietf-
+              wg-v6ops/draft-itef-v6ops-ipv6-app-testing/main/x.pdf
+
+   [REPO]     Doe, J., "Foo", <https://example.github.io/foo.
+              draft-doe-wrapped-repo/>.
+
+   [I-D.bu-agentproto-security-principal-binding]
+              Bu, S., "Security Principal and Verifier Binding", Work in
+              Progress, Internet-Draft,
+              draft-bu-agentproto-security-principal-binding-02,
+              <https://datatracker.ietf.org/doc/draft-bu-
+              agentproto-security- principal-binding/>.
+
+   [I-D.ietf-foo-bar]
+              Doe, J., "Bar", Work in Progress, Internet-Draft,
+              draft-ietf-foo-bar-03.
+
+   [DIFF]     "Changes",
+              https://author-tools.ietf.org/api/iddiff?doc_1=draft-ietf-foo-baz-02
+`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.draftStatusReferences.map((el) => el.value).sort()).toEqual([
+      'draft-bu-agentproto-security-principal-binding-02',
+      'draft-ietf-foo-bar-03',
+      'draft-ietf-foo-baz-02'
+    ])
+  })
+
   // From draft-ietf-dnsop-zone-cut-to-nowhere-00
   test('Does not take an ellipsis as a reference label', async () => {
     const txt = `${metaTXTBlock}
