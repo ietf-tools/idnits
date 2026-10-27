@@ -73,7 +73,7 @@ describe('Downref Registry', () => {
   })
 
   describe.each([
-    ['an HTTP error', () => new HttpResponse('Server Error', { status: 500 }), 'Request to datatracker.ietf.org returned an HTTP error'],
+    ['an HTTP error', () => new HttpResponse('Server Error', { status: 500 }), 'Request to datatracker.ietf.org failed: HTTP 500'],
     ['a network error', () => HttpResponse.error(), /^Request to datatracker\.ietf\.org failed: .+/],
     ['a page listing nothing', () => HttpResponse.text('<html><body>Maintenance</body></html>'), 'no documents found in the registry page'],
     ['a timeout', async () => {
