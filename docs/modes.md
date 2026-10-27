@@ -190,7 +190,7 @@ A document that can't be parsed isn't checked: the CLI exits with code `1`, and 
 | `MISSING_DOC_DATE` | Comment | Comment | Comment | XML | No `<date>`: the prep tool will fill it in |
 | `DOC_DATE_IN_PAST` | Warning | Warning | Warning | both | More than 3 days |
 | `DOC_DATE_IN_FUTURE` | Warning | Warning | Warning | both | More than 3 days |
-| `MISSING_DOC_CATEGORY` | Warning | Warning | Warning | both | XML: only when `docName` doesn't start with `draft-` |
+| `MISSING_DOC_CATEGORY` | Warning | Warning | Warning | both | Text RFC: no `Category:` line. Text draft: no `Intended status:` line (a `Category:` line instead doesn't count). XML: no `category` attribute |
 | `INVALID_DOC_CATEGORY` | Warning | Warning | Warning | both | |
 | `OBSOLETES_NOT_IN_ABSTRACT` | Comment | Comment | — | text | |
 | `OBSOLETES_NOT_IN_ABSTRACT` | Warning | Warning | — | XML | |

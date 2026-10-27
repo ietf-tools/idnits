@@ -503,73 +503,77 @@ describe('document should have valid date', () => {
 })
 
 describe('document should have valid category', () => {
+  const allModes = async (doc, code) => {
+    for (const mode of [MODES.NORMAL, MODES.FORGIVE_CHECKLIST, MODES.SUBMISSION]) {
+      await expect(validateCategory(doc, { mode })).resolves.toContainError(code, ValidationWarning)
+    }
+  }
   describe('XML Document Type', () => {
-    test('valid category', async () => {
+    const xmlDoc = (attr, docKind = 'draft') => {
       const doc = cloneDeep(baseXMLDoc)
-      set(doc, 'data.rfc._attr', {
-        category: 'std',
-        docName: 'draft-ietf-beep-boop'
-      })
-      await expect(validateCategory(doc)).resolves.toHaveLength(0)
+      doc.docKind = docKind
+      set(doc, 'data.rfc._attr', attr)
+      return doc
+    }
+    test('valid category', async () => {
+      await expect(validateCategory(xmlDoc({ category: 'std', docName: 'draft-ietf-beep-boop' }))).resolves.toHaveLength(0)
     })
     test('missing category for a draft', async () => {
-      const doc = cloneDeep(baseXMLDoc)
-      set(doc, 'data.rfc._attr', {
-        docName: 'draft-ietf-beep-boop'
-      })
-      await expect(validateCategory(doc)).resolves.toHaveLength(0)
+      await allModes(xmlDoc({ docName: 'draft-ietf-beep-boop-03' }), 'MISSING_DOC_CATEGORY')
     })
-    test('missing category for a rfc doc', async () => {
-      const doc = cloneDeep(baseXMLDoc)
-      set(doc, 'data.rfc._attr', {
-        docName: 'beep-boop'
-      })
-      await expect(validateCategory(doc)).resolves.toContainError('MISSING_DOC_CATEGORY', ValidationWarning)
-      await expect(validateCategory(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('MISSING_DOC_CATEGORY', ValidationWarning)
-      await expect(validateCategory(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('MISSING_DOC_CATEGORY', ValidationWarning)
+    test('missing category for a draft whose docName lacks the draft- prefix', async () => {
+      await allModes(xmlDoc({ docName: 'my-draft-00' }), 'MISSING_DOC_CATEGORY')
+    })
+    test('missing category for an RFC that keeps the draft name', async () => {
+      await allModes(xmlDoc({ number: '9999', docName: 'draft-ietf-foo-12' }, 'rfc'), 'MISSING_DOC_CATEGORY')
+    })
+    test('missing category for an RFC without docName', async () => {
+      await allModes(xmlDoc({ number: '9999' }, 'rfc'), 'MISSING_DOC_CATEGORY')
     })
     test('invalid category', async () => {
-      const doc = cloneDeep(baseXMLDoc)
-      set(doc, 'data.rfc._attr', {
-        category: 'xyz123',
-        docName: 'draft-beep-boop'
-      })
-      await expect(validateCategory(doc)).resolves.toContainError('INVALID_DOC_CATEGORY', ValidationWarning)
-      await expect(validateCategory(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('INVALID_DOC_CATEGORY', ValidationWarning)
-      await expect(validateCategory(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('INVALID_DOC_CATEGORY', ValidationWarning)
+      await allModes(xmlDoc({ category: 'xyz123', docName: 'draft-beep-boop' }), 'INVALID_DOC_CATEGORY')
     })
   })
 
   describe('TXT Document Type', () => {
-    test('valid category', async () => {
-      const doc = baseTXTDoc
-      doc.data.header.intendedStatus = 'Standards Track'
-      doc.data.slug = 'draft-ietf-beep-boop'
-
-      await expect(validateCategory(doc)).resolves.toHaveLength(0)
+    const txtDoc = (header, docKind) => {
+      const doc = cloneDeep(baseTXTDoc)
+      doc.docKind = docKind
+      Object.assign(doc.data.header, { intendedStatus: null, category: null }, header)
+      return doc
+    }
+    test('valid intended status on a draft', async () => {
+      await expect(validateCategory(txtDoc({ intendedStatus: 'Standards Track' }, 'draft'))).resolves.toHaveLength(0)
     })
-    test('missing category for a draft', async () => {
-      const doc = baseTXTDoc
-      doc.data.slug = 'draft-ietf-beep-boop'
-
-      await expect(validateCategory(doc)).resolves.toHaveLength(0)
+    test('missing intended status on a draft', async () => {
+      const doc = txtDoc({}, 'draft')
+      await allModes(doc, 'MISSING_DOC_CATEGORY')
+      const [finding] = await validateCategory(doc)
+      expect(finding.message).toBe('The draft has no Intended status: line.')
     })
-    test('missing category for a rfc doc', async () => {
-      const doc = baseTXTDoc
-      doc.data.slug = 'beep-boop'
-      doc.data.header.intendedStatus = null
-
-      await expect(validateCategory(doc)).resolves.toContainError('MISSING_DOC_CATEGORY', ValidationWarning)
-      await expect(validateCategory(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('MISSING_DOC_CATEGORY', ValidationWarning)
-      await expect(validateCategory(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('MISSING_DOC_CATEGORY', ValidationWarning)
+    test('a Category: line on a draft is not an intended status', async () => {
+      const doc = txtDoc({ category: 'Informational' }, 'draft')
+      for (const mode of [MODES.NORMAL, MODES.FORGIVE_CHECKLIST, MODES.SUBMISSION]) {
+        const result = await validateCategory(doc, { mode })
+        expect(result).toHaveLength(1)
+        expect(result).toContainError('MISSING_DOC_CATEGORY', ValidationWarning)
+        expect(result[0].message).toBe('The draft gives its status on a Category: line; Internet-Drafts use an Intended status: line.')
+      }
     })
-    test('invalid category', async () => {
-      const doc = baseTXTDoc
-      doc.data.header.intendedStatus = 'xyz123'
-      doc.data.slug = 'draft-beep-boop'
-      await expect(validateCategory(doc)).resolves.toContainError('INVALID_DOC_CATEGORY', ValidationWarning)
-      await expect(validateCategory(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('INVALID_DOC_CATEGORY', ValidationWarning)
-      await expect(validateCategory(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('INVALID_DOC_CATEGORY', ValidationWarning)
+    test('invalid intended status on a draft', async () => {
+      await allModes(txtDoc({ intendedStatus: 'xyz123' }, 'draft'), 'INVALID_DOC_CATEGORY')
+    })
+    test('valid category on an RFC', async () => {
+      await expect(validateCategory(txtDoc({ category: 'Standards Track' }, 'rfc'))).resolves.toHaveLength(0)
+    })
+    test('missing category on an RFC', async () => {
+      const doc = txtDoc({}, 'rfc')
+      await allModes(doc, 'MISSING_DOC_CATEGORY')
+      const [finding] = await validateCategory(doc)
+      expect(finding.message).toContain('Category:')
+    })
+    test('invalid category on an RFC', async () => {
+      await allModes(txtDoc({ category: 'xyz123' }, 'rfc'), 'INVALID_DOC_CATEGORY')
     })
   })
 })
