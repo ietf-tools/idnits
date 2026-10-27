@@ -1349,8 +1349,8 @@ describe('Parsing references with categorization', () => {
 
     expect(result.data.extractedElements.referenceSectionRfc).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ value: '5234', subsection: null }),
-        expect.objectContaining({ value: '8446', subsection: null })
+        expect.objectContaining({ value: '5234', subsection: 'unclassified_references' }),
+        expect.objectContaining({ value: '8446', subsection: 'unclassified_references' })
       ])
     )
   })
@@ -1444,8 +1444,34 @@ describe('Parsing references with categorization', () => {
 
     expect(result.data.extractedElements.referenceSectionRfc).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ value: '9110', subsection: null }),
-        expect.objectContaining({ value: '9205', subsection: null })
+        expect.objectContaining({ value: '9110', subsection: 'unclassified_references' }),
+        expect.objectContaining({ value: '9205', subsection: 'unclassified_references' })
+      ])
+    )
+  })
+
+  test('Finds linked drafts in a References section without subsections, and under a repeated subsection heading', async () => {
+    const txt = `
+      ${metaTXTBlock}
+      ${tableOfContentsTXTBlock}
+      ${abstractWithReferencesTXTBlock}
+      ${introductionTXTBlock}
+      ${securityConsiderationsTXTBlock}
+      7. References
+      [FOO] Doe, J., "Foo", <https://datatracker.ietf.org/doc/html/draft-doe-foo-01>.
+      7.1. Normative References
+      [BAR] Doe, J., "Bar", <https://datatracker.ietf.org/doc/html/draft-doe-bar-02>.
+      7.1. Normative References
+      [BAZ] Doe, J., "Baz", <https://datatracker.ietf.org/doc/html/draft-doe-baz-03>.
+    `
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.extractedElements.draftStatusReferences).toEqual(
+      expect.arrayContaining([
+        { value: 'draft-doe-foo-01', subsection: 'unclassified_references' },
+        { value: 'draft-doe-bar-02', subsection: 'normative_references' },
+        { value: 'draft-doe-baz-03', subsection: 'normative_references' }
       ])
     )
   })
