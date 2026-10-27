@@ -56,6 +56,16 @@ export const mockRestHandlers = [
   http.get('https://www.rfc-editor.org/rfc/rfc5678.json', () => {
     return HttpResponse.json({ obsoleted_by: [] })
   }),
+  // -> Status rfc-editor.org gives RFCs 1 to 1128, used here for RFCs of a status idnits doesn't know
+  http.get('https://www.rfc-editor.org/rfc/rfc7322.json', () => {
+    return HttpResponse.json({ status: 'UNKNOWN' })
+  }),
+  http.get('https://www.rfc-editor.org/rfc/rfc4506.json', () => {
+    return HttpResponse.json({ status: 'UNKNOWN' })
+  }),
+  http.get('https://www.rfc-editor.org/rfc/rfc8646.json', () => {
+    return HttpResponse.json({ status: 'NOT ISSUED', obsoleted_by: [] })
+  }),
   http.get('https://www.rfc-editor.org/rfc/rfc7655.json', () => {
     return HttpResponse.json({ status: 'Proposed Standard' })
   }),
@@ -254,9 +264,8 @@ export const mockRestHandlers = [
   // -> Documents the services don't have. Any other request is an error (onUnhandledRequest), so
   //    the tests never reach the network
   ...[
-    'https://www.rfc-editor.org/rfc/rfc4506.json',
-    'https://www.rfc-editor.org/rfc/rfc7322.json',
     'https://www.rfc-editor.org/rfc/rfc8446.json',
+    'https://www.rfc-editor.org/rfc/rfc9999.json',
     'https://datatracker.ietf.org/doc/draft-ietf-quic-http/doc.json'
   ].map(url => http.get(url, () => new HttpResponse(null, { status: 404 })))
 ]
@@ -717,9 +726,9 @@ describe('validateDownrefs', () => {
     test('parsed single nested and flat references sections', async () => {
       const entry = '<reference anchor="RFC7322"><front/><seriesInfo name="RFC" value="7322"/></reference>'
       const expected = [
-        new ValidationError(
+        new ValidationWarning(
           'POSSIBLE_DOWNREF',
-          'RFC 7322 status can\'t be fetched. Reference is possible downref',
+          'RFC 7322 has the status "UNKNOWN" on rfc-editor.org, so it may be a downref.',
           { ref: 'https://www.rfc-editor.org/info/bcp97' }
         )
       ]
@@ -733,9 +742,9 @@ describe('validateDownrefs', () => {
     </references>`)
 
       await expect(validateDownrefs(doc, { mode: MODES.NORMAL })).resolves.toEqual([
-        new ValidationError(
+        new ValidationWarning(
           'POSSIBLE_DOWNREF',
-          'RFC 7322 status can\'t be fetched. Reference is possible downref',
+          'RFC 7322 has the status "UNKNOWN" on rfc-editor.org, so it may be a downref.',
           { ref: 'https://www.rfc-editor.org/info/bcp97' }
         )
       ])
@@ -1294,7 +1303,7 @@ describe('validateNormativeReferences', () => {
 `, 'draft-dnoveck-nfsv4-rfc5662bis-08.txt')
 
       await expect(validateDownrefs(doc, { mode: MODES.NORMAL })).resolves.toEqual([
-        new ValidationError('POSSIBLE_DOWNREF', 'RFC 4506 status can\'t be fetched. Reference is possible downref', {
+        new ValidationWarning('POSSIBLE_DOWNREF', 'RFC 4506 has the status "UNKNOWN" on rfc-editor.org, so it may be a downref.', {
           ref: 'https://www.rfc-editor.org/info/bcp97',
           lines: locate(doc, '   [3]', '[3]')
         })
@@ -2326,5 +2335,59 @@ describe('Remote lookups are shared by the checks of a run', () => {
     await runAll(doc)
     expect(counts['/doc/draft-ietf-counted/doc.json']).toBe(1)
     expect(counts['/rfc/rfc8888.json']).toBe(1)
+  })
+})
+
+describe('Possible downrefs depend on the status of the citing document', () => {
+  const parseCategory = async (category, normative, informative = '') => {
+    const entry = n => `<reference anchor="RFC${n}"><front/><seriesInfo name="RFC" value="${n}"/></reference>`
+    const { doc } = await parse(`<rfc version="3"${category ? ` category="${category}"` : ''} docName="draft-test-references-00"><back>
+      <references><name>Normative References</name>${normative.map(entry).join('')}</references>
+      <references><name>Informative References</name>${informative ? entry(informative) : ''}</references>
+    </back></rfc>`, 'draft-test-references-00.xml')
+    return doc
+  }
+  const names = result => result.map(f => f.name)
+
+  test.each(['info', 'exp', 'historic', undefined])('none for a document of category %s', async (category) => {
+    const doc = await parseCategory(category, ['7322', '1094', '9999'])
+    expect(names(await validateDownrefs(doc, { mode: MODES.NORMAL }))).toEqual([])
+  })
+
+  test.each(['std', 'bcp'])('a Warning in normal and forgive-checklist, nothing in submission, for a %s document citing an RFC of status UNKNOWN', async (category) => {
+    const doc = await parseCategory(category, ['7322'])
+    const expected = [new ValidationWarning('POSSIBLE_DOWNREF', 'RFC 7322 has the status "UNKNOWN" on rfc-editor.org, so it may be a downref.', { ref: 'https://www.rfc-editor.org/info/bcp97' })]
+    await expect(validateDownrefs(doc, { mode: MODES.NORMAL })).resolves.toEqual(expected)
+    await expect(validateDownrefs(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toEqual(expected)
+    await expect(validateDownrefs(doc, { mode: MODES.SUBMISSION })).resolves.toEqual([])
+  })
+
+  test('not for an RFC whose status could not be fetched (UNDEFINED_STATUS reports it)', async () => {
+    const doc = await parseCategory('std', ['9999'])
+    expect(names(await validateDownrefs(doc, { mode: MODES.NORMAL }))).toEqual([])
+    expect(names(await validateNormativeReferences(doc, { mode: MODES.NORMAL }))).toEqual(['UNDEFINED_STATUS'])
+  })
+})
+
+describe('References to RFC numbers that were never issued', () => {
+  const finding = (Type) => new Type('REFERENCE_NOT_ISSUED', 'RFC 8646 was never issued: rfc-editor.org lists RFC 8646 as "NOT ISSUED".', { ref: 'https://www.rfc-editor.org/info/rfc8646' })
+  const parseRefs = async (section) => {
+    const { doc } = await parse(`<rfc version="3" category="std" docName="draft-test-references-00"><back>
+      <references><name>${section}</name><reference anchor="RFC8646"><front/><seriesInfo name="RFC" value="8646"/></reference></references>
+    </back></rfc>`, 'draft-test-references-00.xml')
+    return doc
+  }
+
+  test('are an Error in normal mode and a Warning in forgive-checklist, instead of a possible downref', async () => {
+    const doc = await parseRefs('Normative References')
+    await expect(validateNormativeReferences(doc, { mode: MODES.NORMAL })).resolves.toEqual([finding(ValidationError)])
+    await expect(validateNormativeReferences(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toEqual([finding(ValidationWarning)])
+    await expect(validateNormativeReferences(doc, { mode: MODES.SUBMISSION })).resolves.toEqual([])
+    await expect(validateDownrefs(doc, { mode: MODES.NORMAL })).resolves.toEqual([])
+  })
+
+  test('are reported for informative and unclassified references too', async () => {
+    await expect(validateInformativeReferences(await parseRefs('Informative References'), { mode: MODES.NORMAL })).resolves.toEqual([finding(ValidationError)])
+    await expect(validateUnclassifiedReferences(await parseRefs('References'), { mode: MODES.NORMAL })).resolves.toEqual([finding(ValidationError)])
   })
 })
