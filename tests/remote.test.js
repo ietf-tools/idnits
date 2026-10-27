@@ -28,6 +28,9 @@ import {
   fetchRemoteDocInfoJson,
   fetchRemoteRfcInfo,
   getUserAgent,
+  isLookupName,
+  lookupRemoteDocInfoJson,
+  ownDocLookupName,
   remoteFetch
 } from '../lib/remote/common.mjs'
 import { checkReferencesInDownrefs } from '../lib/remote/downref.mjs'
@@ -184,6 +187,94 @@ describe('Remote lookups', () => {
     await expect(fetchRemoteDocInfo('draft-foo-bar-02')).resolves.toBeUndefined()
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('IDNITS_DATATRACKER_URL must be'))
     expect(requests).toHaveLength(0)
+  })
+})
+
+describe('Lookups of names taken from a document', () => {
+  // -> Values a document could hold where a draft name or RFC number is expected
+  const HOSTILE = [
+    '../../api/v1/person/person/',
+    'draft-foo-bar/../../api/v1/person/person',
+    'draft-foo-bar/..',
+    'x?y',
+    'draft-foo-bar?format=xml',
+    'draft-foo-bar#frag',
+    'a%zz',
+    'draft-foo-bar%2F..%2F..',
+    'draft-foo-bar%00',
+    'draft-foo-bar (work in progress)',
+    'draft-foo-bar\n',
+    ''
+  ]
+
+  test('tell draft and RFC names from anything else', () => {
+    for (const name of ['draft-foo-bar', 'draft-ietf-oauth-v2-1', 'draft-3gpp-collaboration', 'draft-odell-8+8', 'draft-ietf-pilc-2.5g3g', 'draft-ietf-oncrpc-rpcsec_gss', 'draft-a..b-c', 'rfc1', 'rfc9000', 'rfc99999']) {
+      expect(isLookupName(name), name).toBe(true)
+    }
+    for (const name of [...HOSTILE, 'draft', 'draft-numbers', 'draft-foo--bar', 'draft-foo-bar-', '-draft-foo-bar', 'draft-Foo-bar', 'draft-.-bar', 'draft-..-bar', 'draft-foo-.bar', 'draft-foo-+bar', 'draft-foo-_bar', '.', '..', 'rfc0', 'rfc0791', 'rfc123456', 'RFC9000', 'rfc', null, undefined, 9000]) {
+      expect(isLookupName(name), String(name)).toBe(false)
+    }
+  })
+
+  test('take the name of the document being checked without extension or revision', () => {
+    expect(ownDocLookupName('draft-foo-bar-02')).toBe('draft-foo-bar')
+    expect(ownDocLookupName('draft-foo-bar-02.txt')).toBe('draft-foo-bar')
+    expect(ownDocLookupName('draft-foo-bar-02.xml')).toBe('draft-foo-bar')
+    expect(ownDocLookupName('draft-foo-bar')).toBe('draft-foo-bar')
+    expect(ownDocLookupName('rfc9000')).toBe('rfc9000')
+  })
+
+  test('are not made for a value that is not a draft or RFC name', async () => {
+    setRemoteUrls({ datatracker: 'http://datatracker.svc:8000', rfcEditor: 'http://rfc-editor.svc' })
+    for (const value of [...HOSTILE, 'draft-numbers', 'draft-Foo-bar-02']) {
+      await expect(fetchRemoteDocInfo(value), value).resolves.toBeNull()
+      await expect(fetchRemoteDocInfo(`${value}-02`), value).resolves.toBeNull()
+      await expect(fetchRemoteDocInfoJson(value), value).resolves.toBeNull()
+      await expect(fetchRemoteRfcInfo(value), value).resolves.toBeNull()
+    }
+    for (const value of ['0', '0791', '123456', '1234/../../x', '1234?x', '1234#x', '1234%2F', ' 1234', 'RFC1234', '1e3', -1]) {
+      await expect(fetchRemoteRfcInfo(value), String(value)).resolves.toBeNull()
+      await expect(fetchRemoteDocInfo(`rfc${value}`), String(value)).resolves.toBeNull()
+    }
+    expect(requests).toEqual([])
+  })
+
+  test('request exactly the document named', async () => {
+    setRemoteUrls({ datatracker: 'http://datatracker.svc:8000', rfcEditor: 'http://rfc-editor.svc' })
+    await fetchRemoteDocInfo('draft-foo-bar-02.txt')
+    await fetchRemoteDocInfo('draft-foo-baz-02.xml')
+    await fetchRemoteDocInfo('rfc9000')
+    await fetchRemoteDocInfoJson('draft-foo-bar')
+    await lookupRemoteDocInfoJson('draft-singh-apex-psi-04')
+    await fetchRemoteRfcInfo(1234)
+    await fetchRemoteRfcInfo('9000')
+    expect(requests.map(r => r.url)).toEqual([
+      'http://datatracker.svc:8000/api/v1/doc/document/draft-foo-bar/',
+      'http://datatracker.svc:8000/api/v1/doc/document/draft-foo-baz/',
+      'http://datatracker.svc:8000/api/v1/doc/document/rfc9000/',
+      'http://datatracker.svc:8000/doc/draft-foo-bar/doc.json',
+      'http://datatracker.svc:8000/doc/draft-singh-apex-psi-04/doc.json',
+      'http://rfc-editor.svc/rfc/rfc1234.json',
+      'http://rfc-editor.svc/rfc/rfc9000.json'
+    ])
+  })
+
+  test('encode the name, so "+" is sent as itself and dots stay inside the name', async () => {
+    setRemoteUrls({ datatracker: 'http://datatracker.svc:8000' })
+    await fetchRemoteDocInfoJson('draft-odell-8+8')
+    await fetchRemoteDocInfoJson('draft-ietf-pilc-2.5g3g')
+    await fetchRemoteDocInfoJson('draft-a..b-c')
+    await fetchRemoteDocInfo('draft-a..b-c-02')
+    // -> A bare "." or ".." path segment would leave the path (encodeURIComponent keeps dots), but
+    //    a name always starts with draft- or rfc, so no segment is ever one
+    await fetchRemoteDocInfoJson('..')
+    await fetchRemoteDocInfo('..')
+    expect(requests.map(r => r.url)).toEqual([
+      'http://datatracker.svc:8000/doc/draft-odell-8%2B8/doc.json',
+      'http://datatracker.svc:8000/doc/draft-ietf-pilc-2.5g3g/doc.json',
+      'http://datatracker.svc:8000/doc/draft-a..b-c/doc.json',
+      'http://datatracker.svc:8000/api/v1/doc/document/draft-a..b-c/'
+    ])
   })
 })
 
