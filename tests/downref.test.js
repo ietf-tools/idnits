@@ -9,11 +9,15 @@ import { CANONICAL_TXT } from './generators/doc-txt.js'
 import { validateDownrefs, validateInformativeReferences, validateNormativeReferences, validateUnclassifiedReferences, validatePublishedDraftReferences, validateReferenceForStale } from '../lib/modules/downref.mjs'
 import { getAllValidations } from '../lib/index.mjs'
 import { setupServer } from 'msw/node'
-import { http, HttpResponse, passthrough } from 'msw'
+import { http, HttpResponse } from 'msw'
+import { readFileSync } from 'node:fs'
 
 expect.extend({
   toContainError
 })
+
+// -> Lists RFC 4187 (a downref in the tests below), not RFC 1234
+const DOWNREF_REGISTRY_HTML = readFileSync(new URL('./fixtures/downref-registry.html', import.meta.url), 'utf8')
 
 export const mockRestHandlers = [
   http.get('https://www.rfc-editor.org/rfc/rfc1094.json', () => {
@@ -243,18 +247,36 @@ export const mockRestHandlers = [
       ]
     })
   }),
+  // -> A trimmed copy of the registry, so the tests don't depend on the live one (#313)
   http.get('https://datatracker.ietf.org/doc/downref/', () => {
-    return passthrough()
+    return HttpResponse.text(DOWNREF_REGISTRY_HTML)
   }),
-  http.all('*', async ({ request }) => {
-    return new HttpResponse(null, { status: 404 })
-  })
+  // -> Documents the services don't have. Any other request is an error (onUnhandledRequest), so
+  //    the tests never reach the network
+  ...[
+    'https://www.rfc-editor.org/rfc/rfc4506.json',
+    'https://www.rfc-editor.org/rfc/rfc7322.json',
+    'https://www.rfc-editor.org/rfc/rfc8446.json',
+    'https://datatracker.ietf.org/doc/draft-ietf-quic-http/doc.json'
+  ].map(url => http.get(url, () => new HttpResponse(null, { status: 404 })))
 ]
 
 const server = setupServer(...mockRestHandlers)
 
-beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
-afterEach(() => server.resetHandlers())
+// -> A request no handler answers fails the test that made it, even when the check under test
+//    carries on after a failed lookup
+const unhandledRequests = []
+beforeAll(() => server.listen({
+  onUnhandledRequest: (request, print) => {
+    unhandledRequests.push(`${request.method} ${request.url}`)
+    print.error()
+  }
+}))
+afterEach(() => {
+  server.resetHandlers()
+  const unhandled = unhandledRequests.splice(0)
+  expect(unhandled, 'requests without a handler').toEqual([])
+})
 afterAll(() => server.close())
 
 /**
