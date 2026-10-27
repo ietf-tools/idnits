@@ -4257,6 +4257,23 @@ Author's Address
     expect(result.data.possibleIssues.unexpectedIndentation[0].name).toMatch(/Appendix/)
   })
 
+  test('Prose starting with Appendix, or ending a wrapped sentence with it, is not an indented heading', async () => {
+    const txt = `${metaTXTBlock}
+
+   Appendix A describes the encoding used here.
+
+   The registries this document creates are listed in
+   Appendix B.
+
+   Appendix B.1.  More
+`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.possibleIssues.unexpectedIndentation).toEqual([
+      expect.objectContaining({ name: 'Appendix', line: lineNumber(txt, 'Appendix B.1.  More') })
+    ])
+  })
+
   test('Indented Author’s Addresses (with editor) should trigger unexpected indentation', async () => {
     const txt = `${metaTXTBlock}
      Editor's Addresses`
