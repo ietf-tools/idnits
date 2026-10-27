@@ -23,13 +23,13 @@ expect.extend({
 
 export const mockRestHandlers = [
   http.get('https://www.rfc-editor.org/rfc/rfc1235.json', () => {
-    return HttpResponse.json({ obsoleted_by: ['3456'] })
+    return HttpResponse.json({ obsoleted_by: ['RFC3456'] })
   }),
   http.get('https://www.rfc-editor.org/rfc/rfc1264.json', () => {
-    return HttpResponse.json({ obsoleted_by: ['3456'] })
+    return HttpResponse.json({ obsoleted_by: ['RFC3456'] })
   }),
   http.get('https://www.rfc-editor.org/rfc/rfc1236.json', () => {
-    return HttpResponse.json({ updated_by: ['3456'] })
+    return HttpResponse.json({ updated_by: ['RFC3456'] })
   }),
   http.get('https://datatracker.ietf.org/api/v1/doc/document/draft-ietf-beep-boop/', () => {
     return HttpResponse.json({ rev: '00' })
@@ -298,7 +298,7 @@ describe('document should have valid date', () => {
       doc.data.content.abstract = abstractTXTBlock.split('\n')
 
       await expect(validateObsoleteUpdateRef(doc)).resolves.toContainError('OBSOLETES_OBSOLETED_RFC', ValidationWarning)
-      expect((await validateObsoleteUpdateRef(doc)).find(r => r.name === 'OBSOLETES_OBSOLETED_RFC').message).toMatch(/^The Obsoletes header line lists RFC .+ but /)
+      expect((await validateObsoleteUpdateRef(doc)).find(r => r.name === 'OBSOLETES_OBSOLETED_RFC').message).toBe('The Obsoletes header line lists RFC 1235 but it\'s already obsoleted by RFC 3456.')
       await expect(validateObsoleteUpdateRef(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('OBSOLETES_OBSOLETED_RFC', ValidationWarning)
       await expect(validateObsoleteUpdateRef(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
@@ -321,7 +321,7 @@ describe('document should have valid date', () => {
       doc.data.content.abstract = abstractTXTBlock.split('\n')
 
       await expect(validateObsoleteUpdateRef(doc)).resolves.toContainError('UPDATES_OBSOLETED_RFC', ValidationWarning)
-      expect((await validateObsoleteUpdateRef(doc)).find(r => r.name === 'UPDATES_OBSOLETED_RFC').message).toMatch(/^The Updates header line lists RFC .+ but /)
+      expect((await validateObsoleteUpdateRef(doc)).find(r => r.name === 'UPDATES_OBSOLETED_RFC').message).toBe('The Updates header line lists RFC 1264 but it\'s already obsoleted by RFC 3456.')
       await expect(validateObsoleteUpdateRef(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('UPDATES_OBSOLETED_RFC', ValidationWarning)
       await expect(validateObsoleteUpdateRef(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
@@ -701,6 +701,7 @@ describe('document should have valid obsoletes / updates references', () => {
       set(doc, 'data.rfc.front.abstract.t', 'This document obsoletes RFC 1235 and 1264.')
       const result = await validateObsoleteUpdateRef(doc)
       expect(result.filter(r => r.name === 'OBSOLETES_OBSOLETED_RFC')).toHaveLength(2)
+      expect(result.find(r => r.name === 'OBSOLETES_OBSOLETED_RFC').message).toBe('The <rfc> field states that it obsoletes RFC 1235 but it\'s already obsoleted by RFC 3456.')
       await expect(validateObsoleteUpdateRef(doc)).resolves.toEqual(result)
     })
     test('updates a non-existant RFC', async () => {
@@ -730,6 +731,7 @@ describe('document should have valid obsoletes / updates references', () => {
       })
       set(doc, 'data.rfc.front.abstract.t', 'This document updates RFC 1234 and 2345.')
       await expect(validateObsoleteUpdateRef(doc)).resolves.toContainError('UPDATES_UPDATED_RFC', ValidationWarning)
+      expect((await validateObsoleteUpdateRef(doc)).find(r => r.name === 'UPDATES_UPDATED_RFC').message).toContain('already updated by RFC 3456.')
       await expect(validateObsoleteUpdateRef(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('UPDATES_UPDATED_RFC', ValidationWarning)
       await expect(validateObsoleteUpdateRef(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
