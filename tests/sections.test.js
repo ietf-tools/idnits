@@ -1754,6 +1754,88 @@ Author's Address
       ])
     })
 
+    test('an unused draft entry is reported by its label, and one cited or named is not', async () => {
+      const doc = await parseTXT(`${CANONICAL_TXT}
+1.  Introduction
+
+   This builds on [I-D.ietf-foo-used], [I-D. ietf-foo-spaced] and [I-
+   D.ietf-foo-wrapped], and on draft-ietf-foo-
+   named.
+
+2.  Informative References
+
+   [I-D.ietf-foo-used]
+              Doe, J., "Used", Work in Progress, Internet-Draft,
+              draft-ietf-foo-used-01, 1 May 2026.
+
+   [I-D.ietf-foo-spaced]
+              Doe, J., "Spaced", Work in Progress, Internet-Draft,
+              draft-ietf-foo-spaced-01, 1 May 2026.
+
+   [I-D.ietf-foo-wrapped]
+              Doe, J., "Wrapped", Work in Progress, Internet-Draft,
+              draft-ietf-foo-wrapped-01, 1 May 2026.
+
+   [I-D.ietf-foo-named]
+              Doe, J., "Named", Work in Progress, Internet-Draft,
+              draft-ietf-foo-named-01, 1 May 2026.
+
+   [I-D.ietf-foo-unused]
+              Doe, J., "Unused", Work in Progress, Internet-Draft,
+              draft-ietf-foo-unused-01, 1 May 2026.
+
+   [draft-foo-other-02]
+              Doe, J., "Other", Work in Progress, Internet-Draft,
+              draft-foo-other-02, 1 May 2026.
+
+Author's Address
+`, '')
+      const result = (await validateReferencesInText(doc)).filter(finding => finding.name === 'REFERENCE_NOT_USED')
+      expect(result.map(finding => finding.message)).toEqual([
+        'The reference [I-D.ietf-foo-unused] is listed in the References section but is not mentioned in the document text.',
+        'The reference [draft-foo-other-02] is listed in the References section but is not mentioned in the document text.'
+      ])
+      expect(result.map(finding => finding.lines)).toEqual([[{ line: 46, pos: 4 }], [{ line: 50, pos: 4 }]])
+    })
+
+    test('an unused draft entry listed twice is reported once, at both entries; a draft named only in another entry is unused', async () => {
+      const doc = await parseTXT(`${CANONICAL_TXT}
+1.  Introduction
+
+   This builds on [I-D.ietf-foo-used].
+
+2.  References
+
+2.1.  Normative References
+
+   [I-D.ietf-foo-twice]
+              Doe, J., "Twice", Work in Progress, Internet-Draft,
+              draft-ietf-foo-twice-01, 1 May 2026.
+
+2.2.  Informative References
+
+   [I-D.ietf-foo-twice]
+              Doe, J., "Twice", Work in Progress, Internet-Draft,
+              draft-ietf-foo-twice-01, 1 May 2026.
+
+   [I-D.ietf-foo-used]
+              Doe, J., "Used", Work in Progress, Internet-Draft,
+              draft-ietf-foo-used-01, 1 May 2026. Replaces
+              draft-ietf-foo-other.
+
+   [I-D.ietf-foo-other]
+              Doe, J., "Other", Work in Progress, Internet-Draft,
+              draft-ietf-foo-other-01, 1 May 2026.
+
+Author's Address
+`, '')
+      const result = (await validateReferencesInText(doc)).filter(finding => finding.name === 'REFERENCE_NOT_USED')
+      expect(result.map(finding => [finding.message, finding.lines])).toEqual([
+        ['The reference [I-D.ietf-foo-twice] is listed in the References section but is not mentioned in the document text.', [{ line: 30, pos: 4 }, { line: 36, pos: 4 }]],
+        ['The reference [I-D.ietf-foo-other] is listed in the References section but is not mentioned in the document text.', [{ line: 45, pos: 4 }]]
+      ])
+    })
+
     test('an unused reference is located at its entry, not where another entry mentions it', async () => {
       const doc = await parseTXT(`${CANONICAL_TXT}
 1.  Introduction

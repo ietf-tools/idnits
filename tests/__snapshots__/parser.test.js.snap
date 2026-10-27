@@ -109,6 +109,8 @@ Abstract
           ],
         },
       },
+      "nonReferenceSectionDraftLabels": [],
+      "nonReferenceSectionDraftNames": [],
       "nonReferenceSectionDraftReferences": [],
       "nonReferenceSectionRfc": [
         "5678",
