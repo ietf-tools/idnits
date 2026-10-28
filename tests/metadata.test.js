@@ -951,6 +951,25 @@ describe('document should not obsolete or update RFCs of another stream without 
       })
     ])
   })
+  test('locates the Updates: line of an indented text header', async () => {
+    const draft = txtStreamDraft('draft-ietf-foo-bar-02', { obsoletes: '1111', updates: '2222' })
+    // Indent the header lines by two spaces; blank lines and the indented title stay as they are
+    const indentedLines = []
+    for (const line of draft.split('\n')) {
+      if (/^\S/.test(line)) {
+        indentedLines.push(`  ${line}`)
+      } else {
+        indentedLines.push(line)
+      }
+    }
+    const doc = await parseTxt(indentedLines.join('\n'), 'draft-ietf-foo-bar-02.txt')
+    expect(crossStream(await validateObsoleteUpdateRef(doc))).toEqual([
+      new ValidationWarning('CROSS_STREAM_OBSOLETES_UPDATES', 'This document (IETF stream) attempts to update RFC 2222, an RFC from another stream (Independent Submission). Specific rules may apply to this process, and you will need sign-off from both stream heads before this document can proceed.', {
+        ref: 'https://authors.ietf.org/en/rfcxml-vocabulary#updates',
+        lines: [{ line: 7, pos: 1 }]
+      })
+    ])
+  })
   test('takes the stream of a text RFC from its header', async () => {
     const doc = await parseTxt(txtStreamRfc('Independent Submission', '9991', { obsoletes: '1111', updates: '2222' }), 'rfc9991.txt')
     expect(crossStream(await validateObsoleteUpdateRef(doc, { mode: MODES.FORGIVE_CHECKLIST }))).toEqual([

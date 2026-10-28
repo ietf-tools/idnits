@@ -3782,6 +3782,43 @@ describe('Missing acceptable paragraph calling out 6 month validity', () => {
   })
 })
 
+describe('Parsing an indented header', () => {
+  test('draft header fields indented by two spaces are read', async () => {
+    // Indent the header lines; blank lines and the indented title stay as they are
+    const headerLines = []
+    for (const line of metaTXTBlock.split('\n')) {
+      if (/^\S/.test(line)) {
+        headerLines.push(`  ${line}`)
+      } else {
+        headerLines.push(line)
+      }
+    }
+    const header = headerLines.join('\n')
+    const result = await parse(`${header}\n${abstractTXTBlock}\n`, 'txt')
+    expect(result.docKind).toBe('draft')
+    expect(result.data.header.intendedStatus).toBe('Standards Track')
+    expect(result.data.header.obsoletes).toEqual(['5678', '1234', '2345', '3456'])
+    expect(result.data.header.date).toEqual({ day: 21, month: 'January', year: 2025 })
+  })
+  test('RFC header fields indented by one space are read', async () => {
+    const result = await parse(`
+ Internet Engineering Task Force (IETF)                        A. Author
+ Request for Comments: 9999                                      Example
+ Category: Informational                                    January 2026
+ ISSN: 2070-1721
+
+
+                              A Title
+
+${abstractTXTBlock}
+`, 'rfc9999.txt')
+    expect(result.docKind).toBe('rfc')
+    expect(result.data.header.rfcNumber).toBe('9999')
+    expect(result.data.header.category).toBe('Informational')
+    expect(result.data.header.issn).toBe('2070-1721')
+  })
+})
+
 describe('Parsing expires line', () => {
   test('Parsing expires line after a blank line in the header', async () => {
     // draft-urien-tls-im-trusted-exporter-00, with its trailing spaces and CRLF line ends
