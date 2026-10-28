@@ -1131,7 +1131,7 @@ describe('validateNormativeReferences', () => {
       expect(result).toEqual([
         new ValidationComment(
           'UNDEFINED_STATUS',
-          'RFC 4086 does not have a defined status or could not be fetched.',
+          'RFC 4086 has no status on rfc-editor.org.',
           { ref: 'https://www.rfc-editor.org/info/rfc4086' }
         )
       ])
@@ -1229,7 +1229,7 @@ describe('validateNormativeReferences', () => {
       expect(doc.data.extractedElements.locations.referenceSectionRfc['3339']).toHaveLength(2)
 
       await expect(validateNormativeReferences(doc, { mode: MODES.NORMAL })).resolves.toEqual([
-        new ValidationComment('UNDEFINED_STATUS', 'RFC 3339 does not have a defined status or could not be fetched.', {
+        new ValidationComment('UNDEFINED_STATUS', 'RFC 3339 has no status on rfc-editor.org.', {
           ref: 'https://www.rfc-editor.org/info/rfc3339',
           lines: locate(doc, '[RFC3339] Klyne', '[RFC3339]')
         })
@@ -1342,7 +1342,7 @@ Acknowledgements
       expect(doc.data.extractedElements.locations.referenceSectionRfc['8610']).toHaveLength(2)
 
       await expect(validateNormativeReferences(doc, { mode: MODES.NORMAL })).resolves.toEqual([
-        new ValidationComment('UNDEFINED_STATUS', 'RFC 8610 does not have a defined status or could not be fetched.', {
+        new ValidationComment('UNDEFINED_STATUS', 'RFC 8610 has no status on rfc-editor.org.', {
           ref: 'https://www.rfc-editor.org/info/rfc8610',
           lines: locate(doc, '[RFC8610]  Birkholz', '[RFC8610]')
         })
@@ -1374,7 +1374,7 @@ Acknowledgements
       expect(result).toEqual([
         new ValidationComment(
           'UNDEFINED_STATUS',
-          'RFC 4086 does not have a defined status or could not be fetched.',
+          'RFC 4086 has no status on rfc-editor.org.',
           { ref: 'https://www.rfc-editor.org/info/rfc4086' }
         )
       ])
@@ -1387,7 +1387,7 @@ Acknowledgements
       expect(result).toEqual([
         new ValidationComment(
           'UNDEFINED_STATUS',
-          'RFC 4086 does not have a defined status or could not be fetched.',
+          'RFC 4086 has no status on rfc-editor.org.',
           { ref: 'https://www.rfc-editor.org/info/rfc4086' }
         )
       ])
@@ -1414,7 +1414,7 @@ Acknowledgements
         ),
         new ValidationComment(
           'UNDEFINED_STATUS',
-          'RFC 4086 does not have a defined status or could not be fetched.',
+          'RFC 4086 has no status on rfc-editor.org.',
           { ref: 'https://www.rfc-editor.org/info/rfc4086' }
         )
       ])
@@ -1539,7 +1539,7 @@ describe('validateUnclassifiedReferences', () => {
       expect(result).toEqual([
         new ValidationComment(
           'UNDEFINED_STATUS',
-          'RFC 4086 does not have a defined status or could not be fetched',
+          'RFC 4086 has no status on rfc-editor.org.',
           { ref: 'https://www.rfc-editor.org/info/rfc4086' }
         )
       ])
@@ -1555,7 +1555,7 @@ describe('validateUnclassifiedReferences', () => {
       expect(result).toEqual([
         new ValidationComment(
           'UNDEFINED_STATUS',
-          'RFC 5678 does not have a defined status or could not be fetched',
+          'RFC 5678 has no status on rfc-editor.org.',
           { ref: 'https://www.rfc-editor.org/info/rfc5678' }
         )
       ])
@@ -1760,7 +1760,7 @@ describe('validateInformativeReferences', () => {
     expect(result).toEqual([
       new ValidationComment(
         'UNDEFINED_STATUS',
-        'The informative reference RFC 4086 does not have a defined status or could not be fetched.',
+        'The informative reference RFC 4086 has no status on rfc-editor.org.',
         { ref: 'https://www.rfc-editor.org/info/rfc4086' }
       )
     ])

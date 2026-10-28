@@ -4,6 +4,7 @@ import { delay, http, HttpResponse, passthrough } from 'msw'
 import { createServer } from 'node:http'
 import { readFile } from 'node:fs/promises'
 import { checkNits } from '../lib/index.mjs'
+import { ValidationComment } from '../lib/helpers/error.mjs'
 import { MODES } from '../lib/config/modes.mjs'
 import {
   DEFAULT_DATATRACKER_URL,
@@ -318,7 +319,7 @@ describe('Remote lookups that time out', () => {
     }
   })
 
-  test('let a submission check complete as when Datatracker does not know the document, without saying it does not', async () => {
+  test('let a submission check complete as when Datatracker does not know the document, saying which checks did not run', async () => {
     const raw = await readFile(new URL('./fixtures/draft-ietf-ippm-ioam-ipv6-options-10.xml', import.meta.url))
     const run = () => checkNits(raw, 'draft-ietf-ippm-ioam-ipv6-options-10.xml', { mode: MODES.SUBMISSION })
     const unknown = await run()
@@ -332,7 +333,11 @@ describe('Remote lookups that time out', () => {
     setRemoteTimeout(0.05)
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const timedOut = await run()
-    expect(timedOut).toEqual(unknown.filter(f => !shouldBe00.includes(f)))
+    const unavailable = timedOut.filter(f => f.name === 'DOCUMENT_LOOKUP_UNAVAILABLE')
+    expect(unavailable).toEqual([
+      new ValidationComment('DOCUMENT_LOOKUP_UNAVAILABLE', "Datatracker couldn't be asked about draft-ietf-ippm-ioam-ipv6-options (Request to datatracker.ietf.org timed out after 0.05 s), so these checks didn't run: revision, submission type.")
+    ])
+    expect(timedOut.filter(f => !unavailable.includes(f))).toEqual(unknown.filter(f => !shouldBe00.includes(f)))
     expect(new Set(warn.mock.calls.map(c => c[0]))).toEqual(new Set(['Request to datatracker.ietf.org timed out after 0.05 s']))
     expect(warn.mock.calls.length).toBe(new Set(requests.slice(requests.length / 2).map(r => r.url)).size)
   })
