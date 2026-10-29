@@ -114,6 +114,7 @@ A check that fails on a document it can't handle doesn't stop the others: it is 
 | `UNEXPECTED_DOC_VERSION` | — | — | Warning | both | (drafts, lookup, offline) Revision older than Datatracker's, leaving a gap, or not `-00` for a new draft |
 | `DOCUMENT_LOOKUP_UNAVAILABLE` | Comment | Comment | Comment | both | (lookup, offline) Once per document: the Datatracker document lookup failed; names the reason and the checks that didn't run |
 | `LOOKUPS_SKIPPED_OFFLINE` | Comment | Comment | Comment | both | Only with `--offline`, once per document: names the checks that would have looked something up for this document in this mode and didn't run |
+| `LOOKUP_LIMIT_REACHED` | Comment | Comment | Comment | both | (lookup, offline) Once per document: the document needed more than 1,000 lookups of other documents; names those that weren't looked up |
 
 ### Encoding, characters and layout
 
@@ -374,6 +375,8 @@ With `--offline`, nothing is reported about what a skipped lookup would have tol
 The lookups about cited documents are only made in `normal` and `forgive-checklist`, as `submission` doesn't run those checks.
 
 A lookup that fails, or times out, prints a warning and the check goes on without its result. Nothing is reported about the document that the lookup couldn't establish; instead, one comment per document says what couldn't be checked and why: `REFERENCE_STATUS_UNAVAILABLE` lists the RFCs (cited, or in Obsoletes and Updates) whose rfc-editor.org lookup failed and the cited drafts whose Datatracker lookup failed, and `DOCUMENT_LOOKUP_UNAVAILABLE` (in every mode, including `submission`) names the documents whose Datatracker lookup failed and the checks that didn't run (revision, stream, submission type, cross-stream, ipr). A lookup that `--offline` skips isn't a failure, so `--offline` never gives `DOCUMENT_LOOKUP_UNAVAILABLE`, `REFERENCE_STATUS_UNAVAILABLE` or `DOWNREF_REGISTRY_UNAVAILABLE`. `UNDEFINED_STATE` is given only for a draft Datatracker doesn't have, or gives no state. A cited draft name ending in two digits is looked up without them, as a revision: Datatracker draft revisions have two digits. A Downref Registry that can't be fetched when it is needed (an error or a timeout) doesn't stop the check either: each downref is reported as a `DOWNREF_TO_LOWER_STATUS` Warning (not an Error, as it may be registered), without telling whether it is in the registry, and one `DOWNREF_REGISTRY_UNAVAILABLE` comment per document names the reason.
+
+A document makes at most 1,000 lookups of other documents (the RFCs and drafts it cites, obsoletes or updates; its own lookups aren't counted), at most 3 at a time. The documents of the corpus need far fewer. Beyond that, the other documents aren't looked up: as for a failed lookup, nothing is reported about them, and one `LOOKUP_LIMIT_REACHED` comment per document names them.
 
 The services used and the time allowed for each lookup can be changed: see [Remote lookups](../README.md#remote-lookups) in the README.
 
