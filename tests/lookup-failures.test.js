@@ -7,7 +7,7 @@ import { ValidationComment } from '../lib/helpers/error.mjs'
 import { parse } from '../lib/parsers/xml.mjs'
 import { parse as parseTxt } from '../lib/parsers/txt.mjs'
 import { clearRemoteCache } from '../lib/remote/common.mjs'
-import { validateDownrefs, validateInformativeReferences, validateNormativeReferences, validateUnclassifiedReferences } from '../lib/modules/downref.mjs'
+import { validateDownrefs, validateInformativeReferences, validateNormativeReferences, validatePublishedDraftReferences, validateReferenceForStale, validateUnclassifiedReferences } from '../lib/modules/downref.mjs'
 import { validateObsoleteUpdateRef, validateVersion } from '../lib/modules/metadata.mjs'
 import { validateIprAttribute, validateSubmissionType } from '../lib/modules/xml.mjs'
 import { validateStream } from '../lib/modules/txt.mjs'
@@ -25,6 +25,7 @@ const server = setupServer(
   http.get('https://www.rfc-editor.org/rfc/rfc6066.json', () => HttpResponse.error()),
   http.get('https://datatracker.ietf.org/api/v1/doc/document/draft-ietf-foo-failing/', down),
   http.get('https://datatracker.ietf.org/api/v1/doc/document/draft-ietf-foo-known/', () => HttpResponse.json({ name: 'draft-ietf-foo-known', rev: '04', stream: '/api/v1/name/streamname/ietf/' })),
+  http.get(/^https:\/\/datatracker\.ietf\.org\/doc\/draft-ietf-down-[a-z]+\/doc\.json$/, down),
   http.all('*', () => new HttpResponse(null, { status: 404 }))
 )
 
@@ -256,6 +257,62 @@ describe('With --offline', () => {
     const result = await checkReferences(doc, { mode: MODES.NORMAL, offline: true })
     expect(messages(withCode(result, 'REFERENCE_STATUS_UNAVAILABLE'))).toEqual([
       "The status of RFC 8446 couldn't be fetched from rfc-editor.org (Request to www.rfc-editor.org failed: HTTP 503), so the reference to it wasn't checked for downrefs or obsolete RFCs."
+    ])
+  })
+})
+
+describe('Cited drafts whose Datatracker lookup fails', () => {
+  const parseDraftRefs = async ({ normative = [], informative = [], rfcs = [] } = {}) => {
+    const entry = n => `<reference anchor="I-D.${n}"><front/><seriesInfo name="Internet-Draft" value="${n}"/></reference>`
+    const rfc = n => `<reference anchor="RFC${n}"><front/><seriesInfo name="RFC" value="${n}"/></reference>`
+    const normativeEntries = normative.map(entry).join('') + rfcs.map(rfc).join('')
+    const informativeEntries = informative.map(entry).join('')
+    const { doc } = await parse(`<rfc version="3" category="std" docName="draft-test-references-00"><back>
+      <references><name>Normative References</name>${normativeEntries}</references>
+      <references><name>Informative References</name>${informativeEntries}</references>
+    </back></rfc>`, 'draft-test-references-00.xml')
+    return doc
+  }
+  const checkDrafts = async (doc, opts) => {
+    const [references, states, stale] = await Promise.all([
+      checkReferences(doc, opts),
+      validatePublishedDraftReferences(doc, opts),
+      validateReferenceForStale(doc, opts)
+    ])
+    // -> The report of failed lookups comes once, after all the checks
+    const referenceFindings = references.filter(f => f.name !== 'REFERENCE_STATUS_UNAVAILABLE')
+    const failures = await validateLookupFailures(doc, opts)
+    return [...referenceFindings, ...states, ...stale, ...failures]
+  }
+
+  test('get no UNDEFINED_STATE, and are listed once in REFERENCE_STATUS_UNAVAILABLE', async () => {
+    quiet()
+    const doc = await parseDraftRefs({ normative: ['draft-ietf-down-b-03'], informative: ['draft-ietf-down-a-01', 'draft-ietf-down-b-03'] })
+    const result = await checkDrafts(doc, { mode: MODES.NORMAL })
+    expect(names(result)).toEqual(['NORMATIVE_REFERENCE_TO_DRAFT', 'REFERENCE_STATUS_UNAVAILABLE'])
+    expect(result[1].message).toBe("The state of the cited drafts draft-ietf-down-a and draft-ietf-down-b couldn't be fetched from Datatracker (Request to datatracker.ietf.org failed: HTTP 503), so the references to them weren't checked for newer revisions, replacement, publication as an RFC or downrefs.")
+  })
+
+  test('share the comment with the RFCs whose lookup failed', async () => {
+    quiet()
+    const doc = await parseDraftRefs({ informative: ['draft-ietf-down-a-01'], rfcs: ['8174'] })
+    const result = await checkDrafts(doc, { mode: MODES.FORGIVE_CHECKLIST })
+    expect(result).toEqual([
+      new ValidationComment('REFERENCE_STATUS_UNAVAILABLE', "The status of RFC 8174 couldn't be fetched from rfc-editor.org (Request to www.rfc-editor.org failed: HTTP 503), so the reference to it wasn't checked for downrefs or obsolete RFCs. The state of the cited draft draft-ietf-down-a couldn't be fetched from Datatracker (Request to datatracker.ietf.org failed: HTTP 503), so the reference to it wasn't checked for newer revisions, replacement or publication as an RFC.")
+    ])
+  })
+
+  test('are not reported in submission mode, where the draft checks don\'t run', async () => {
+    quiet()
+    const doc = await parseDraftRefs({ informative: ['draft-ietf-down-a-01'] })
+    await expect(checkDrafts(doc, { mode: MODES.SUBMISSION })).resolves.toEqual([])
+  })
+
+  test('a draft Datatracker doesn\'t have still gets UNDEFINED_STATE', async () => {
+    const doc = await parseDraftRefs({ informative: ['draft-ietf-absent-01'] })
+    const result = await checkDrafts(doc, { mode: MODES.NORMAL })
+    expect(result.map(f => [f.name, f.message])).toEqual([
+      ['UNDEFINED_STATE', "The draft reference draft-ietf-absent wasn't found on Datatracker, or has no state there."]
     ])
   })
 })

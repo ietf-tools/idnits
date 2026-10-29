@@ -319,10 +319,10 @@ For text documents, `SUBMISSION_TYPE_UNEXPECTED` compares the stream implied by 
 | `OBSOLETE_REFERENCE` | Error | Warning | — | both | (lookup) Normative or unclassified |
 | `OBSOLETE_INFORMATIVE_REFERENCE` | Warning | Comment | — | both | (lookup) |
 | `UNDEFINED_STATUS` | Comment | Comment | — | both | (lookup) Cited RFC not found on rfc-editor.org, or given no status |
-| `REFERENCE_STATUS_UNAVAILABLE` | Comment | Comment | — | both | (lookup) Once per document: the cited, obsoleted and updated RFCs whose rfc-editor.org lookup failed, and why |
+| `REFERENCE_STATUS_UNAVAILABLE` | Comment | Comment | — | both | (lookup) Once per document: the cited, obsoleted and updated RFCs whose rfc-editor.org lookup failed, and the cited drafts whose Datatracker lookup failed, and why |
 | `UNKNOWN_STATUS` | Comment | Comment | — | both | (lookup) |
 | `REFERENCE_NOT_ISSUED` | Error | Warning | — | both | (lookup) Cited RFC number never issued |
-| `UNDEFINED_STATE` | Warning | Warning | — | both | (lookup) State of a cited draft can't be fetched; not in published RFCs |
+| `UNDEFINED_STATE` | Warning | Warning | — | both | (lookup) Cited draft not found on Datatracker, or given no state; not in published RFCs |
 | `INVALID_STATE_FOR_DRAFT` | Warning | Warning | — | both | (lookup) Cited draft is now an RFC; not in published RFCs |
 | `OUTDATED_DRAFT` | Warning | Warning | — | both | (lookup) |
 
@@ -352,7 +352,7 @@ Some checks look up the document, and the documents it cites, on Datatracker and
 
 The lookups about cited documents are only made in `normal` and `forgive-checklist`, as `submission` doesn't run those checks.
 
-A lookup that fails, or times out, prints a warning and the check goes on without its result. Nothing is reported about the document that the lookup couldn't establish; instead, one comment per document says what couldn't be checked and why: `REFERENCE_STATUS_UNAVAILABLE` lists the RFCs (cited, or in Obsoletes and Updates) whose rfc-editor.org lookup failed, and `DOCUMENT_LOOKUP_UNAVAILABLE` (in every mode, including `submission`) names the documents whose Datatracker lookup failed and the checks that didn't run (revision, stream, submission type, cross-stream, ipr). A lookup that `--offline` skips isn't a failure, so `--offline` never gives `DOCUMENT_LOOKUP_UNAVAILABLE`; the cited RFCs are still looked up, so it can still give `REFERENCE_STATUS_UNAVAILABLE`. A draft whose state can't be fetched is reported as `UNDEFINED_STATE`. A Downref Registry that can't be fetched when it is needed (an error or a timeout) doesn't stop the check either: each downref is reported as `DOWNREF_TO_LOWER_STATUS`, without telling whether it is in the registry, and one `DOWNREF_REGISTRY_UNAVAILABLE` comment per document names the reason.
+A lookup that fails, or times out, prints a warning and the check goes on without its result. Nothing is reported about the document that the lookup couldn't establish; instead, one comment per document says what couldn't be checked and why: `REFERENCE_STATUS_UNAVAILABLE` lists the RFCs (cited, or in Obsoletes and Updates) whose rfc-editor.org lookup failed and the cited drafts whose Datatracker lookup failed, and `DOCUMENT_LOOKUP_UNAVAILABLE` (in every mode, including `submission`) names the documents whose Datatracker lookup failed and the checks that didn't run (revision, stream, submission type, cross-stream, ipr). A lookup that `--offline` skips isn't a failure, so `--offline` never gives `DOCUMENT_LOOKUP_UNAVAILABLE`; the cited RFCs and drafts are still looked up, so it can still give `REFERENCE_STATUS_UNAVAILABLE`. `UNDEFINED_STATE` is given only for a draft Datatracker doesn't have, or gives no state. A cited draft name ending in two digits is looked up without them, as a revision: Datatracker draft revisions have two digits. A Downref Registry that can't be fetched when it is needed (an error or a timeout) doesn't stop the check either: each downref is reported as `DOWNREF_TO_LOWER_STATUS`, without telling whether it is in the registry, and one `DOWNREF_REGISTRY_UNAVAILABLE` comment per document names the reason.
 
 The services used and the time allowed for each lookup can be changed: see [Remote lookups](../README.md#remote-lookups) in the README.
 

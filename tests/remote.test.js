@@ -142,7 +142,7 @@ describe('Remote lookups', () => {
     vi.stubEnv('IDNITS_DATATRACKER_URL', 'http://datatracker.svc:8000/')
     setRemoteUrls({ rfcEditor: 'http://rfc-editor.svc' })
     await expect(fetchRemoteDocInfo('draft-foo-bar-03')).resolves.toEqual({ name: 'draft-foo-bar', rev: '03' })
-    await expect(fetchRemoteDocInfoJson('draft-foo-bar-03')).resolves.toEqual({ name: 'draft-foo-bar', state: 'Active' })
+    await expect(fetchRemoteDocInfoJson('draft-foo-bar')).resolves.toEqual({ name: 'draft-foo-bar', state: 'Active' })
     await expect(fetchRemoteRfcInfo(1234)).resolves.toEqual({ status: 'INFORMATIONAL' })
     await expect(checkReferencesInDownrefs(['RFC 1234', 'RFC 2345'])).resolves.toEqual(['RFC 1234'])
     expect(requests.map(r => r.url)).toEqual([
@@ -293,7 +293,7 @@ describe('Remote lookups that time out', () => {
     stall()
     vi.stubEnv('IDNITS_REMOTE_TIMEOUT', '0.05')
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    await expect(fetchRemoteDocInfoJson('draft-foo-bar-02')).resolves.toBeUndefined()
+    await expect(fetchRemoteDocInfoJson('draft-foo-bar')).resolves.toBeUndefined()
     await expect(fetchRemoteRfcInfo(1234)).resolves.toBeUndefined()
     expect(warn.mock.calls).toEqual([
       ['Request to datatracker.ietf.org timed out after 0.05 s'],
@@ -365,7 +365,7 @@ describe('Remote lookups answered with an HTTP error', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     await expect(fetchRemoteRfcInfo(8888)).resolves.toBeUndefined()
     await expect(fetchRemoteDocInfo('draft-foo-baz-01')).resolves.toBeUndefined()
-    await expect(fetchRemoteDocInfoJson('draft-foo-baz-01')).resolves.toBeUndefined()
+    await expect(fetchRemoteDocInfoJson('draft-foo-baz')).resolves.toBeUndefined()
     expect(warn.mock.calls).toEqual([
       ['Request to www.rfc-editor.org failed: HTTP 500'],
       ['Request to datatracker.ietf.org failed: HTTP 502'],

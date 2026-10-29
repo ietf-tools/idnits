@@ -19,6 +19,8 @@ expect.extend({
 // -> Lists RFC 4187 (a downref in the tests below), not RFC 1234
 const DOWNREF_REGISTRY_HTML = readFileSync(new URL('./fixtures/downref-registry.html', import.meta.url), 'utf8')
 
+const psiRequests = []
+
 export const mockRestHandlers = [
   http.get('https://www.rfc-editor.org/rfc/rfc1094.json', () => {
     return HttpResponse.json({ status: 'INFORMATIONAL' })
@@ -256,6 +258,22 @@ export const mockRestHandlers = [
         { rev: '03', name: 'draft-ietf-ianabis-rfc8126bis', published: '2026-07-06T21:46:23+00:00' }
       ]
     })
+  }),
+  // -> A draft whose name ends in what looks like a revision; Datatracker has none without it
+  http.get('https://datatracker.ietf.org/doc/draft-test-psi-04/doc.json', () => {
+    psiRequests.push('draft-test-psi-04')
+    return HttpResponse.json({
+      name: 'draft-test-psi-04',
+      state: 'Active',
+      rev_history: [
+        { name: 'draft-test-psi-04', rev: '00' },
+        { name: 'draft-test-psi-04', rev: '01' }
+      ]
+    })
+  }),
+  http.get('https://datatracker.ietf.org/doc/draft-test-psi/doc.json', () => {
+    psiRequests.push('draft-test-psi')
+    return new HttpResponse(null, { status: 404 })
   }),
   // -> A trimmed copy of the registry, so the tests don't depend on the live one (#313)
   http.get('https://datatracker.ietf.org/doc/downref/', () => {
@@ -1586,7 +1604,7 @@ describe('Validating published as a RFC draft references', () => {
       expect(result).toEqual([
         new ValidationWarning(
           'UNDEFINED_STATE',
-          'The draft reference draft-ietf-undefined-state does not have a defined state or could not be fetched.',
+          'The draft reference draft-ietf-undefined-state wasn\'t found on Datatracker, or has no state there.',
           { ref: 'https://datatracker.ietf.org/doc/draft-ietf-undefined-state' }
         )
       ])
@@ -1603,7 +1621,7 @@ describe('Validating published as a RFC draft references', () => {
       expect(result).toEqual([
         new ValidationWarning(
           'UNDEFINED_STATE',
-          'The draft reference draft-ietf-rtgwg-segment-routing-ti-lfa does not have a defined state or could not be fetched.',
+          'The draft reference draft-ietf-rtgwg-segment-routing-ti-lfa wasn\'t found on Datatracker, or has no state there.',
           { ref: 'https://datatracker.ietf.org/doc/draft-ietf-rtgwg-segment-routing-ti-lfa' }
         )
       ])
@@ -1658,7 +1676,7 @@ describe('Validating published as a RFC draft references', () => {
       expect(result).toEqual([
         new ValidationWarning(
           'UNDEFINED_STATE',
-          'The draft reference draft-ietf-undefined-state does not have a defined state or could not be fetched.',
+          'The draft reference draft-ietf-undefined-state wasn\'t found on Datatracker, or has no state there.',
           { ref: 'https://datatracker.ietf.org/doc/draft-ietf-undefined-state' }
         )
       ])
@@ -1675,7 +1693,7 @@ describe('Validating published as a RFC draft references', () => {
       expect(result).toEqual([
         new ValidationWarning(
           'UNDEFINED_STATE',
-          'The draft reference draft-ietf-rtgwg-segment-routing-ti-lfa does not have a defined state or could not be fetched.',
+          'The draft reference draft-ietf-rtgwg-segment-routing-ti-lfa wasn\'t found on Datatracker, or has no state there.',
           { ref: 'https://datatracker.ietf.org/doc/draft-ietf-rtgwg-segment-routing-ti-lfa' }
         )
       ])
@@ -2206,6 +2224,44 @@ describe('Draft references are checked for both document types', () => {
   })
 })
 
+describe('Draft names ending in what looks like a revision', () => {
+  const parseRefs = async (names) => {
+    const entries = names.map((name, idx) => `<reference anchor="R${idx}"><front><title>T</title></front><seriesInfo name="Internet-Draft" value="${name}"/></reference>`)
+    const { doc } = await parse(`<rfc version="3" docName="draft-test-draftrefs-00"><back><references><name>Informative References</name>
+      ${entries.join('')}
+    </references></back></rfc>`, 'draft-test-draftrefs-00.xml')
+    return doc
+  }
+
+  test('the revision is taken off once: a draft named with two digits is found when cited with its revision', async () => {
+    psiRequests.length = 0
+    const doc = await parseRefs(['draft-test-psi-04-00'])
+    await expect(validatePublishedDraftReferences(doc, { mode: MODES.NORMAL })).resolves.toEqual([])
+    await expect(validateReferenceForStale(doc, { mode: MODES.NORMAL })).resolves.toEqual([
+      new ValidationWarning(
+        'OUTDATED_DRAFT',
+        'The draft reference draft-test-psi-04-00 is stale. Its latest revision is -01.',
+        { ref: 'https://datatracker.ietf.org/doc/draft-test-psi-04' }
+      )
+    ])
+    expect(psiRequests).toEqual(['draft-test-psi-04'])
+  })
+
+  test('cited without revision, its last two digits are taken for one, and no other name is tried', async () => {
+    psiRequests.length = 0
+    const doc = await parseRefs(['draft-test-psi-04'])
+    await expect(validatePublishedDraftReferences(doc, { mode: MODES.NORMAL })).resolves.toEqual([
+      new ValidationWarning(
+        'UNDEFINED_STATE',
+        'The draft reference draft-test-psi wasn\'t found on Datatracker, or has no state there.',
+        { ref: 'https://datatracker.ietf.org/doc/draft-test-psi' }
+      )
+    ])
+    await expect(validateReferenceForStale(doc, { mode: MODES.NORMAL })).resolves.toEqual([])
+    expect(psiRequests).toEqual(['draft-test-psi'])
+  })
+})
+
 describe('Draft references of published RFCs and drafts that cannot be fetched', () => {
   const runTask = async (doc, key) => {
     const task = getAllValidations(doc.type).flatMap(group => group.tasks).find(task => task.key === key)
@@ -2269,7 +2325,7 @@ ${entry('draft-ietf-missing-01', 'C')}
     ),
     new ValidationWarning(
       'UNDEFINED_STATE',
-      'The draft reference draft-ietf-missing does not have a defined state or could not be fetched.',
+      'The draft reference draft-ietf-missing wasn\'t found on Datatracker, or has no state there.',
       { ref: 'https://datatracker.ietf.org/doc/draft-ietf-missing' }
     )
   ]
