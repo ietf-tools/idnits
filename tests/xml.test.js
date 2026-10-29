@@ -496,6 +496,38 @@ describe('XML document should not contain <CODE BEGINS> tags', () => {
       ['MISSING_SOURCECODE_TAG', 'rfc.middle.section.artwork']
     ])
   })
+  test('<artwork> that xml2rfc converts to <sourcecode> in a v2 document', async () => {
+    const body = `<middle><section><title>Code</title>
+      <figure><artwork><![CDATA[
+<CODE BEGINS> file "a.yang"
+module a { }
+<CODE ENDS>
+]]></artwork></figure>
+      <figure><artwork><![CDATA[
+Example:
+<CODE BEGINS>
+]]></artwork></figure>
+    </section></middle>`
+    // -> No version attribute means version 2
+    for (const rfcTag of ['<rfc>', '<rfc version="2">']) {
+      const xml = `${rfcTag}${body}</rfc>`
+      const { doc } = await parse(xml, 'draft-test.xml')
+      const result = await validateCodeBlocks(doc)
+      // -> Only the artwork whose text doesn't start with the marker stays <artwork>
+      expect(result.map(r => [r.name, r.path])).toEqual([
+        ['MISSING_SOURCECODE_TAG', 'rfc.middle.section.figure[1].artwork']
+      ])
+    }
+    // -> In a version 3 document, every <artwork> stays <artwork>
+    const v3Body = body.replace(/title>/g, 'name>')
+    const v3Xml = `<rfc version="3">${v3Body}</rfc>`
+    const { doc } = await parse(v3Xml, 'draft-test.xml')
+    const result = await validateCodeBlocks(doc)
+    expect(result.map(r => [r.name, r.path])).toEqual([
+      ['MISSING_SOURCECODE_TAG', 'rfc.middle.section.figure[0].artwork'],
+      ['MISSING_SOURCECODE_TAG', 'rfc.middle.section.figure[1].artwork']
+    ])
+  })
 })
 
 describe('Tabs in XML documents', () => {
