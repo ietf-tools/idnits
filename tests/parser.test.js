@@ -2240,6 +2240,48 @@ Abstract
     expect(result.data.title).toBe('Updates to Locally Served DNS Zones and IP Special-Purpose Address Space')
   })
 
+  test('Reads a header date written "Month D, YYYY"', async () => {
+    // draft-bashandy-rtgwg-segment-routing-uloop-18
+    const result = await parse(`
+Network Working Group                                         A. Bashandy
+Internet-Draft                                                   Individual
+Intended status: Informational                                   C. Filsfils
+Expires: October 21, 2026                                 Cisco Systems, Inc.
+                                                              April 19, 2026
+
+
+                       Loop avoidance using Segment Routing
+
+Abstract
+`, 'txt')
+
+    const authorNames = result.data.header.authors.map(author => author.name)
+    expect(result.data.header.date).toEqual({ day: 19, month: 'April', year: 2026 })
+    expect(authorNames).toEqual(['A. Bashandy', 'C. Filsfils'])
+  })
+
+  test('Reads a header date followed by trailing whitespace', async () => {
+    // draft-urien-tls-im-trusted-exporter-00: every header line ends in a space, and in CRLF
+    const headerLines = [
+      '  TLS Working Group                                            P. Urien ',
+      '  Internet Draft                                          Telecom Paris ',
+      '  Intended status: Experimental                              Ethertrust ',
+      '                                                                        ',
+      '                                                            28 May 2026 ',
+      '  Expires: November 2026                                                ',
+      '',
+      '',
+      '                     TLS Trusted Exporter',
+      '',
+      'Abstract',
+      ''
+    ]
+    const text = headerLines.join('\r\n')
+    const result = await parse(text, 'txt')
+
+    expect(result.data.header.date).toEqual({ day: 28, month: 'May', year: 2026 })
+  })
+
   test('Parses document date correctly', async () => {
     const txt = `
       ${metaTXTBlock}
