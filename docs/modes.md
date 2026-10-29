@@ -76,7 +76,7 @@ A document that can't be parsed isn't checked: the CLI exits with code `1`, and 
 
 | Code | Format | Notes |
 |---|---|---|
-| `XML_PARSING_FAILED` | XML | Not well-formed XML |
+| `XML_PARSING_FAILED` | XML | Not well-formed XML; an element or attribute named `constructor`, `prototype` or `__proto__`, which idnits can't process; or internal entities over the parser's limits (more than 1,000 declared, a value over 10,000 characters, or over 100,000 characters added by expanding them) |
 | `XML_UNSUPPORTED_VERSION` | XML | `version` attribute other than 2 or 3 |
 | `XML_UNRECOGNIZED_DOC_KIND` | XML | Neither a draft nor an RFC, from `<seriesInfo>`, `docName`, `number` or the file name |
 | `TXT_PARSING_FAILED` | text | |
