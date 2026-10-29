@@ -1920,6 +1920,30 @@ describe('validateReferenceForStale (TXT)', () => {
     expect(res.map(finding => finding.lines)).toEqual([[normative], [informative]])
   })
 
+  test('a draft listed in a References section without subsections is located', async () => {
+    for (const heading of ['2.  References', 'References']) {
+      const entry = txtDraftEntry('draft-chain-hist-02')
+      const text = `${CANONICAL_TXT}
+1.  Introduction
+
+   This document cites the draft below.
+
+${heading}
+
+${entry}
+`
+      const doc = await parseTXT(text, 'draft-ietf-beep-boop-01.txt')
+      const expectedReference = { value: 'draft-chain-hist-02', subsection: 'unclassified_references' }
+      expect(doc.data.extractedElements.draftStatusReferences).toEqual([expectedReference])
+
+      const res = await validateReferenceForStale(doc, { mode: MODES.NORMAL })
+      const findings = res.map(finding => [finding.name, finding.lines])
+      const expectedLines = draftLinks(doc, 'draft-chain-hist-02')
+      expect(findings).toEqual([['OUTDATED_DRAFT', expectedLines]])
+      expect(res[0].lines).toHaveLength(1)
+    }
+  })
+
   test('at most 20 locations are given', async () => {
     const doc = await parseTXTDraftReferences({ informative: Array(25).fill('draft-ietf-missing-01') })
 
