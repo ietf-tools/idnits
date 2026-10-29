@@ -5,6 +5,7 @@ import { addXmlSourceLines, labelFindings } from '../lib/helpers/location.mjs'
 import { detectDeprecatedElements, detectDeprecatedAttributes, validateCodeBlocks, validateTextLikeRefs, validateIprAttribute, validatePreptimeAttribute, detectPrepToolOutput, validateSubmissionType, validateTabs, validateLinePI, validateXMLBoilerplate, validateArtworkSize } from '../lib/modules/xml.mjs'
 import { parse } from '../lib/parsers/xml.mjs'
 import { baseXMLDoc } from './fixtures/base-doc.mjs'
+import { xmlStreamDoc } from './fixtures/stream-docs.mjs'
 import { cloneDeep, set } from 'lodash-es'
 import { setupServer } from 'msw/node'
 import { http, HttpResponse } from 'msw'
@@ -416,6 +417,12 @@ describe('XML document should not have a prepTime attribute', () => {
         await expect(detectPrepToolOutput(doc, { mode })).resolves.toHaveLength(0)
       }
     })
+    test.each(['toString', 'valueOf', 'hasOwnProperty'])('an element named %s is an element like any other', async (tag) => {
+      const doc = await parseDoc(inSection(`<${tag} a="1"><t>x</t></${tag}><t pn="section-1-1">y</t>`))
+      const result = await detectPrepToolOutput(doc)
+      expect(result).toHaveLength(1)
+      expect(result[0].message).toContain('contains output of the xml2rfc prep tool: pn attribute (1).')
+    })
   })
 })
 
@@ -648,6 +655,11 @@ describe('Size of <artwork> and <sourcecode>', () => {
     await expect(validateArtworkSize(await parseDoc([art(72), art(69, 'sourcecode'), '<figure>' + art(72) + '</figure>'].join('\n')))).resolves.toHaveLength(0)
   })
 
+  test.each(['toString', 'valueOf', 'hasOwnProperty', 'foo'])('lines too wide in an element named %s', async (tag) => {
+    // -> xml2rfc indents an element it doesn't know like a paragraph of the section: 3 columns, plus 3 for the sourcecode
+    await expect(wide(`<${tag}>${art(70, 'sourcecode')}</${tag}>`)).resolves.toEqual([`rfc.middle.section.${tag}.sourcecode`])
+  })
+
   test('lines too wide, once per element', async () => {
     const doc = await parseDoc([
       '<sourcecode type="c">',
@@ -877,6 +889,14 @@ describe('XML document should have a valid submission type', () => {
     await expect(validateSubmissionType(doc, { offline: true })).resolves.toContainError('SUBMISSION_TYPE_INVALID', ValidationError)
     await expect(validateSubmissionType(doc, { offline: true, mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('SUBMISSION_TYPE_INVALID', ValidationError)
     await expect(validateSubmissionType(doc, { offline: true, mode: MODES.SUBMISSION })).resolves.toContainError('SUBMISSION_TYPE_INVALID', ValidationError)
+  })
+  test.each(['constructor', '__proto__', 'toString'])('submissionType="%s" is not a stream', async (submissionType) => {
+    const { doc } = await parse(xmlStreamDoc({ submissionType }), 'draft-smith-foo-bar-02.xml')
+    for (const mode of ALL_MODES) {
+      const result = await validateSubmissionType(doc, { offline: true, mode })
+      expect(result).toContainError('SUBMISSION_TYPE_INVALID', ValidationError)
+      expect(result.map(r => r.message).join(' ')).not.toContain('function')
+    }
   })
   test('docName stream mismatch', async () => {
     const doc = makeDoc('IETF', 'draft-iab-beep-boop-00')

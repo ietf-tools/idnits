@@ -82,6 +82,12 @@ A document that can't be parsed isn't checked: the CLI exits with code `1`, and 
 | `XML_UNRECOGNIZED_DOC_KIND` | XML | Neither a draft nor an RFC, from `<seriesInfo>`, `docName`, `number` or the file name |
 | `TXT_PARSING_FAILED` | text | |
 
+A check that fails on a document it can't handle doesn't stop the others: it is reported in its place, and the run completes.
+
+| Code | normal | forgive-checklist | submission | Format | Notes |
+|---|---|---|---|---|---|
+| `CHECK_FAILED` | Error | Error | Error | both | A check failed (a bug of idnits): names the check and the error; its findings, if any, are missing. An Error in `submission` too, as the submission check didn't complete |
+
 ### File names and revisions
 
 | Code | normal | forgive-checklist | submission | Format | Notes |
@@ -344,7 +350,7 @@ For text documents, `SUBMISSION_TYPE_UNEXPECTED` compares the stream implied by 
 | Code | Meaning |
 |---|---|
 | `0` | The check completed, whatever it found (unless `--fail-on` is used) |
-| `1` | The check could not be completed: invalid arguments or remote settings, a document that can't be read, fetched or parsed (see [Errors that stop the check](#errors-that-stop-the-check)), or an unexpected failure |
+| `1` | The check could not be completed: invalid arguments or remote settings, a document that can't be read, fetched or parsed (see [Errors that stop the check](#errors-that-stop-the-check)), or an unexpected failure outside the checks (a check that fails gives `CHECK_FAILED` instead) |
 | `2` | The check completed and found at least one nit at or above the `--fail-on` severity (`errors` > `warnings` > `comments`) |
 
 Datatracker doesn't use `--fail-on`: it treats any nonzero exit code as "could not complete", and reads the findings from the JSON output. There, `result` is `fail` when there is at least one Error, and `nitsBySeverity` counts each severity.
