@@ -503,6 +503,31 @@ describe('References (if any present) are not categorized as Normative or Inform
     expect(result.data.content.references).toEqual(expect.arrayContaining([expect.stringContaining('Normative References')]))
   })
 
+  test('Takes an "Informational References" subsection as informative', async () => {
+    // From draft-halmir-mpls-ecn-04
+    const txt = `${metaTXTBlock}
+8.  References
+
+8.1.  Normative References
+
+   [RFC3168]  Ramakrishnan, K., Floyd, S., and D. Black, "The Addition
+              of Explicit Congestion Notification (ECN) to IP",
+              RFC 3168, DOI 10.17487/RFC3168, September 2001.
+
+8.2.  Informational References
+
+   [RFC5129]  Davie, B., Briscoe, B., and J. Tay, "Explicit Congestion
+              Marking in MPLS", RFC 5129, DOI 10.17487/RFC5129, January
+              2008.
+`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.referenceSectionRfc).toEqual([
+      { value: '3168', subsection: 'normative_references' },
+      { value: '5129', subsection: 'informative_references' }
+    ])
+  })
+
   test('Parsing reference section named "Informative References', async () => {
     const txt = `
       ${metaTXTBlock}

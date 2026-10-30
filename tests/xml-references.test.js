@@ -116,6 +116,16 @@ describe('collectXmlReferences', () => {
     expect(getCitedDrafts(references)).toEqual(['draft-ietf-baz-07', 'draft-ietf-foo-bar-02'])
   })
 
+  test('takes a section named "Informational References" as informative', async () => {
+    const { doc } = await parse(`<rfc version="3"><back>
+      <references><name>Informational References</name>
+        <reference anchor="RFC6991"><front><title>T</title></front><seriesInfo name="RFC" value="6991"/></reference>
+      </references>
+    </back></rfc>`, 'draft-test-references-00.xml')
+
+    expect(collectXmlReferences(doc)).toEqual([{ section: 'informative', rfc: '6991', draft: null, source: 'reference' }])
+  })
+
   test('takes what a <reference> cites from the bibliography entry it includes', async () => {
     const { doc } = await parse(INNER_INCLUDE_DOC, 'draft-test-references-00.xml')
 
