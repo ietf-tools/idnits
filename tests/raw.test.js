@@ -161,9 +161,9 @@ ${extra}<rfc version="3" docName="draft-test-charref-00" ipr="trust200902" categ
   const findings = async (xml) => (await checkNits(Buffer.from(xml), 'draft-test-charref-00.xml', { offline: true }))
     .filter(r => CHAR_CODES.includes(r.name))
 
-  test('a draft with references parses, and the parsed text keeps them as written', async () => {
+  test('a draft with references parses, and the parsed text has the characters they stand for', async () => {
     const { doc } = await parseXML(draft('a&#x202E;b'), 'draft-test-charref-00.xml')
-    expect(doc.data.rfc.middle.section.t).toEqual('a&#x202E;b')
+    expect(doc.data.rfc.middle.section.t).toEqual('a\u202Eb')
   })
   test('a bidi control written as a reference is reported at the reference', async () => {
     for (const ref of ['&#x202E;', '&#x202e;', '&#8238;', '&#x0202E;']) {

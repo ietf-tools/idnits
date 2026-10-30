@@ -233,3 +233,72 @@ ${rfcTag}
     expect(nits).toHaveLength(0)
   })
 })
+
+describe('XML parser: character references', () => {
+  test('decimal and hexadecimal references are decoded', async () => {
+    const doc = await parseDraft('<t>TCP&#39;s &#x27;x&#x27; &#233;&#xe9;&#xE9; &#x1F600;</t>')
+    expect(doc.data.rfc.middle.t).toBe('TCP\'s \'x\' ééé 😀')
+  })
+
+  test('references in attribute values are decoded', async () => {
+    const doc = await parseDraft('<t anchor="a&#38;b" title="&#X41;">x</t>')
+    expect(doc.data.rfc.middle.t._attr).toEqual({ anchor: 'a&b', title: 'A' })
+  })
+
+  test('an escaped ampersand is not decoded twice', async () => {
+    const doc = await parseDraft('<t>&amp;#39; &amp;#x41;</t>')
+    expect(doc.data.rfc.middle.t).toBe('&#39; &#x41;')
+  })
+
+  test('references in CDATA sections and comments are not decoded', async () => {
+    const doc = await parseDraft('<sourcecode><![CDATA[&#39;]]></sourcecode><t>a<!-- &#39; -->b</t>')
+    expect(doc.data.rfc.middle.sourcecode).toBe('&#39;')
+    expect(doc.data.rfc.middle.t).toBe('ab')
+  })
+
+  test('references to characters XML does not allow stay as written', async () => {
+    const doc = await parseDraft('<t>&#0; &#xD800; &#x110000; &#1; &#x1F; &#xFFFE; &#99999999999999999999;</t>')
+    expect(doc.data.rfc.middle.t).toBe('&#0; &#xD800; &#x110000; &#1; &#x1F; &#xFFFE; &#99999999999999999999;')
+  })
+
+  test('a malformed reference in an attribute value stays as written', async () => {
+    const doc = await parseDraft('<t anchor="&#12abc;">x</t>')
+    expect(doc.data.rfc.middle.t._attr.anchor).toBe('&#12abc;')
+  })
+
+  test('a long reference is decoded', async () => {
+    const doc = await parseDraft(`<t>&#${'0'.repeat(40)}65;</t>`)
+    expect(doc.data.rfc.middle.t).toBe('A')
+  })
+
+  test('a malformed reference in text still fails to parse', async () => {
+    await expect(parseDraft('<t>&#X41;</t>')).rejects.toThrow(expect.objectContaining({
+      name: 'XML_PARSING_FAILED',
+      message: 'char \'&\' is not expected.:6:14'
+    }))
+  })
+})
+
+describe('XML parser: names of JavaScript object properties', () => {
+  test('an attribute named hasOwnProperty followed by another is read as written', async () => {
+    const doc = await parseDraft('<t hasOwnProperty="x" anchor="y">z</t>')
+    expect(doc.data.rfc.middle.t._attr).toEqual({ hasOwnProperty: 'x', anchor: 'y' })
+  })
+
+  test.each(['hasOwnProperty', 'toString', 'valueOf'])('elements named %s keep their name and get no attribute', async (name) => {
+    const doc = await parseDraft(`<${name}>a</${name}><${name}>b</${name}>`)
+    expect(Object.keys(doc.data.rfc.middle)).toEqual([name])
+    expect(doc.data.rfc.middle[name]).toEqual(['a', 'b'])
+  })
+
+  test.each([
+    ['an element', 'constructor', '<constructor>x</constructor>', 6, 12],
+    ['an element', '__proto__', '<t>a</t>\n<__proto__/>', 7, 2],
+    ['an attribute', 'prototype', '<t title="constructor" prototype="1">x</t>', 6, 34]
+  ])('%s named %s fails to parse, with its position', async (_, name, body, line, col) => {
+    await expect(parseDraft(body)).rejects.toThrow(expect.objectContaining({
+      name: 'XML_PARSING_FAILED',
+      message: `idnits can't process an element or attribute named "${name}".:${line}:${col}`
+    }))
+  })
+})
