@@ -220,6 +220,42 @@ describe('DOCUMENT_LOOKUP_UNAVAILABLE', () => {
     ])
   })
 
+  test('lists the documents in the same order, whichever lookup fails first', async () => {
+    quiet()
+    const runBoth = async () => {
+      const doc = await parseDraft('draft-ietf-foo-failing-05', ' obsoletes="5246"')
+      const opts = { mode: MODES.SUBMISSION }
+      const results = await Promise.all([
+        validateVersion(doc, opts),
+        validateObsoleteUpdateRef(doc, opts)
+      ])
+      const failures = await validateLookupFailures(doc, opts)
+      return messages([...results.flat(), ...failures])
+    }
+    const expected = [
+      "Datatracker couldn't be asked about draft-ietf-foo-failing and rfc5246 (Request to datatracker.ietf.org failed: HTTP 503), so these checks didn't run: revision, cross-stream."
+    ]
+
+    server.use(
+      http.get('https://datatracker.ietf.org/api/v1/doc/document/draft-ietf-foo-failing/', async () => {
+        await delay(50)
+        return down()
+      }),
+      http.get('https://datatracker.ietf.org/api/v1/doc/document/rfc5246/', down)
+    )
+    expect(await runBoth()).toEqual(expected)
+
+    server.resetHandlers()
+    clearRemoteCache()
+    server.use(
+      http.get('https://datatracker.ietf.org/api/v1/doc/document/rfc5246/', async () => {
+        await delay(50)
+        return down()
+      })
+    )
+    expect(await runBoth()).toEqual(expected)
+  })
+
   test('is not given when the lookups succeed', async () => {
     const doc = await parseDraft('draft-ietf-foo-known-05', ' ipr="noModificationTrust200902"')
     const result = await runDatatrackerChecks(doc, { mode: MODES.SUBMISSION })
