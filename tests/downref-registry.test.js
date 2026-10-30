@@ -132,7 +132,7 @@ describe('Downref Registry', () => {
   <middle><section><name>Introduction</name><t>See <xref target="RFC1234"/> and <xref target="RFC1094"/>.</t></section></middle>
   <back><references><name>Normative References</name>${references('1094', '1234')}</references></back>
 </rfc>`)
-      const result = await checkNits(raw, 'draft-test-registry-00.xml', { mode: MODES.NORMAL, offline: true })
+      const result = await checkNits(raw, 'draft-test-registry-00.xml', { mode: MODES.NORMAL })
       expect(result.filter(r => r.name === 'DOWNREF_REGISTRY_UNAVAILABLE')).toHaveLength(1)
       expect(result.filter(r => r.name === 'DOWNREF_TO_LOWER_STATUS').map(r => r.message)).toEqual([
         "Reference to RFC 1094, which has a lower status than this draft's intended status. The Downref Registry couldn't be checked for it.",

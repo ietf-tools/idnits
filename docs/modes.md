@@ -106,6 +106,7 @@ A document that can't be parsed isn't checked: the CLI exits with code `1`, and 
 | `DUPLICATE_DOC_VERSION` | — | — | Warning | both | (drafts, lookup, offline) This revision is already on Datatracker |
 | `UNEXPECTED_DOC_VERSION` | — | — | Warning | both | (drafts, lookup, offline) Revision older than Datatracker's, leaving a gap, or not `-00` for a new draft |
 | `DOCUMENT_LOOKUP_UNAVAILABLE` | Comment | Comment | Comment | both | (lookup, offline) Once per document: the Datatracker document lookup failed; names the reason and the checks that didn't run |
+| `LOOKUPS_SKIPPED_OFFLINE` | Comment | Comment | Comment | both | Only with `--offline`, once per document: names the checks that would have looked something up for this document in this mode and didn't run |
 
 ### Encoding, characters and layout
 
@@ -310,22 +311,22 @@ For text documents, `SUBMISSION_TYPE_UNEXPECTED` compares the stream implied by 
 | `DOCUMENT_USE_STRING_REFERENCES` | Comment | Comment | — | text | |
 | `RFC_REFERENCE_URL_FORMAT` | Warning | Warning | — | XML | Link to `/rfc/` instead of `/info/` |
 | `RFC_REFERENCE_URL_FORMAT` | Comment | Comment | — | text | Same; xml2rfc renders references without a target this way |
-| `DOWNREF_TO_LOWER_STATUS` | Error | Warning | — | both | (lookup) Not in the Downref Registry; a Warning in both modes when the registry can't be fetched |
-| `DOWNREF_TO_LOWER_STATUS_IN_REGISTRY` | Warning | Warning | — | both | (lookup) |
-| `POSSIBLE_DOWNREF` | Warning | Warning | — | both | (lookup) Standards Track and BCP documents; status of a normative RFC not recognised (e.g. `UNKNOWN`) |
-| `DOWNREF_REGISTRY_UNAVAILABLE` | Comment | Comment | — | both | (lookup) The Downref Registry can't be fetched |
-| `NORMATIVE_REFERENCE_TO_DRAFT` | Warning | Warning | — | both | (lookup) Not in published RFCs |
-| `NORMATIVE_REFERENCE_TO_LOWER_STATUS_DRAFT` | Warning | Warning | — | both | (lookup) |
+| `DOWNREF_TO_LOWER_STATUS` | Error | Warning | — | both | (lookup, offline) Not in the Downref Registry; a Warning in both modes when the registry can't be fetched |
+| `DOWNREF_TO_LOWER_STATUS_IN_REGISTRY` | Warning | Warning | — | both | (lookup, offline) |
+| `POSSIBLE_DOWNREF` | Warning | Warning | — | both | (lookup, offline) Standards Track and BCP documents; status of a normative RFC not recognised (e.g. `UNKNOWN`) |
+| `DOWNREF_REGISTRY_UNAVAILABLE` | Comment | Comment | — | both | (lookup, offline) The Downref Registry can't be fetched |
+| `NORMATIVE_REFERENCE_TO_DRAFT` | Warning | Warning | — | both | (lookup) Not in published RFCs; with `--offline`, the draft isn't followed to the RFC it became |
+| `NORMATIVE_REFERENCE_TO_LOWER_STATUS_DRAFT` | Warning | Warning | — | both | (lookup, offline) |
 | `NORMATIVE_REFERENCE_EXTERNAL` | Comment | Comment | — | both | Standards Track and BCP documents, not published RFCs |
-| `OBSOLETE_REFERENCE` | Error | Warning | — | both | (lookup) Normative or unclassified |
-| `OBSOLETE_INFORMATIVE_REFERENCE` | Warning | Comment | — | both | (lookup) |
-| `UNDEFINED_STATUS` | Comment | Comment | — | both | (lookup) Cited RFC not found on rfc-editor.org, or given no status |
-| `REFERENCE_STATUS_UNAVAILABLE` | Comment | Comment | — | both | (lookup) Once per document: the cited, obsoleted and updated RFCs whose rfc-editor.org lookup failed, and the cited drafts whose Datatracker lookup failed, and why |
-| `UNKNOWN_STATUS` | Comment | Comment | — | both | (lookup) |
-| `REFERENCE_NOT_ISSUED` | Error | Warning | — | both | (lookup) Cited RFC number never issued |
-| `UNDEFINED_STATE` | Warning | Warning | — | both | (lookup) Cited draft not found on Datatracker, or given no state; not in published RFCs |
-| `INVALID_STATE_FOR_DRAFT` | Warning | Warning | — | both | (lookup) Cited draft is now an RFC; not in published RFCs |
-| `OUTDATED_DRAFT` | Warning | Warning | — | both | (lookup) |
+| `OBSOLETE_REFERENCE` | Error | Warning | — | both | (lookup, offline) Normative or unclassified |
+| `OBSOLETE_INFORMATIVE_REFERENCE` | Warning | Comment | — | both | (lookup, offline) |
+| `UNDEFINED_STATUS` | Comment | Comment | — | both | (lookup, offline) Cited RFC not found on rfc-editor.org, or given no status |
+| `REFERENCE_STATUS_UNAVAILABLE` | Comment | Comment | — | both | (lookup, offline) Once per document: the cited, obsoleted and updated RFCs whose rfc-editor.org lookup failed, and the cited drafts whose Datatracker lookup failed, and why |
+| `UNKNOWN_STATUS` | Comment | Comment | — | both | (lookup, offline) |
+| `REFERENCE_NOT_ISSUED` | Error | Warning | — | both | (lookup, offline) Cited RFC number never issued |
+| `UNDEFINED_STATE` | Warning | Warning | — | both | (lookup, offline) Cited draft not found on Datatracker, or given no state; not in published RFCs |
+| `INVALID_STATE_FOR_DRAFT` | Warning | Warning | — | both | (lookup, offline) Cited draft is now an RFC; not in published RFCs |
+| `OUTDATED_DRAFT` | Warning | Warning | — | both | (lookup, offline) |
 
 ## Exit codes
 
@@ -341,19 +342,21 @@ Datatracker doesn't use `--fail-on`: it treats any nonzero exit code as "could n
 
 ## Remote lookups and `--offline`
 
-Some checks look up the document, and the documents it cites, on Datatracker and the RFC Editor site. `--offline` (the `offline` option of the library) skips some of them only:
+Some checks look up the document, and the documents it cites, on Datatracker and the RFC Editor site. `--offline` (the `offline` option of the library) means no network access: it skips every lookup, and the checks that need them don't run:
 
 | Lookup | Used by | Skipped with `--offline` |
 |---|---|---|
 | The document's stream and latest revision on Datatracker | `SUBMISSION_TYPE_UNEXPECTED`, `FORBIDDEN_IPR_VALUE_FOR_STREAM`, `DUPLICATE_DOC_VERSION`, `UNEXPECTED_DOC_VERSION` | Yes |
 | The RFCs the document updates or obsoletes, on Datatracker and the RFC Editor site | `CROSS_STREAM_OBSOLETES_UPDATES`, `OBSOLETES_*_RFC`, `UPDATES_*_RFC` | Yes |
-| Status of the cited RFCs, on the RFC Editor site | downref, obsolete and status findings of [References](#references) | No |
-| State and revisions of the cited drafts, on Datatracker | `NORMATIVE_REFERENCE_TO_*`, `UNDEFINED_STATE`, `INVALID_STATE_FOR_DRAFT`, `OUTDATED_DRAFT` | No |
-| The Downref Registry, on Datatracker | `DOWNREF_TO_LOWER_STATUS*`, `DOWNREF_REGISTRY_UNAVAILABLE` | No |
+| Status of the cited RFCs, on the RFC Editor site | downref, obsolete and status findings of [References](#references) | Yes |
+| State and revisions of the cited drafts, on Datatracker | `NORMATIVE_REFERENCE_TO_LOWER_STATUS_DRAFT`, `UNDEFINED_STATE`, `INVALID_STATE_FOR_DRAFT`, `OUTDATED_DRAFT`; the RFC a cited draft became, for `NORMATIVE_REFERENCE_TO_DRAFT` | Yes |
+| The Downref Registry, on Datatracker | `DOWNREF_TO_LOWER_STATUS*`, `DOWNREF_REGISTRY_UNAVAILABLE` | Yes |
+
+With `--offline`, nothing is reported about what a skipped lookup would have told; instead, one `LOOKUPS_SKIPPED_OFFLINE` comment per document (in every mode) names the checks that didn't run: only those that would have looked something up for this document in this mode (in `submission`, only the document's own lookups: its revision, its stream for the stream, submission type and ipr checks, and the streams of the RFCs it obsoletes or updates). A document none of them applies to gets none. The checks of the references that need no lookup still run: `NORMATIVE_REFERENCE_TO_DRAFT` (the cited draft isn't followed to what replaced it) and `NORMATIVE_REFERENCE_EXTERNAL`.
 
 The lookups about cited documents are only made in `normal` and `forgive-checklist`, as `submission` doesn't run those checks.
 
-A lookup that fails, or times out, prints a warning and the check goes on without its result. Nothing is reported about the document that the lookup couldn't establish; instead, one comment per document says what couldn't be checked and why: `REFERENCE_STATUS_UNAVAILABLE` lists the RFCs (cited, or in Obsoletes and Updates) whose rfc-editor.org lookup failed and the cited drafts whose Datatracker lookup failed, and `DOCUMENT_LOOKUP_UNAVAILABLE` (in every mode, including `submission`) names the documents whose Datatracker lookup failed and the checks that didn't run (revision, stream, submission type, cross-stream, ipr). A lookup that `--offline` skips isn't a failure, so `--offline` never gives `DOCUMENT_LOOKUP_UNAVAILABLE`; the cited RFCs and drafts are still looked up, so it can still give `REFERENCE_STATUS_UNAVAILABLE`. `UNDEFINED_STATE` is given only for a draft Datatracker doesn't have, or gives no state. A cited draft name ending in two digits is looked up without them, as a revision: Datatracker draft revisions have two digits. A Downref Registry that can't be fetched when it is needed (an error or a timeout) doesn't stop the check either: each downref is reported as a `DOWNREF_TO_LOWER_STATUS` Warning (not an Error, as it may be registered), without telling whether it is in the registry, and one `DOWNREF_REGISTRY_UNAVAILABLE` comment per document names the reason.
+A lookup that fails, or times out, prints a warning and the check goes on without its result. Nothing is reported about the document that the lookup couldn't establish; instead, one comment per document says what couldn't be checked and why: `REFERENCE_STATUS_UNAVAILABLE` lists the RFCs (cited, or in Obsoletes and Updates) whose rfc-editor.org lookup failed and the cited drafts whose Datatracker lookup failed, and `DOCUMENT_LOOKUP_UNAVAILABLE` (in every mode, including `submission`) names the documents whose Datatracker lookup failed and the checks that didn't run (revision, stream, submission type, cross-stream, ipr). A lookup that `--offline` skips isn't a failure, so `--offline` never gives `DOCUMENT_LOOKUP_UNAVAILABLE`, `REFERENCE_STATUS_UNAVAILABLE` or `DOWNREF_REGISTRY_UNAVAILABLE`. `UNDEFINED_STATE` is given only for a draft Datatracker doesn't have, or gives no state. A cited draft name ending in two digits is looked up without them, as a revision: Datatracker draft revisions have two digits. A Downref Registry that can't be fetched when it is needed (an error or a timeout) doesn't stop the check either: each downref is reported as a `DOWNREF_TO_LOWER_STATUS` Warning (not an Error, as it may be registered), without telling whether it is in the registry, and one `DOWNREF_REGISTRY_UNAVAILABLE` comment per document names the reason.
 
 The services used and the time allowed for each lookup can be changed: see [Remote lookups](../README.md#remote-lookups) in the README.
 

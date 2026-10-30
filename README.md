@@ -61,7 +61,7 @@ idnits [args] <file path|url>
 | `--mode` | `-m` | Validation mode: the stage of the document's life it is checked for, either `normal` (before RFC publication), `forgive-checklist` (RFC Editor conversion of an approved draft) or `submission` (Internet-Draft submission). See [Validation modes](docs/modes.md).<br>Accepted shorthands: `norm`, `n`, `f-c`, `fc`, `f`, `sub`, `s` | `normal` |
 | `--no-color` |  | Disable colors in `pretty` output.<br>No effect in other output formats. |  |
 | `--no-progress` |  | Disable progress messages / animations in `pretty` output.<br>No effect in other output formats. |  |
-| `--offline` |  | Skip the lookups about the document itself (its stream, its revision, the RFCs it updates or obsoletes). The status of the documents it references is still looked up: see [Remote lookups and `--offline`](docs/modes.md#remote-lookups-and---offline). |  |
+| `--offline` |  | No network access: skip every remote lookup (the document's own, and the status of the documents it references), and the checks that need them; one `LOOKUPS_SKIPPED_OFFLINE` comment per document names the checks that didn't run. See [Remote lookups and `--offline`](docs/modes.md#remote-lookups-and---offline). |  |
 | `--output` | `-o` | Output format, must be either `pretty`, `simple`, `json` or `count` | `pretty` |
 | `--remote-timeout` |  | Seconds allowed for each remote lookup before it fails. Overrides the `IDNITS_REMOTE_TIMEOUT` environment variable. | `10` |
 | `--rfceditor-url` |  | Base URL of the RFC Editor site used for remote lookups. Overrides the `IDNITS_RFCEDITOR_URL` environment variable. | `https://www.rfc-editor.org` |
@@ -75,7 +75,7 @@ The mode says at which stage of its life the document is checked, not how strict
 
 #### Remote lookups
 
-Some validations look up the document and the documents it references on the Datatracker (e.g. its latest revision and stream) and the RFC Editor site (e.g. the status of RFCs). `--offline` skips only some of them: see [Remote lookups and `--offline`](docs/modes.md#remote-lookups-and---offline). The lookups of a document are made once per run, with a `User-Agent` header naming idnits3 and its version (e.g. `idnits3/3.0.0 (+https://github.com/ietf-tools/idnits)`).
+Some validations look up the document and the documents it references on the Datatracker (e.g. its latest revision and stream) and the RFC Editor site (e.g. the status of RFCs). `--offline` skips all of them: see [Remote lookups and `--offline`](docs/modes.md#remote-lookups-and---offline). The lookups of a document are made once per run, with a `User-Agent` header naming idnits3 and its version (e.g. `idnits3/3.0.0 (+https://github.com/ietf-tools/idnits)`).
 
 The services they are sent to, and the time each lookup is allowed, can be changed with these environment variables, or the matching flags, which take precedence. URLs must be `http` or `https` URLs, a trailing slash is ignored. The timeout is a positive number of seconds; it covers the whole request, response included.
 
