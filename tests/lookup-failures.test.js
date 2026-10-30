@@ -264,6 +264,12 @@ describe('DOCUMENT_LOOKUP_UNAVAILABLE', () => {
 })
 
 describe('With --offline', () => {
+  test('LOOKUPS_SKIPPED_OFFLINE only with --offline', async () => {
+    const doc = await parseRefs({ normative: ['2119'], informative: ['7322'], attrs: ' obsoletes="2119"' })
+    const online = await checkReferences(doc, { mode: MODES.NORMAL })
+    expect(online.filter(f => f.name === 'LOOKUPS_SKIPPED_OFFLINE')).toEqual([])
+  })
+
   test('no DOCUMENT_LOOKUP_UNAVAILABLE, as the document lookups are not attempted', async () => {
     const requests = []
     const listener = ({ request }) => {
@@ -281,19 +287,24 @@ describe('With --offline', () => {
         validateIprAttribute(doc, opts),
         validateObsoleteUpdateRef(doc, opts)
       ])
-      await expect(validateLookupFailures(doc, opts)).resolves.toEqual([])
+      // -> Skipped lookups aren't failures: only LOOKUPS_SKIPPED_OFFLINE
+      const findings = await validateLookupFailures(doc, opts)
+      expect(findings.map(f => f.name)).toEqual(['LOOKUPS_SKIPPED_OFFLINE'])
     }
     expect(requests).toEqual([])
     server.events.removeListener('request:start', listener)
   })
 
-  test('REFERENCE_STATUS_UNAVAILABLE still, as the cited RFCs are still looked up', async () => {
-    quiet()
+  test('no REFERENCE_STATUS_UNAVAILABLE either, as the cited RFCs and drafts are not looked up', async () => {
+    const requests = []
+    const listener = ({ request }) => { requests.push(request.url) }
+    server.events.on('request:start', listener)
     const doc = await parseRefs({ normative: ['8446'], attrs: ' obsoletes="5246"' })
     const result = await checkReferences(doc, { mode: MODES.NORMAL, offline: true })
-    expect(messages(withCode(result, 'REFERENCE_STATUS_UNAVAILABLE'))).toEqual([
-      "The status of RFC 8446 couldn't be fetched from rfc-editor.org (Request to www.rfc-editor.org failed: HTTP 503), so the reference to it wasn't checked for downrefs or obsolete RFCs."
-    ])
+    const unavailable = result.filter(f => f.name.endsWith('_UNAVAILABLE'))
+    expect(unavailable).toEqual([])
+    expect(requests).toEqual([])
+    server.events.removeListener('request:start', listener)
   })
 })
 

@@ -90,7 +90,7 @@ const argv = yargs(hideBin(process.argv))
   })
   .option('offline', {
     default: false,
-    describe: 'Skip the lookups about the document itself (its stream, its revision, the RFCs it updates or obsoletes). The status of the documents it references is still looked up',
+    describe: 'No network access: skip every remote lookup (the document\'s own and those of its references) and the checks that need them',
     type: 'boolean'
   })
   .option('output', {
@@ -162,7 +162,11 @@ let docRaw = ''
 let docPath = ''
 let docPathObj = null
 if (argv.file.startsWith('http://') || argv.file.startsWith('https://')) {
-  // -> Remote
+  // -> Remote: --offline means no network access, the document included
+  if (argv.offline) {
+    console.error(chalk.redBright(`--offline: can't fetch ${argv.file.trim()} without network access. Save it locally and check the file instead.`))
+    process.exit(1)
+  }
   docPath = argv.file.trim()
   const docPathUrl = new URL(docPath)
   docPathObj = path.parse(docPathUrl.pathname)
