@@ -61,7 +61,7 @@ async function parseDraft (...rfcs) {
 
 const inRegistry = (rfc) => new ValidationWarning('DOWNREF_TO_LOWER_STATUS_IN_REGISTRY', `Reference to RFC ${rfc}, which has a lower status than this draft's intended status and is listed in the Downref Registry.`, { ref: BCP97_REF })
 const notInRegistry = (rfc, Severity = ValidationError) => new Severity('DOWNREF_TO_LOWER_STATUS', `Reference to RFC ${rfc}, which has a lower status than this draft's intended status. This reference is not in the Downref Registry.`, { ref: BCP97_REF })
-const unchecked = (rfc, Severity = ValidationError) => new Severity('DOWNREF_TO_LOWER_STATUS', `Reference to RFC ${rfc}, which has a lower status than this draft's intended status. The Downref Registry couldn't be checked for it.`, { ref: BCP97_REF })
+const unchecked = (rfc, Severity = ValidationWarning) => new Severity('DOWNREF_TO_LOWER_STATUS', `Reference to RFC ${rfc}, which has a lower status than this draft's intended status. The Downref Registry couldn't be checked for it.`, { ref: BCP97_REF })
 const unavailable = (reason) => new ValidationComment('DOWNREF_REGISTRY_UNAVAILABLE', `The Downref Registry couldn't be checked (${reason}), so downrefs are reported without telling whether they are listed in it.`, { ref: REGISTRY_URL })
 
 describe('Downref Registry', () => {
@@ -109,8 +109,9 @@ describe('Downref Registry', () => {
     test('reports downrefs without the registry and comments once, in normal and forgive-checklist modes', async () => {
       const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
       const doc = await parseDraft('1094', '1234')
+      // -> A Warning in both modes: the downref may be registered
       expectFindings(await validateDownrefs(doc, { mode: MODES.NORMAL }), [unchecked('1094'), unchecked('1234')])
-      expectFindings(await validateDownrefs(await parseDraft('5678'), { mode: MODES.FORGIVE_CHECKLIST }), [unchecked('5678', ValidationWarning)])
+      expectFindings(await validateDownrefs(await parseDraft('5678'), { mode: MODES.FORGIVE_CHECKLIST }), [unchecked('5678')])
 
       // -> The failure is remembered: fetched, and warned about, once for both documents
       expect(registryRequests).toBe(1)
@@ -137,6 +138,8 @@ describe('Downref Registry', () => {
         "Reference to RFC 1094, which has a lower status than this draft's intended status. The Downref Registry couldn't be checked for it.",
         "Reference to RFC 1234, which has a lower status than this draft's intended status. The Downref Registry couldn't be checked for it."
       ])
+      const downrefs = result.filter(r => r.name === 'DOWNREF_TO_LOWER_STATUS')
+      expect(downrefs.every(r => r instanceof ValidationWarning)).toBe(true)
       expect(result.some(r => r.name === 'DOWNREF_TO_LOWER_STATUS_IN_REGISTRY')).toBe(false)
     })
   })
