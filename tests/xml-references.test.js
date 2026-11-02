@@ -126,6 +126,24 @@ describe('collectXmlReferences', () => {
     expect(collectXmlReferences(doc)).toEqual([{ section: 'informative', rfc: '6991', draft: null, source: 'reference' }])
   })
 
+  test.each([
+    ['Non-normative References', 'informative'],
+    ['Normative Reference', 'normative'],
+    ['References - Normative', 'normative'],
+    ['References - Informative', 'informative'],
+    ['Normative and Informative References', 'informative'],
+    ['Infomative References', 'unclassified'],
+    ['Iormative References', 'unclassified']
+  ])('takes a section named "%s" as %s', async (name, kind) => {
+    const { doc } = await parse(`<rfc version="3"><back>
+      <references><name>${name}</name>
+        <reference anchor="RFC6991"><front><title>T</title></front><seriesInfo name="RFC" value="6991"/></reference>
+      </references>
+    </back></rfc>`, 'draft-test-references-00.xml')
+
+    expect(collectXmlReferences(doc)).toEqual([{ section: kind, rfc: '6991', draft: null, source: 'reference' }])
+  })
+
   test('takes what a <reference> cites from the bibliography entry it includes', async () => {
     const { doc } = await parse(INNER_INCLUDE_DOC, 'draft-test-references-00.xml')
 

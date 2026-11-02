@@ -503,6 +503,52 @@ describe('References (if any present) are not categorized as Normative or Inform
     expect(result.data.content.references).toEqual(expect.arrayContaining([expect.stringContaining('Normative References')]))
   })
 
+  test.each([
+    ['References - Normative', 'References - Informative', 'normative_references', 'informative_references'],
+    ['Normative Reference', 'Non-normative References', 'normative_references', 'informative_references'],
+    ['Normative References', 'Infomative References', 'normative_references', 'unclassified_references']
+  ])('Takes subsections "%s" and "%s" as %s and %s', async (first, second, firstKind, secondKind) => {
+    // From draft-levine-dnsextlang-15 and draft-ietf-pce-topology-filter-01
+    const txt = `${metaTXTBlock}
+8.  References
+
+8.1.  ${first}
+
+   [RFC3168]  Ramakrishnan, K., Floyd, S., and D. Black, "The Addition
+              of Explicit Congestion Notification (ECN) to IP",
+              RFC 3168, DOI 10.17487/RFC3168, September 2001.
+
+8.2.  ${second}
+
+   [RFC5129]  Davie, B., Briscoe, B., and J. Tay, "Explicit Congestion
+              Marking in MPLS", RFC 5129, DOI 10.17487/RFC5129, January
+              2008.
+`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.referenceSectionRfc).toEqual([
+      { value: '3168', subsection: firstKind },
+      { value: '5129', subsection: secondKind }
+    ])
+  })
+
+  test('Takes a "Normative Reference" section as the references section', async () => {
+    // From draft-ietf-lisp-site-external-connectivity-05
+    const txt = `${metaTXTBlock}
+11.  Normative Reference
+
+   [RFC3168]  Ramakrishnan, K., Floyd, S., and D. Black, "The Addition
+              of Explicit Congestion Notification (ECN) to IP",
+              RFC 3168, DOI 10.17487/RFC3168, September 2001.
+`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.markers.references.start).toBeTruthy()
+    expect(result.data.extractedElements.referenceSectionRfc).toEqual([
+      { value: '3168', subsection: 'normative_references' }
+    ])
+  })
+
   test('Takes an "Informational References" subsection as informative', async () => {
     // From draft-halmir-mpls-ecn-04
     const txt = `${metaTXTBlock}
