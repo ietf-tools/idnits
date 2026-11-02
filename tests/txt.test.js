@@ -423,6 +423,15 @@ describe('The copyright date is not valid.', () => {
     await expect(validateCopyrightDate(doc, { mode: MODES.FORGIVE_CHECKLIST, year: 2024 })).resolves.toContainError('COPYRIGHT_YEAR_MISMATCH', ValidationWarning)
     await expect(validateCopyrightDate(doc, { mode: MODES.SUBMISSION, year: 2024 })).resolves.toContainError('COPYRIGHT_YEAR_MISMATCH', ValidationWarning)
   })
+  test('names the year expected when it is given', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+    doc.data.extractedElements.copyrightDates = [2034]
+
+    const [finding] = await validateCopyrightDate(doc, { mode: MODES.NORMAL, year: 2024 })
+    expect(finding.message).toBe('The copyright year in the IETF Trust and authors Copyright Line does not match the expected year (2024)')
+    const [byDefault] = await validateCopyrightDate(doc, { mode: MODES.NORMAL })
+    expect(byDefault.message).toBe('The copyright year in the IETF Trust and authors Copyright Line does not match the current year')
+  })
 })
 
 describe('The Copyright Notice section should not be numbered.', () => {
