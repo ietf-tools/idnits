@@ -162,6 +162,44 @@ describe('collectXmlReferences', () => {
       { anchor: 'BGP-LLDP', rfc: null, bcp: null, external: false }
     ])
   })
+
+  // From draft-bubblefish-naalp-01, draft-car-agents-txt-wellknown-00, draft-ietf-tls-pake-02,
+  // draft-samizadeh-bmwg-cni-benchmarking-02, draft-sander-open-tabs-passkey-00 and draft-cui-idr-flowspec-feedback-roadmap-00
+  test('takes the draft name from a <seriesInfo> value, the target, then the anchor', async () => {
+    const ref = (anchor, target, seriesInfo) => `<reference anchor="${anchor}"${target ? ` target="${target}"` : ''}>
+          <front><title>T</title></front>${seriesInfo ? `<seriesInfo name="Internet-Draft" value="${seriesInfo}"/>` : ''}</reference>`
+    const { doc } = await parse(`<rfc version="3"><back>
+      <references><name>Informative References</name>
+        ${ref('NPAMP', null, 'draft-bubblefish-npamp (work in progress)')}
+        ${ref('SRIJAL', 'https://datatracker.ietf.org/doc/draft-srijal-agents-policy/', 'draft-srijal-agents-policy-00 (expired)')}
+        ${ref('PQPAKE', null, 'draft-vos-cfrg-pqpake-latest')}
+        ${ref('ODELL', null, 'draft-odell-8+8-00')}
+        ${ref('draft-ea-ds', 'https://datatracker.ietf.org/doc/draft-sofia-green-energy-aware-diffserv/', null)}
+        ${ref('I-D.foo', 'https://www.ietf.org/archive/id/draft-doe-foo-03.txt', null)}
+        ${ref('I-D.bar', 'https://datatracker.ietf.org/doc/html/draft-doe-bar-latest', null)}
+        ${ref('I-D.doe-baz', 'https://datatracker.ietf.org/group/foo/about/', null)}
+        ${ref('draft-solana-session-00', 'https://github.com/tempoxyz/mpp-specs/pull/201', null)}
+        ${ref('draft-doe-qux-04', 'https://datatracker.ietf.org/doc/draft-doe-qux/', null)}
+      </references>
+    </back></rfc>`, 'draft-test-references-00.xml')
+
+    const cited = listXmlReferences(doc).map(({ anchor, draft, external }) => ({ anchor, draft, external }))
+    expect(cited).toEqual([
+      { anchor: 'NPAMP', draft: 'draft-bubblefish-npamp', external: false },
+      { anchor: 'SRIJAL', draft: 'draft-srijal-agents-policy-00', external: false },
+      { anchor: 'PQPAKE', draft: 'draft-vos-cfrg-pqpake', external: false },
+      { anchor: 'ODELL', draft: 'draft-odell-8+8-00', external: false },
+      { anchor: 'draft-ea-ds', draft: 'draft-sofia-green-energy-aware-diffserv', external: false },
+      { anchor: 'I-D.foo', draft: 'draft-doe-foo-03', external: false },
+      { anchor: 'I-D.bar', draft: 'draft-doe-bar', external: false },
+      // -> An IETF target naming no draft leaves it to the anchor
+      { anchor: 'I-D.doe-baz', draft: null, external: false },
+      // -> A target elsewhere (an editor's copy, a repository) leaves it to the anchor
+      { anchor: 'draft-solana-session-00', draft: 'draft-solana-session-00', external: false },
+      // -> The anchor gives the revision of the draft the target links to
+      { anchor: 'draft-doe-qux-04', draft: 'draft-doe-qux-04', external: false }
+    ])
+  })
 })
 
 // References whose content is a bibliography entry pulled in with xi:include and an xpointer, as in
@@ -267,7 +305,7 @@ describe('listXmlReferences', () => {
 
     expect(listXmlReferences(doc)).toEqual([
       { section: 'normative', rfc: null, draft: null, bcp: null, std: null, external: true, anchor: 'FIPS203', path: `${PATH}.reference[0]`, source: 'reference' },
-      { section: 'normative', rfc: null, draft: null, bcp: null, std: null, external: false, anchor: 'I-D.jenkins-cnsa2-pkix-profile', path: `${PATH}.reference[1]`, source: 'reference' },
+      { section: 'normative', rfc: null, draft: 'draft-jenkins-cnsa2-pkix-profile', bcp: null, std: null, external: false, anchor: 'I-D.jenkins-cnsa2-pkix-profile', path: `${PATH}.reference[1]`, source: 'reference' },
       { section: 'normative', rfc: null, draft: null, bcp: null, std: null, external: false, anchor: 'TLS', path: `${PATH}.reference[2]`, source: 'reference' },
       { section: 'normative', rfc: '6085', draft: null, bcp: null, std: null, external: false, anchor: 'MCinUC', path: `${PATH}.reference[3]`, source: 'reference' },
       { section: 'normative', rfc: null, draft: null, bcp: null, std: null, external: false, anchor: 'RIFT-KV', path: `${PATH}.reference[4]`, source: 'reference' },

@@ -284,7 +284,9 @@ export const mockRestHandlers = [
   ...[
     'https://www.rfc-editor.org/rfc/rfc8446.json',
     'https://www.rfc-editor.org/rfc/rfc9999.json',
-    'https://datatracker.ietf.org/doc/draft-ietf-quic-http/doc.json'
+    'https://datatracker.ietf.org/doc/draft-ietf-quic-http/doc.json',
+    // -> Named by the target of <reference anchor="I-D.jenkins-cnsa2-pkix-profile"> (EXTERNAL_REFERENCES below)
+    'https://datatracker.ietf.org/doc/draft-jenkins-cnsa2-pkix-profile/doc.json'
   ].map(url => http.get(url, () => new HttpResponse(null, { status: 404 })))
 ]
 
