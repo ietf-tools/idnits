@@ -71,6 +71,8 @@ idnits [args] <file path|url>
 | `--help` | `-h` | Print the help text and exit |  |
 | `--version` |  | Print the version and exit |  |
 
+An option that takes one value (all but `--allowed-domains` and `--filter`) can be given more than once: the last one counts, so a script's defaults can be overridden (`idnits -o json -o simple` gives `simple` output). Each value given is still checked.
+
 #### Validation modes
 
 The mode says at which stage of its life the document is checked, not how strictly: `normal` before RFC publication, `forgive-checklist` when the RFC Editor converts an approved draft into an RFC, and `submission` when an Internet-Draft is uploaded to Datatracker. [Validation modes](docs/modes.md) explains each mode and lists every finding with its severity in each one.
