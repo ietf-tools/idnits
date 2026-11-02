@@ -522,6 +522,32 @@ describe('Document has some links like a reference appears but does not occur in
     await expect(validateLinksInText(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('REFERENCE_MISSING_IN_REFERENCE_SECTION', ValidationWarning)
     await expect(validateLinksInText(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('REFERENCE_MISSING_IN_REFERENCE_SECTION', ValidationWarning)
   })
+
+  // From RFC 9480, whose ASN.1 module cites [RFC9480]
+  test('An RFC citing itself is not a missing reference', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.docKind = 'rfc'
+    doc.data.header.rfcNumber = '9480'
+    doc.data.extractedElements.bracketedRfcNonReferences = ['[RFC9480]']
+
+    await expect(validateLinksInText(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
+
+    doc.data.extractedElements.bracketedRfcNonReferences = ['[RFC9480]', '[RFC9482]']
+    const result = await validateLinksInText(doc, { mode: MODES.NORMAL })
+    const messages = result.map((r) => r.message)
+    expect(messages).toEqual(['Document has [RFC9482] but does not occur in any reference section.'])
+  })
+
+  test('A draft citing an RFC of the same number as nothing is still reported', async () => {
+    const doc = cloneDeep(baseTXTDoc)
+
+    doc.docKind = 'draft'
+    doc.data.header.rfcNumber = '9480'
+    doc.data.extractedElements.bracketedRfcNonReferences = ['[RFC9480]']
+
+    await expect(validateLinksInText(doc, { mode: MODES.NORMAL })).resolves.toContainError('REFERENCE_MISSING_IN_REFERENCE_SECTION', ValidationWarning)
+  })
 })
 
 describe('Validate document references style.', () => {
