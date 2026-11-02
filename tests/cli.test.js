@@ -29,13 +29,17 @@ function runCli (args) {
 
 const copyrightFindings = stdout => JSON.parse(stdout).nits.filter(n => n.code === 'COPYRIGHT_YEAR_MISMATCH')
 
-describe('--year / -y', () => {
+// -> Each test starts the CLI as its own process on a whole draft, so the tests run concurrently, and
+//    so do the runs within a test, with room for a loaded machine
+describe.concurrent('--year / -y', { timeout: 30000 }, () => {
   test.each([['--year'], ['-y']])('%s sets the year the copyright check expects', async (flag) => {
-    const match = await runCli([flag, '2023'])
+    const [match, mismatch] = await Promise.all([
+      runCli([flag, '2023']),
+      runCli([flag, '2025'])
+    ])
     expect(match.code).toBe(0)
     expect(copyrightFindings(match.stdout)).toEqual([])
 
-    const mismatch = await runCli([flag, '2025'])
     expect(mismatch.code).toBe(0)
     expect(copyrightFindings(mismatch.stdout).map(n => n.desc)).toEqual([
       'The copyright year in the IETF Trust and authors Copyright Line does not match the expected year (2025)'
