@@ -127,14 +127,15 @@ describe('REFERENCE_STATUS_UNAVAILABLE', () => {
     ])
   })
 
-  test('names an Obsoletes or Updates value that is not an RFC number as written', async () => {
-    quiet()
-    server.use(http.get(/^https:\/\/www\.rfc-editor\.org\/rfc\/rfc(draft|2026-)/, down))
+  test('is not given for an Obsoletes or Updates value that is not an RFC number, which is never looked up', async () => {
+    const requested = []
+    server.events.on('request:start', ({ request }) => requested.push(request.url))
+    server.use(http.get(/^https:\/\/www\.rfc-editor\.org\/rfc\//, down))
     const doc = await parseRefs({ attrs: ' obsoletes="draft-foo-bar-00" updates="2026-5-29"' })
     const result = await checkReferences(doc, { mode: MODES.NORMAL })
-    expect(messages(withCode(result, 'REFERENCE_STATUS_UNAVAILABLE'))).toEqual([
-      "The status of \"2026-5-29\" (in Updates) and \"draft-foo-bar-00\" (in Obsoletes) couldn't be fetched from rfc-editor.org (Request to www.rfc-editor.org failed: HTTP 503), so the RFCs this document obsoletes or updates weren't checked against rfc-editor.org."
-    ])
+    server.events.removeAllListeners()
+    expect(names(result).filter(n => /_RFC_NOT_FOUND$|UNAVAILABLE/.test(n)).sort()).toEqual(['OBSOLETES_RFC_NOT_FOUND', 'UPDATES_RFC_NOT_FOUND'])
+    expect(requested.filter(url => url.startsWith('https://www.rfc-editor.org/'))).toEqual([])
   })
 
   test('is not given for an RFC rfc-editor.org has no record of (404), which UNDEFINED_STATUS reports', async () => {
