@@ -55,6 +55,7 @@ idnits [args] <file path|url>
 
 | Arguments | Alias | Description | Default |
 |---|---|---|---|
+| `--allowed-domains` |  | Comma-separated domains that, with their subdomains, get no domain finding (`INVALID_DOMAIN_TLD`, `POSSIBLE_INVALID_TLD`), e.g. `--allowed-domains example.net,example.org`. Replaces the default list. Can be repeated: the lists add up. `--allowed-domains ''` means no domain, so every domain is checked. Each domain is labels of letters, digits and hyphens (not at a label's start or end) joined by dots, a trailing dot allowed; anything else, an IPv4 address or an empty element (`a.org,,b.org`) included, is an error. | `ietf.org,rfc-editor.org` |
 | `--datatracker-url` |  | Base URL of the Datatracker used for remote lookups. Overrides the `IDNITS_DATATRACKER_URL` environment variable. | `https://datatracker.ietf.org` |
 | `--fail-on` |  | Exit with code `2` if there is at least one nit of the given severity or higher (`errors` > `warnings` > `comments`).<br>Accepted values: `errors`, `warnings`, `comments` |  |
 | `--filter` | `-f` | Filter output to only certain severity types. Can be declared multiple times to filter multiple severity types.<br>Accepted values: `errors`, `warnings`, `comments` |  |

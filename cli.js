@@ -11,6 +11,7 @@ import { satisfies } from 'semver'
 import { Listr, ListrDefaultRendererLogLevels } from 'listr2'
 import { checkNits, finalizeFindings, getAllValidations, getDocType } from './lib/index.mjs'
 import { getModeByName } from './lib/config/modes.mjs'
+import { ALLOWED_DOMAINS_DEFAULT } from './lib/config/externals.mjs'
 import {
   DATATRACKER_URL_ENV,
   DEFAULT_DATATRACKER_URL,
@@ -37,6 +38,62 @@ if (!satisfies(process.version, pkgInfo.engines.node)) {
   process.exit(1)
 }
 
+// A domain label: letters, digits and hyphens, not starting or ending with a hyphen, at most 63 characters
+const DOMAIN_LABEL_RE = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/i
+// xml and txt are document extensions, not top-level domains
+const DOCUMENT_EXTENSION_RE = /^(?:xml|txt)$/i
+
+/**
+ * Whether a value is a domain name: labels joined by dots (a trailing dot allowed), at most 253 characters,
+ * the last label not all digits (an IPv4 address isn't a domain) and not a document extension
+ *
+ * @param {string} value One element of an --allowed-domains list
+ * @returns {boolean} Whether it is a domain name
+ */
+function isDomainName (value) {
+  const name = value.replace(/\.$/, '')
+  if (name.length === 0 || name.length > 253) {
+    return false
+  }
+  const labels = name.split('.')
+  if (!labels.every(label => DOMAIN_LABEL_RE.test(label))) {
+    return false
+  }
+  const topLabel = labels[labels.length - 1]
+  if (/^\d+$/.test(topLabel)) {
+    return false
+  }
+  return !DOCUMENT_EXTENSION_RE.test(topLabel)
+}
+
+/**
+ * Domains given with --allowed-domains: each occurrence is one argument, a comma-separated list.
+ * The lists of every occurrence add up; an empty argument adds no domain.
+ *
+ * @param {string|string[]} values One argument per occurrence
+ * @returns {string[]} Domains, lowercased, without a trailing dot
+ */
+function parseAllowedDomains (values) {
+  const domains = []
+  for (const value of [values].flat()) {
+    const arg = String(value)
+    if (arg === '') {
+      continue
+    }
+    for (const element of arg.split(',')) {
+      if (element === '') {
+        throw new Error(`--allowed-domains: empty domain in "${arg}". Use --allowed-domains '' for no domain at all.`)
+      }
+      if (!isDomainName(element)) {
+        throw new Error(`--allowed-domains: "${element}" (in "${arg}") is not a domain. Give one comma-separated list per --allowed-domains, e.g. --allowed-domains example.net,example.org`)
+      }
+      const domain = element.toLowerCase().replace(/\.$/, '')
+      domains.push(domain)
+    }
+  }
+  return domains
+}
+
 // Define CLI arguments config
 const argv = yargs(hideBin(process.argv))
   .scriptName('idnits')
@@ -44,8 +101,15 @@ const argv = yargs(hideBin(process.argv))
   .example([
     ['$0 draft-ietf-abcd-01.xml', ''],
     [`$0 -m submission -y ${new Date().getFullYear()} draft-ietf-abcd-01.xml`, ''],
-    ['$0 https://www.rfc-editor.org/rfc/rfc2549', '']
+    ['$0 https://www.rfc-editor.org/rfc/rfc2549', ''],
+    ['$0 --allowed-domains example.net,example.org draft-ietf-abcd-01.xml', '']
   ])
+  .option('allowed-domains', {
+    describe: `Comma-separated domains that, with their subdomains, get no domain finding. Replaces the default list (${ALLOWED_DOMAINS_DEFAULT.join(',')}); '' means none, so every domain is checked. May be repeated: the lists add up.`,
+    coerce: parseAllowedDomains,
+    requiresArg: true,
+    type: 'string'
+  })
   .option('datatracker-url', {
     describe: `Base URL of the Datatracker used for remote lookups (overrides ${DATATRACKER_URL_ENV}, default ${DEFAULT_DATATRACKER_URL})`,
     coerce: val => normalizeBaseUrl(val, '--datatracker-url'),
@@ -266,6 +330,7 @@ try {
           raw: docRaw,
           filename: docPathObj.base,
           options: {
+            allowedDomains: argv.allowedDomains,
             mode,
             offline: argv.offline,
             year: argv.year
@@ -289,6 +354,7 @@ try {
     console.info('')
   } else {
     result = await checkNits(docRaw, docPathObj.base, {
+      allowedDomains: argv.allowedDomains,
       mode,
       offline: argv.offline,
       year: argv.year
