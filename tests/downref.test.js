@@ -1356,8 +1356,8 @@ Acknowledgements
    CDDL to be completed, soon.
 `, 'draft-bormann-cbor-cddl-freezer-18.txt')
       server.use(http.get('https://www.rfc-editor.org/rfc/rfc8610.json', () => HttpResponse.json({})))
-      // -> The text parser takes the Acknowledgements for part of the references section
-      expect(doc.data.extractedElements.locations.referenceSectionRfc['8610']).toHaveLength(2)
+      // -> The Acknowledgements end the references section (#315)
+      expect(doc.data.extractedElements.locations.referenceSectionRfc['8610']).toHaveLength(1)
 
       await expect(validateNormativeReferences(doc, { mode: MODES.NORMAL })).resolves.toEqual([
         new ValidationComment('UNDEFINED_STATUS', 'RFC 8610 has no status on rfc-editor.org.', {
@@ -1960,6 +1960,38 @@ ${entry}
       expect(findings).toEqual([['OUTDATED_DRAFT', expectedLines]])
       expect(res[0].lines).toHaveLength(1)
     }
+  })
+
+  // From RFC 9331
+  test('a draft listed after a wrapped line of an entry starting with Appendix is located', async () => {
+    const text = `${CANONICAL_TXT}
+1.  Introduction
+
+   This document cites the drafts below.
+
+2.  References
+
+2.1.  Informative References
+
+   [QV]       Briscoe, B. and P. Hurtig, "Report on Prototype
+              Development and Evaluation of Network and Interaction
+              Techniques", RITE Technical Report, Deliverable 2.3,
+              Appendix C.2: "Up to Speed with Queue View", September
+              2015.
+
+${txtDraftEntry('draft-chain-hist-02')}
+
+Appendix A.  Rationale
+
+   Some text.
+`
+    const doc = await parseTXT(text, 'draft-ietf-beep-boop-01.txt')
+    expect(doc.data.extractedElements.draftStatusReferences).toEqual([{ value: 'draft-chain-hist-02', subsection: 'informative_references' }])
+
+    const res = await validateReferenceForStale(doc, { mode: MODES.NORMAL })
+    const findings = res.map(finding => [finding.name, finding.lines])
+    expect(findings).toEqual([['OUTDATED_DRAFT', draftLinks(doc, 'draft-chain-hist-02')]])
+    expect(res[0].lines).toHaveLength(1)
   })
 
   test('at most 20 locations are given', async () => {
