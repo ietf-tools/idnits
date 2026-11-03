@@ -3684,9 +3684,9 @@ Informative References
       { value: 'draft-reilly-resilience-protocol-00', subsection: 'informative_references' },
       { value: 'draft-howard-virp-06', subsection: 'informative_references' },
       { value: 'draft-wood-tsvwg-saratoga-22', subsection: 'informative_references' },
-      { value: 'draft-doe-foo', subsection: 'informative_references' },
-      { value: 'draft-doe-bar', subsection: 'informative_references' }
+      { value: 'draft-doe-foo', subsection: 'informative_references' }
     ])
+    // -> Not a draft named in a link to another host (a repository)
     // -> Located where the link names the draft
     expect(getLocations(result, 'draftStatusReferences', 'draft-reilly-resilience-protocol-00')).toEqual([
       { line: lineNumber(txt, 'draft-reilly-resilience-protocol/00/>.'), pos: 15 }
@@ -3756,6 +3756,63 @@ Informative References
       'draft-bu-agentproto-security-principal-binding-02',
       'draft-ietf-foo-bar-03',
       'draft-ietf-foo-baz-02'
+    ])
+  })
+
+  // From draft-carpenter-rswg-authoring-ethics-06, draft-xu-intarea-vulnerabilities-forged-icmp-02,
+  // draft-knodel-age-arch-01, draft-kristoff-v6ops-asn-based-addressing-03, draft-duffy-csmp-11,
+  // draft-ietf-lamps-pq-composite-kem-22 and draft-melegassi-ippm-mvps-gddp-00
+  test('Takes a draft from a link only as a whole path segment of a link to an IETF host, or an editor\'s copy', async () => {
+    const txt = `${metaTXTBlock}
+18.  Informative References
+
+   [IESG]     IESG, "IESG Statement on Internet-Draft Authorship",
+              <https://www.ietf.org/about/groups/iesg/statements/
+              iesg-statement-on-internet-draft-authorship-20210510/>.
+
+   [NDSS]     Feng, X., "PMTUD is not Panacea", April 2022,
+              <https://www.ndss-symposium.org/ndss-paper/auto-
+              draft-185/>.
+
+   [ODELL]    O'Dell, M. D., "8+8 - An Alternate Addressing Architecture
+              for IPv6", 24 October 1996,
+              <https://datatracker.ietf.org/doc/html/draft-odell-
+              8+8-00>.
+
+   [CSMP]     "CSMP Components", n.d., <https://github.com/woobagooba/
+              draft-ietf-is-
+              csmp/blob/e0be5a31906eb3e9983e7cc28b24ed9482543784/
+              CsmpComponents-1.0.yaml>.
+
+   [EDITOR]   <https://catellix.com/draft-editor>.
+
+   [TXT]      <https://www.ietf.org/archive/id/draft-doe-txt-02.txt>.
+
+   [HTML]     <https://datatracker.ietf.org/doc/html/draft-doe-html-01.html>.
+
+   [FRAG]     <https://www.rfc-editor.org/draft-doe-frag#section-1>.
+
+   [QUERY]    <https://datatracker.ietf.org/doc/draft-doe-query?x=1>.
+
+   [DIFF]     <https://author-tools.ietf.org/iddiff?url1=draft-doe-diff-01&url2=draft-doe-diff-02>.
+
+   [COPY]     <https://doe.github.io/draft-doe-copy/draft-doe-copy-03.html>.
+
+   [MD]       <https://github.com/doe/repo/blob/main/draft-doe-md.md>.
+
+   [TAG]      <https://github.com/doe/repo/releases/tag/draft-doe-tag-02>.
+`
+
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.draftStatusReferences.map((el) => el.value)).toEqual([
+      'draft-doe-txt-02',
+      'draft-doe-html-01',
+      'draft-doe-frag',
+      'draft-doe-query',
+      'draft-doe-diff-01',
+      // -> On another host, only the editor's copy a link ends with
+      'draft-doe-copy-03',
+      'draft-doe-md'
     ])
   })
 

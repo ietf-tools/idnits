@@ -318,6 +318,10 @@ describe('A reference to a draft links to the revision it names', () => {
 
    [REPO]     Doe, J., "Qux", Work in Progress, Internet-Draft,
               draft-doe-qux-02, <https://example.github.io/draft-doe-qux-01>.
+
+   [COPY]     Doe, J., "Quux", Work in Progress, Internet-Draft,
+              draft-doe-quux-02, <https://example.github.io/draft-doe-quux/
+              draft-doe-quux-01.html>.
 `, 'draft-doe-foo-00.txt')
 
       await expectRevisionFindings(doc, [])
