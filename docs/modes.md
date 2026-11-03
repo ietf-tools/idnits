@@ -320,6 +320,7 @@ For text documents, `SUBMISSION_TYPE_UNEXPECTED` compares the stream implied by 
 | `DOCUMENT_USE_STRING_REFERENCES` | Comment | Comment | — | text | |
 | `RFC_REFERENCE_URL_FORMAT` | Warning | Warning | — | XML | Link to `/rfc/` instead of `/info/` |
 | `RFC_REFERENCE_URL_FORMAT` | Comment | Comment | — | text | Same; xml2rfc renders references without a target this way |
+| `DRAFT_REFERENCE_REVISION_MISMATCH` | Warning | Warning | — | both | Entry links to one revision of a draft and names another: in its text (text), in its Internet-Draft `<seriesInfo>` (XML). Links to IETF hosts only |
 | `DOWNREF_TO_LOWER_STATUS` | Error | Warning | — | both | (lookup, offline) Not in the Downref Registry; a Warning in both modes when the registry can't be fetched |
 | `DOWNREF_TO_LOWER_STATUS_IN_REGISTRY` | Warning | Warning | — | both | (lookup, offline) |
 | `POSSIBLE_DOWNREF` | Warning | Warning | — | both | (lookup, offline) Standards Track and BCP documents; status of a normative RFC not recognised (e.g. `UNKNOWN`) |
