@@ -200,6 +200,44 @@ describe('collectXmlReferences', () => {
       { anchor: 'draft-doe-qux-04', draft: 'draft-doe-qux-04', external: false }
     ])
   })
+
+  // From draft-ietf-tls-8773bis cited as https://datatracker.ietf.org/doc/draft-ietf-tls-8773bis/02/
+  test('takes a revision given as the path segment after the draft name in an IETF target', async () => {
+    const ref = (anchor, target, seriesInfo) => `<reference anchor="${anchor}" target="${target}">
+          <front><title>T</title></front>${seriesInfo ? `<seriesInfo name="Internet-Draft" value="${seriesInfo}"/>` : ''}</reference>`
+    const { doc } = await parse(`<rfc version="3"><back>
+      <references><name>Informative References</name>
+        ${ref('8773bis', 'https://datatracker.ietf.org/doc/draft-ietf-tls-8773bis/02/', null)}
+        ${ref('I-D.doe-a', 'https://datatracker.ietf.org/doc/draft-doe-a/05', null)}
+        ${ref('I-D.doe-b', 'https://datatracker.ietf.org/doc/draft-doe-b/03?include_text=1', null)}
+        ${ref('I-D.doe-c', 'https://datatracker.ietf.org/doc/draft-doe-c/04#section-2', null)}
+        ${ref('draft-doe-d-01', 'https://datatracker.ietf.org/doc/draft-doe-d/02/', null)}
+        ${ref('I-D.doe-e', 'https://datatracker.ietf.org/doc/draft-doe-e/07/', 'draft-doe-e-06')}
+        ${ref('I-D.doe-f', 'https://datatracker.ietf.org/doc/draft-doe-f-03/04/', null)}
+        ${ref('I-D.doe-g', 'https://datatracker.ietf.org/doc/draft-doe-g/123/', null)}
+        ${ref('I-D.doe-h', 'https://datatracker.ietf.org/doc/draft-doe-h/history/', null)}
+        ${ref('I-D.doe-i', 'https://github.com/doe/draft-doe-i/02/', null)}
+      </references>
+    </back></rfc>`, 'draft-test-references-00.xml')
+
+    expect(listXmlReferences(doc).map(({ anchor, draft }) => ({ anchor, draft }))).toEqual([
+      { anchor: '8773bis', draft: 'draft-ietf-tls-8773bis-02' },
+      { anchor: 'I-D.doe-a', draft: 'draft-doe-a-05' },
+      { anchor: 'I-D.doe-b', draft: 'draft-doe-b-03' },
+      { anchor: 'I-D.doe-c', draft: 'draft-doe-c-04' },
+      // -> The link's revision wins over the anchor's
+      { anchor: 'draft-doe-d-01', draft: 'draft-doe-d-02' },
+      // -> A <seriesInfo> wins over the target
+      { anchor: 'I-D.doe-e', draft: 'draft-doe-e-06' },
+      // -> A name that already ends in a revision keeps it
+      { anchor: 'I-D.doe-f', draft: 'draft-doe-f-03' },
+      // -> Only a two-digit segment is a revision
+      { anchor: 'I-D.doe-g', draft: 'draft-doe-g' },
+      { anchor: 'I-D.doe-h', draft: 'draft-doe-h' },
+      // -> Not on an IETF host, so the anchor, which names no draft
+      { anchor: 'I-D.doe-i', draft: null }
+    ])
+  })
 })
 
 // References whose content is a bibliography entry pulled in with xi:include and an xpointer, as in

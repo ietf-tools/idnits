@@ -2205,6 +2205,20 @@ describe('validateReferenceForStale (XML)', () => {
     ])
   })
 
+  // From draft-ietf-tls-8773bis cited as https://datatracker.ietf.org/doc/draft-ietf-tls-8773bis/02/
+  test('OUTDATED_DRAFT when an XML target gives an older revision as a path segment', async () => {
+    const doc = await parseXMLBack(nestedReferences('Normative References', '<reference anchor="I-D.ietf-bess-rfc7432bis" target="https://datatracker.ietf.org/doc/draft-ietf-bess-rfc7432bis/10/"><front/></reference>'))
+
+    const res = await validateReferenceForStale(doc, { mode: MODES.NORMAL })
+    expect(res).toEqual([
+      new ValidationWarning(
+        'OUTDATED_DRAFT',
+        'The draft reference draft-ietf-bess-rfc7432bis-10 is stale. Its latest revision is -14.',
+        { ref: 'https://datatracker.ietf.org/doc/draft-ietf-bess-rfc7432bis' }
+      )
+    ])
+  })
+
   test('OUTDATED_DRAFT for a draft pulled in by xi:include', async () => {
     const doc = await parseXMLBack(nestedReferences('Informative References', `
       <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="https://bib.ietf.org/public/rfc/bibxml3/reference.I-D.ietf-stale.xml"/>`))
