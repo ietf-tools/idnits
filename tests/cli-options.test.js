@@ -174,3 +174,50 @@ describe.concurrent('an option taking one value, given more than once', { timeou
     expect(domainFindings(one.stdout)).toEqual(['acme.net'])
   })
 })
+
+describe.concurrent('the document argument', { timeout: 30000 }, () => {
+  test('can follow "--"', async () => {
+    const [run, plain] = await Promise.all([
+      runCli(['-o', 'count', '--', draft]),
+      runCli(['-o', 'count', draft])
+    ])
+    expect(run.stderr).toBe('')
+    expect(run.code).toBe(0)
+    expect(run.stdout).toBe(plain.stdout)
+  })
+
+  test('starting with "-", is taken as the document after "--"', async () => {
+    const dashed = path.join(dir, '-draft-test-cli-options-00.xml')
+    await writeFile(dashed, DRAFT_XML)
+    const run = await runCli(['-o', 'json', '--', '-draft-test-cli-options-00.xml'])
+    expect(run.stderr).toBe('')
+    expect(run.code).toBe(0)
+    expect(JSON.parse(run.stdout).file.path).toBe(dashed)
+  })
+
+  test('after "--", an option name is a document name', async () => {
+    const run = await runCli(['-o', 'count', '--', '-o'])
+    expect(run.code).toBe(1)
+    expect(run.stderr).toContain(`Failed to read document: ENOENT: no such file or directory, open '${path.join(dir, '-o')}'`)
+  })
+
+  test('a name that looks like a number stays as written', async () => {
+    const run = await runCli(['-o', 'count', '0123'])
+    expect(run.code).toBe(1)
+    expect(run.stderr).toContain(`open '${path.join(dir, '0123')}'`)
+  })
+
+  test('is required, and only one', async () => {
+    const [none, afterDashes, two] = await Promise.all([
+      runCli(['-o', 'count']),
+      runCli(['-o', 'count', '--']),
+      runCli(['-o', 'count', draft, '--', draft])
+    ])
+    expect(none.code).toBe(1)
+    expect(none.stderr).toContain('Not enough non-option arguments: got 0, need at least 1')
+    expect(afterDashes.code).toBe(1)
+    expect(afterDashes.stderr).toContain('Not enough non-option arguments: got 0, need at least 1')
+    expect(two.code).toBe(1)
+    expect(two.stderr).toContain('Too many non-option arguments: got 2, maximum of 1')
+  })
+})
