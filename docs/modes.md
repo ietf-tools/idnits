@@ -194,10 +194,10 @@ A document that can't be parsed isn't checked: the CLI exits with code `1`, and 
 | `DOC_DATE_IN_FUTURE` | Warning | Warning | Warning | both | More than 3 days |
 | `MISSING_DOC_CATEGORY` | Warning | Warning | Warning | both | Text RFC: no `Category:` line. Text draft: no `Intended status:` line (a `Category:` line instead doesn't count). XML: no `category` attribute |
 | `INVALID_DOC_CATEGORY` | Warning | Warning | Warning | both | |
-| `OBSOLETES_NOT_IN_ABSTRACT` | Comment | Comment | — | text | |
-| `OBSOLETES_NOT_IN_ABSTRACT` | Warning | Warning | — | XML | |
-| `UPDATES_NOT_IN_ABSTRACT` | Comment | Comment | — | text | |
-| `UPDATES_NOT_IN_ABSTRACT` | Warning | Warning | — | XML | |
+| `OBSOLETES_NOT_IN_ABSTRACT` | Comment | Comment | — | text | See below |
+| `OBSOLETES_NOT_IN_ABSTRACT` | Warning | Warning | — | XML | See below |
+| `UPDATES_NOT_IN_ABSTRACT` | Comment | Comment | — | text | See below |
+| `UPDATES_NOT_IN_ABSTRACT` | Warning | Warning | — | XML | See below |
 | `MENTIONED_NOT_IN_OBSOLETES` | Comment | Comment | — | text | |
 | `MENTIONED_NOT_IN_UPDATES` | Comment | Comment | — | text | |
 | `OBSOLETES_NOT_IN_RFC` | Warning | Warning | — | XML | |
@@ -211,6 +211,13 @@ A document that can't be parsed isn't checked: the CLI exits with code `1`, and 
 | `UPDATES_UPDATED_RFC` | Warning | Warning | — | XML | (lookup, offline) |
 | `OBSOLETES_NOT_RFC_NUMBER` | Warning | Warning | — | XML | Neither an RFC number nor an Internet-Draft name, or a number no RFC can have (0, more than 5 digits) |
 | `UPDATES_NOT_RFC_NUMBER` | Warning | Warning | — | XML | Neither an RFC number nor an Internet-Draft name, or a number no RFC can have (0, more than 5 digits) |
+
+`OBSOLETES_NOT_IN_ABSTRACT` and `UPDATES_NOT_IN_ABSTRACT` look for the abstract to say that the document obsoletes or
+updates each RFC it lists. The check recognises the common phrasings, such as "obsoletes RFC 2747 and RFC 3097",
+"obsoletes both RFC 2747 and RFC 3097", "supersedes RFCs 1846, 7504, and 7505", "updates BCP 38 (RFC 2827)",
+"updates the registry defined in RFC 9605" and "RFCs 6096 and 7053 are also obsoleted". A relation stated in an
+unusual sentence shape, such as "updates RFC 6241, to augment …, and RFC 8526, to augment …", may still be reported.
+Such a finding can be ignored when the abstract does state the relation.
 
 ### Internet-Draft boilerplate (text)
 

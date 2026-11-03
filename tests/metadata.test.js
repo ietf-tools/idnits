@@ -707,6 +707,36 @@ describe('document should have valid obsoletes / updates references', () => {
       const messages = result3.map(r => r.message)
       expect(messages).toEqual(["The document states that it updates RFC 3501 but doesn't explicitely mention it in the <abstract> section."])
     })
+    test('reads the abstract phrasings that name obsoleted and updated RFCs', async () => {
+      const names = async (abstract, attrs) => {
+        const { doc } = await parse(`<?xml version="1.0" encoding="UTF-8"?>
+<rfc version="3" docName="draft-foo-bar-00" ${attrs}>
+  <front>
+    <title>Foo</title>
+    <abstract>
+      <t>${abstract}</t>
+    </abstract>
+  </front>
+  <middle/>
+</rfc>`, 'draft-foo-bar-00.xml')
+        return (await validateObsoleteUpdateRef(doc, { offline: true })).map(r => `${r.name} ${r.message.match(/RFC (\d+)/)[1]}`)
+      }
+      // From draft-ietf-teas-rsvp-auth-v2-02, draft-sriram-savnet-intrasav-solution-00, RFC 9580 and RFC 9846
+      await expect(names('This document obsoletes both <xref target="RFC2747"/> and <xref target="RFC3097"/>.', 'obsoletes="2747, 3097"')).resolves.toEqual([])
+      await expect(names('This document updates BCP 38 (<xref target="RFC2827"/>) and BCP 84 (<xref target="RFC3704"/>,\n        <xref target="RFC8704"/>).', 'updates="2827, 3704, 8704"')).resolves.toEqual([])
+      await expect(names('This document obsoletes RFCs 4880 ("OpenPGP Message Format"), 5581 ("The Camellia Cipher in OpenPGP"), and 6637 ("Elliptic Curve Cryptography (ECC) in OpenPGP").', 'obsoletes="4880, 5581, 6637"')).resolves.toEqual([])
+      await expect(names('This document obsoletes RFC 5246 (specifying TLS 1.2) and RFCs 5077, 6961, 7627, and 8422.', 'obsoletes="5246, 5077, 6961, 7627, 8422"')).resolves.toEqual([])
+      // From RFC 9788, RFC 9926 and RFC 9685
+      await expect(names('This document updates the S/MIME specification (RFC 8551) to offer a different mechanism.', 'updates="8551"')).resolves.toEqual([])
+      await expect(names('This document updates the Routing Protocol for Low-Power and Lossy Networks (RPL), as specified in RFCs 6550 and 9010.', 'updates="6550, 9010"')).resolves.toEqual([])
+      await expect(names('This document updates the 6LoWPAN extensions to IPv6 Neighbor Discovery (specified in RFCs 4861 and 8505).', 'updates="4861, 8505"')).resolves.toEqual([])
+      // An RFC named elsewhere in the abstract, or by someone else's updates, isn't named as updated
+      await expect(names('BGP (RFC 4271) is widely deployed. This document updates the BGP decision process.', 'updates="4271"')).resolves.toEqual(['UPDATES_NOT_IN_ABSTRACT 4271'])
+      await expect(names('It includes the updates to RFC 6712 specified in Section 3 of RFC 9480.', 'obsoletes="6712"')).resolves.toEqual(['OBSOLETES_NOT_IN_ABSTRACT 6712'])
+      await expect(names('A Manifest Information Model for Firmware Updates in Internet of Things (IoT) Devices (RFC 9124) is extended.', '')).resolves.toEqual([])
+      // ... and an RFC named after a phrase doesn't need to be listed (from draft-ietf-ediint-rfc4130bis-05)
+      await expect(names('This document updates IANA registries originally created by RFC 3335 and RFC 4130.', '')).resolves.toEqual([])
+    })
     test('obsoletes a non-existant RFC', async () => {
       const doc = cloneDeep(baseXMLDoc)
       set(doc, 'data.rfc._attr', {
@@ -850,6 +880,42 @@ describe('document should have valid obsoletes / updates references', () => {
       expect(result.find(r => r.name === 'OBSOLETES_OBSOLETED_RFC').message).toContain('lists RFC 1235 but')
       expect(result).not.toContainError('OBSOLETES_RFC_NOT_FOUND')
       expect(result).not.toContainError('UPDATES_RFC_NOT_FOUND')
+    })
+    test('reads the abstract phrasings that name obsoleted and updated RFCs', async () => {
+      // A text draft with the given header lines and abstract
+      const draft = (headers, abstract) => parseTxt(`
+
+
+Network Working Group                                           A. Smith
+Internet-Draft                                                   Example
+${headers}Intended status: Standards Track                          16 October 2026
+Expires: 19 April 2027
+
+
+                         The Foo Protocol Revised
+                         draft-ietf-foo-bar-02
+
+Abstract
+
+   ${abstract}
+`, 'draft-ietf-foo-bar-02.txt')
+      const codes = async (headers, abstract) => (await validateObsoleteUpdateRef(await draft(headers, abstract), { offline: true })).map(r => `${r.name} ${r.message.match(/RFC (\d+)/)[1]}`)
+
+      // From draft-ietf-teas-rsvp-auth-v2-02 and draft-sriram-savnet-intrasav-solution-00
+      await expect(codes('Obsoletes: 2747, 3097 (if approved)\n', 'This document obsoletes both RFC2747 and RFC3097.')).resolves.toEqual([])
+      await expect(codes('Updates: 2827, 3704, 8704 (if approved)\n', 'This document updates BCP 38 ([RFC2827]) and BCP 84\n   ([RFC3704], [RFC8704]).')).resolves.toEqual([])
+      // From draft-ietf-emailcore-rfc5321bis-44 and RFC 9260
+      await expect(codes('Obsoletes: 1846, 7504, 7505 (if approved)\n', 'This document supersedes RFCs 1846, 7504, and 7505.')).resolves.toEqual([])
+      await expect(codes('Obsoletes: 6096, 7053 (if approved)\n', 'Therefore, RFCs 6096 and 7053 are also obsoleted by this document.')).resolves.toEqual([])
+      // An RFC named elsewhere in the abstract isn't named as updated
+      await expect(codes('Updates: 4271 (if approved)\n', 'BGP [RFC4271] is widely deployed. This document defines a new\n   attribute.')).resolves.toEqual(['UPDATES_NOT_IN_ABSTRACT 4271'])
+      await expect(codes('Updates: 7935 (if approved)\n', 'It does not update RFC 7935.')).resolves.toEqual(['UPDATES_NOT_IN_ABSTRACT 7935'])
+      // An RFC named after a phrase counts for a listed RFC, but doesn't need one listed (from RFC 9659 and
+      // draft-wang-grow-bmp-bgp-rib-stats-ext-01)
+      await expect(codes('Updates: 8878 (if approved)\n', 'This document updates the window size limit in RFC 8878.')).resolves.toEqual([])
+      await expect(codes('', 'This document updates the registry established by RFC 7854.')).resolves.toEqual([])
+      // From draft-guorong-utxo-dns-01
+      await expect(codes('', 'It defines fallback mechanisms, updating RFC 1034, RFC 1035, and RFC\n   7217.')).resolves.toEqual(['MENTIONED_NOT_IN_UPDATES 1034', 'MENTIONED_NOT_IN_UPDATES 1035', 'MENTIONED_NOT_IN_UPDATES 7217'])
     })
   })
 })
