@@ -770,6 +770,87 @@ describe('document should have valid obsoletes / updates references', () => {
       await expect(validateObsoleteUpdateRef(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('UPDATES_UPDATED_RFC', ValidationWarning)
       await expect(validateObsoleteUpdateRef(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
+    // From draft-ietf-mailmaint-imap-objectid-bis-06 (obsoletes="RFC8474") and draft-ietf-anima-brski-prm-25
+    test('looks up an RFC written "RFC1235" by its number', async () => {
+      const { doc } = await parse(xmlStreamDoc({ obsoletes: 'RFC1235', updates: 'rfc 1236, RFC1236, draft-ietf-foo-bar' }), 'draft-smith-foo-bar-02.xml')
+      const result = (await validateObsoleteUpdateRef(doc)).filter(r => /_RFC$|_RFC_NOT_FOUND$/.test(r.name))
+      expect(result.map(r => r.message)).toEqual([
+        'The <rfc> field states that it obsoletes RFC 1235 but it\'s already obsoleted by RFC 3456.',
+        'This document updates RFC 1236. That RFC is already updated by RFC 3456. Verify that this document does not conflict with those.'
+      ])
+      expect(requests.filter(url => url.includes('rfc-editor')).sort()).toEqual([
+        'https://www.rfc-editor.org/rfc/rfc1235.json',
+        'https://www.rfc-editor.org/rfc/rfc1236.json'
+      ])
+    })
+    // From draft-ietf-teas-rsvp-auth-v2-02 (obsoletes="2747 3097"), draft-ftzhswj-cats-northbound-api-00
+    // (updates="2026-5-29"), draft-ietf-lamps-cms-euf-cma-signeddata-03 (updates="[5652]") and draft-veridom-omp-02
+    test('reports a value that is neither an RFC number nor an Internet-Draft name', async () => {
+      const { doc } = await parse(xmlStreamDoc({ obsoletes: '1235 1264', updates: '2026-5-29, [1236], draft-veridom-omp-00' }), 'draft-smith-foo-bar-02.xml')
+      const warnings = [
+        new ValidationWarning('OBSOLETES_NOT_RFC_NUMBER', 'The <rfc> obsoletes attribute lists "1235 1264", which is not an RFC number (read as RFC 1235, RFC 1264). The attribute is a comma-separated list of RFC numbers or Internet-Draft names.', {
+          ref: 'https://authors.ietf.org/en/rfcxml-vocabulary#obsoletes',
+          path: 'rfc.obsoletes'
+        }),
+        new ValidationWarning('UPDATES_NOT_RFC_NUMBER', 'The <rfc> updates attribute lists "2026-5-29", which is not an RFC number. The attribute is a comma-separated list of RFC numbers or Internet-Draft names.', {
+          ref: 'https://authors.ietf.org/en/rfcxml-vocabulary#updates',
+          path: 'rfc.updates'
+        }),
+        new ValidationWarning('UPDATES_NOT_RFC_NUMBER', 'The <rfc> updates attribute lists "[1236]", which is not an RFC number (read as RFC 1236). The attribute is a comma-separated list of RFC numbers or Internet-Draft names.', {
+          ref: 'https://authors.ietf.org/en/rfcxml-vocabulary#updates',
+          path: 'rfc.updates'
+        })
+      ]
+      const lookups = r => /_NOT_RFC_NUMBER$|_RFC_NOT_FOUND$|_OBSOLETED_RFC$|_UPDATED_RFC$/.test(r.name)
+      expect((await validateObsoleteUpdateRef(doc, { offline: true })).filter(lookups)).toEqual(warnings)
+      expect(requests).toHaveLength(0)
+      // -> The RFC numbers a miswritten value plainly means are still looked up; the other values are not
+      const result = (await validateObsoleteUpdateRef(doc)).filter(lookups)
+      expect(result.slice(0, 3)).toEqual(warnings)
+      expect(result.slice(3).map(r => r.name)).toEqual(['OBSOLETES_OBSOLETED_RFC', 'OBSOLETES_OBSOLETED_RFC', 'UPDATES_UPDATED_RFC'])
+      expect(requests.filter(url => url.includes('rfc-editor')).sort()).toEqual([
+        'https://www.rfc-editor.org/rfc/rfc1235.json',
+        'https://www.rfc-editor.org/rfc/rfc1236.json',
+        'https://www.rfc-editor.org/rfc/rfc1264.json'
+      ])
+      await expect(validateObsoleteUpdateRef(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+    })
+    // From draft-jabley-dnsop-ordered-answer-section-01 (updates="10341035": RFCs 1034 and 1035 run together)
+    test('reports a number that can\'t be an RFC number, without looking it up', async () => {
+      const { doc } = await parse(xmlStreamDoc({ obsoletes: 'RFC0, 1235', updates: '10341035' }), 'draft-smith-foo-bar-02.xml')
+      const lookups = r => /_NOT_RFC_NUMBER$|_RFC_NOT_FOUND$|_OBSOLETED_RFC$|_UPDATED_RFC$/.test(r.name)
+      const result = (await validateObsoleteUpdateRef(doc)).filter(lookups)
+      expect(result.map(r => r.message)).toEqual([
+        'The <rfc> obsoletes attribute lists "RFC0", which is not an RFC number. The attribute is a comma-separated list of RFC numbers or Internet-Draft names.',
+        'The <rfc> updates attribute lists "10341035", which is not an RFC number. The attribute is a comma-separated list of RFC numbers or Internet-Draft names.',
+        'The <rfc> field states that it obsoletes RFC 1235 but it\'s already obsoleted by RFC 3456.'
+      ])
+      expect(requests.filter(url => url.includes('rfc-editor')).sort()).toEqual([
+        'https://www.rfc-editor.org/rfc/rfc1235.json'
+      ])
+    })
+    // From RFC 8996 (updates="…, 4111,\u200B 4162, …")
+    test('ignores a zero-width space in a value', async () => {
+      const { doc } = await parse(xmlStreamDoc({ updates: '1235,\u200B 1236' }), 'draft-smith-foo-bar-02.xml')
+      const result = await validateObsoleteUpdateRef(doc)
+      expect(result.filter(r => /_NOT_RFC_NUMBER$|_RFC_NOT_FOUND$/.test(r.name))).toEqual([])
+      expect(requests.filter(url => url.includes('rfc-editor')).sort()).toEqual([
+        'https://www.rfc-editor.org/rfc/rfc1235.json',
+        'https://www.rfc-editor.org/rfc/rfc1236.json'
+      ])
+    })
+  })
+  describe('TXT Document Type', () => {
+    test('reads "Updates: RFC 1236" as RFC 1236', async () => {
+      const doc = await parseTxt(txtStreamDraft('draft-ietf-foo-bar-02', { obsoletes: 'RFC 1235', updates: 'RFC1236' }), 'draft-ietf-foo-bar-02.txt')
+      expect(doc.data.extractedElements.obsoletesRfc).toEqual(['1235'])
+      expect(doc.data.extractedElements.updatesRfc).toEqual(['1236'])
+      const result = await validateObsoleteUpdateRef(doc)
+      expect(result).toContainError('OBSOLETES_OBSOLETED_RFC', ValidationWarning)
+      expect(result.find(r => r.name === 'OBSOLETES_OBSOLETED_RFC').message).toContain('lists RFC 1235 but')
+      expect(result).not.toContainError('OBSOLETES_RFC_NOT_FOUND')
+      expect(result).not.toContainError('UPDATES_RFC_NOT_FOUND')
+    })
   })
 })
 

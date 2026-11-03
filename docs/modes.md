@@ -209,6 +209,8 @@ A document that can't be parsed isn't checked: the CLI exits with code `1`, and 
 | `UPDATES_RFC_NOT_FOUND` | Warning | Warning | — | both | (lookup, offline) |
 | `UPDATES_OBSOLETED_RFC` | Warning | Warning | — | both | (lookup, offline) |
 | `UPDATES_UPDATED_RFC` | Warning | Warning | — | XML | (lookup, offline) |
+| `OBSOLETES_NOT_RFC_NUMBER` | Warning | Warning | — | XML | Neither an RFC number nor an Internet-Draft name, or a number no RFC can have (0, more than 5 digits) |
+| `UPDATES_NOT_RFC_NUMBER` | Warning | Warning | — | XML | Neither an RFC number nor an Internet-Draft name, or a number no RFC can have (0, more than 5 digits) |
 
 ### Internet-Draft boilerplate (text)
 
