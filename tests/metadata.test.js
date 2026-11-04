@@ -503,7 +503,9 @@ describe('document should have valid date', () => {
     })
     test('month-year date checked on the 31st takes the last day of the month', async () => {
       vi.useFakeTimers({ toFake: ['Date'] })
-      vi.setSystemTime(new Date('2026-03-31T12:00:00Z'))
+      // Noon on 31 March in the local time zone, which the check reads: noon UTC is already
+      // 1 April in zones twelve or more hours ahead
+      vi.setSystemTime(new Date(2026, 2, 31, 12, 0, 0))
       vi.resetModules()
       try {
         const { validateDate: validateDateOn31st } = await import('../lib/modules/metadata.mjs')
