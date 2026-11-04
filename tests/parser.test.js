@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, vi, test } from 'vitest'
 import { generateTXTDoc } from './generators/doc-txt.js'
+import { getSubsectionHeadings } from '../lib/modules/downref.mjs'
 import {
   abstractTXTBlock,
   tableOfContentsTXTBlock,
@@ -1836,6 +1837,67 @@ Author's Address
       { value: '2119', subsection: 'normative_references' },
       { value: '8402', subsection: 'normative_references' },
       { value: '7942', subsection: 'informative_references' }
+    ])
+  })
+  test('Reads an unnumbered subsection heading only where a heading can start, as the downref check does', async () => {
+    const txt = `${metaTXTBlock}
+9.  References
+
+9.1.  Normative References
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119,
+              DOI 10.17487/RFC2119, March 1997,
+              <https://www.rfc-editor.org/info/rfc2119>.
+
+   [GUIDE]    Doe, J., "A Guide to Normative and
+              Informative References
+              in Internet-Drafts", RFC 7322, September 2014,
+              <https://www.rfc-editor.org/info/rfc7322>.
+
+   [I-D.ietf-foo-bar]
+              Doe, J., "Foo", Work in Progress, Internet-Draft,
+              draft-ietf-foo-bar-01, 1 January 2026,
+              <https://datatracker.ietf.org/doc/html/draft-ietf-foo-bar-01>.
+
+   [RFC8174]  Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC
+              2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
+              May 2017, <https://www.rfc-editor.org/info/rfc8174>.
+
+9.2.
+Informative References
+
+   [RFC7942]  Sheffer, Y. and A. Farrel, "Improving Awareness of Running
+              Code: The Implementation Status Section", BCP 205,
+              RFC 7942, DOI 10.17487/RFC7942, July 2016,
+              <https://www.rfc-editor.org/info/rfc7942>.
+`
+
+    const result = await parse(txt, 'txt')
+
+    expect(result.data.extractedElements.referenceSectionRfc).toEqual([
+      { value: '2119', subsection: 'normative_references' },
+      { value: '8174', subsection: 'normative_references' },
+      { value: '7942', subsection: 'informative_references' }
+    ])
+    expect(result.data.extractedElements.draftStatusReferences).toEqual([
+      { value: 'draft-ietf-foo-bar-01', subsection: 'normative_references' }
+    ])
+    const entries = result.data.extractedElements.referenceEntries.map(({ value, subsection, rfcs }) => ({ value, subsection, rfcs }))
+    expect(entries).toEqual([
+      { value: '[RFC2119]', subsection: 'normative_references', rfcs: ['2119'] },
+      { value: '[GUIDE]', subsection: 'normative_references', rfcs: ['7322'] },
+      { value: '[I-D.ietf-foo-bar]', subsection: 'normative_references', rfcs: [] },
+      { value: '[RFC8174]', subsection: 'normative_references', rfcs: ['8174'] },
+      { value: '[RFC7942]', subsection: 'informative_references', rfcs: ['7942'] }
+    ])
+    // -> The downref check reads the same headings
+    const lines = txt.split('\n')
+    const headings = getSubsectionHeadings(result).map((heading) => [lines[heading.line - 1], heading.name])
+    expect(headings).toEqual([
+      ['9.  References', 'unclassified_references'],
+      ['9.1.  Normative References', 'normative_references'],
+      ['Informative References', 'informative_references']
     ])
   })
 })
