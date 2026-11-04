@@ -709,6 +709,24 @@ describe('document should have valid obsoletes / updates references', () => {
       const messages = result3.map(r => r.message)
       expect(messages).toEqual(["The document states that it updates RFC 3501 but doesn't explicitely mention it in the <abstract> section."])
     })
+    test('a "<!--" inside CDATA starts no comment in the abstract\'s source', async () => {
+      const xml = (title, code) => `<?xml version="1.0" encoding="UTF-8"?>
+<rfc version="3" docName="draft-foo-bar-00" obsoletes="1234">
+  <front>
+    <title>${title}</title>
+    <abstract>
+      <t>This document obsoletes <xref target="RFC1234"/>.</t>
+    </abstract>
+  </front>
+  <middle><section><name>Code</name><sourcecode>${code}</sourcecode></section></middle>
+</rfc>`
+      // -> Not a comment from the title to the code, which would hide the abstract
+      const { doc } = await parse(xml('<![CDATA[Foo <!-- Bar]]>', '<![CDATA[a --> b]]>'), 'draft-foo-bar-00.xml')
+      await expect(validateObsoleteUpdateRef(doc, { offline: true })).resolves.toHaveLength(0)
+      // -> Read in time linear in the length of the source (this took 7 s)
+      const { doc: many } = await parse(xml('Foo', `<![CDATA[${'<!--'.repeat(100000)}]]>`), 'draft-foo-bar-00.xml')
+      await expect(validateObsoleteUpdateRef(many, { offline: true })).resolves.toHaveLength(0)
+    })
     test('reads the abstract phrasings that name obsoleted and updated RFCs', async () => {
       const names = async (abstract, attrs) => {
         const { doc } = await parse(`<?xml version="1.0" encoding="UTF-8"?>
