@@ -742,6 +742,28 @@ describe('document should have valid obsoletes / updates references', () => {
         await expect(validateObsoleteUpdateRef(doc, { offline: true })).resolves.toContainError('OBSOLETES_NOT_IN_ABSTRACT', ValidationWarning)
       }
     })
+    test('a long list of RFCs in the abstract is read in time linear in its length', async () => {
+      const xml = (abstract) => `<?xml version="1.0" encoding="UTF-8"?>
+<rfc version="3" docName="draft-foo-bar-00" obsoletes="1234, 6096">
+  <front>
+    <title>Foo</title>
+    <abstract><t>${abstract}</t></abstract>
+  </front>
+  <middle/>
+</rfc>`
+      // -> Each RFC of a list started a reading of the list on to its end, for the RFCs named before the verb
+      //    ("RFCs 6096 and 7053 are obsoleted"): these two abstracts of 8,000 RFCs took 19 s
+      const list = '[RFC1], '.repeat(8000)
+      const { doc } = await parse(xml(`This document obsoletes RFC 1234. It discusses ${list}and others.`), 'draft-foo-bar-00.xml')
+      const result = await validateObsoleteUpdateRef(doc, { offline: true })
+      expect(result.map(r => r.name)).toEqual(['OBSOLETES_NOT_IN_ABSTRACT'])
+      expect(result[0].message).toContain('RFC 6096')
+      // -> ... and a list named before the verb is read whole
+      const { doc: passive } = await parse(xml(`RFC 1234, ${list}RFC 6096 are obsoleted.`), 'draft-foo-bar-00.xml')
+      const passiveResult = await validateObsoleteUpdateRef(passive, { offline: true })
+      expect(passiveResult.map(r => r.name)).toEqual(['OBSOLETES_NOT_IN_RFC'])
+      expect(passiveResult[0].message).toContain('RFC 1 ')
+    })
     test('reads the abstract phrasings that name obsoleted and updated RFCs', async () => {
       const names = async (abstract, attrs) => {
         const { doc } = await parse(`<?xml version="1.0" encoding="UTF-8"?>
@@ -951,6 +973,34 @@ Abstract
       await expect(codes('', 'This document updates the registry established by RFC 7854.')).resolves.toEqual([])
       // From draft-guorong-utxo-dns-01
       await expect(codes('', 'It defines fallback mechanisms, updating RFC 1034, RFC 1035, and RFC\n   7217.')).resolves.toEqual(['MENTIONED_NOT_IN_UPDATES 1034', 'MENTIONED_NOT_IN_UPDATES 1035', 'MENTIONED_NOT_IN_UPDATES 7217'])
+    })
+    test('a long list of RFCs in the abstract is read in time linear in its length', async () => {
+      // -> Each RFC of a list started a reading of the list on to its end, for the RFCs named before the verb
+      //    ("RFCs 6096 and 7053 are obsoleted"): 20,000 RFCs took 17 s
+      const lines = Array.from({ length: 2000 }, () => '   RFC 1, RFC 1, RFC 1, RFC 1, RFC 1, RFC 1, RFC 1, RFC 1, RFC 1, RFC 1,')
+      const doc = await parseTxt(`
+
+
+Network Working Group                                           A. Smith
+Internet-Draft                                                   Example
+Updates: 1234, 6096 (if approved)                        16 October 2026
+Intended status: Standards Track
+Expires: 19 April 2027
+
+
+                         The Foo Protocol Revised
+                         draft-ietf-foo-bar-02
+
+Abstract
+
+   This document updates RFC 1234. It discusses
+${lines.join('\n')}
+   and others.
+`, 'draft-ietf-foo-bar-02.txt')
+      expect(doc.data.content.abstract).toHaveLength(2003)
+      const result = await validateObsoleteUpdateRef(doc, { offline: true })
+      expect(result.map(r => r.name)).toEqual(['UPDATES_NOT_IN_ABSTRACT'])
+      expect(result[0].message).toContain('RFC 6096')
     })
   })
 })
