@@ -70,6 +70,11 @@ describe('submissionTypeToStream', () => {
     expect(submissionTypeToStream('ise')).toBeNull()
     expect(submissionTypeToStream(undefined)).toBeNull()
   })
+  test('returns null for the names of Object properties', () => {
+    for (const name of ['constructor', '__proto__', 'toString', 'hasOwnProperty']) {
+      expect(submissionTypeToStream(name)).toBeNull()
+    }
+  })
 })
 
 describe('streamDisplayName', () => {
@@ -78,6 +83,8 @@ describe('streamDisplayName', () => {
     expect(streamDisplayName('ise')).toEqual('Independent Submission')
     expect(streamDisplayName('editorial')).toEqual('Editorial')
     expect(streamDisplayName('unknown')).toEqual('unknown')
+    expect(streamDisplayName('constructor')).toEqual('constructor')
+    expect(streamDisplayName('__proto__')).toEqual('__proto__')
   })
 })
 
@@ -114,6 +121,8 @@ describe('streamFromHeaderSource', () => {
     expect(streamFromHeaderSource('Network Working Group')).toBeNull()
     expect(streamFromHeaderSource('Internet Engineering Task Force (IAB)')).toBeNull()
     expect(streamFromHeaderSource(null)).toBeNull()
+    expect(streamFromHeaderSource('constructor')).toBeNull()
+    expect(streamFromHeaderSource('__proto__')).toBeNull()
   })
 })
 
@@ -207,5 +216,11 @@ describe('getDocumentStream', () => {
     await expect(getDocumentStream(await rfc('Network Working Group', '9990'))).resolves.toEqual('irtf')
     await expect(getDocumentStream(await rfc('Network Working Group', '9991'))).resolves.toBeNull()
     await expect(getDocumentStream(await rfc('Network Working Group', '9990'), { offline: true })).resolves.toBeNull()
+  })
+  test('takes no stream from a header line or submissionType that names an Object property', async () => {
+    const rfc = (source, number) => parseTxt(txtStreamRfc(source, number), `rfc${number}.txt`)
+    await expect(getDocumentStream(await rfc('constructor', '9990'))).resolves.toEqual('irtf')
+    await expect(getDocumentStream(await xml({ number: '9990', submissionType: 'constructor' }, 'rfc9990.xml'))).resolves.toEqual('irtf')
+    await expect(getDocumentStream(await xml({ submissionType: '__proto__' }))).resolves.toEqual('ise')
   })
 })

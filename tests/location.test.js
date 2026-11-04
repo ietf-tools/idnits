@@ -179,6 +179,12 @@ describe('location', () => {
       expect(findings[1].label).toBeUndefined()
       expect(findings[2].label).toBeUndefined()
     })
+    test.each(['toString', 'valueOf', 'hasOwnProperty'])('should label an element named %s by the section it is in', async (tag) => {
+      const { doc } = await parse(`<rfc version="3" docName="draft-test-label-00"><front><title>T</title></front><middle><section><name>Introduction</name><${tag}><t>x</t></${tag}></section></middle></rfc>`, 'draft-test-label-00.xml')
+      const findings = [new ValidationWarning('A', 'a', { path: `rfc.middle.section[0].${tag}` })]
+      labelFindings(findings, doc)
+      expect(findings[0].label).toEqual('Section 1 (Introduction)')
+    })
     test('should not label findings of text documents', () => {
       const findings = [new ValidationWarning('A', 'a', { path: 'rfc.front.date' })]
       labelFindings(findings, { type: 'txt', data: {} })
