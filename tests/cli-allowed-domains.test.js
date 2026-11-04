@@ -74,7 +74,7 @@ const IETF_HOSTS = ['www.ietf.org', 'datatracker.ietf.org', 'www.rfc-editor.org'
 
 // -> Each test starts the CLI as its own process, so the tests run concurrently, and so do the runs
 //    within a test
-describe.concurrent('--allowed-domains', () => {
+describe.concurrent('--allowed-domains', { timeout: 30000 }, () => {
   test('by default, ietf.org and rfc-editor.org hosts are not flagged', async () => {
     expect(flagged(await runCli([draft]))).toEqual(['acme.net'])
   })
