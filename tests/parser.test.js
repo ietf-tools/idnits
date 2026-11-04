@@ -397,6 +397,105 @@ Status of This Memo
    durable digital entities.
 `
 
+  // Excerpt from draft-ietf-core-oscore-capable-proxies-07: a wrapped line of the abstract starts with a number
+  const abstractWrappedNumberTXT = [
+    'Internet-Draft                                                R. Höglund',
+    'Updates: 8613, 8768 (if approved)                                RISE AB',
+    'Intended status: Standards Track                             6 July 2026',
+    'Expires: 7 January 2027',
+    '',
+    '',
+    '                         OSCORE-capable Proxies',
+    '               draft-ietf-core-oscore-capable-proxies-07',
+    '',
+    'Abstract',
+    '',
+    '   When using the Constrained Application Protocol (CoAP), messages',
+    '   exchanged between two endpoints can be protected end-to-end at the',
+    '   application layer by means of Object Security for Constrained RESTful',
+    '   Environments (OSCORE), also in the presence of intermediaries such as',
+    '   proxies.  This document defines how to use OSCORE for protecting CoAP',
+    '   messages also between an origin application endpoint and an',
+    '   intermediary, or between two intermediaries.  Also, it defines rules',
+    '   to escalate the protection of a CoAP option, in order to encrypt and',
+    '   integrity-protect it whenever possible.  Finally, it defines how to',
+    '   secure a CoAP message by applying multiple, nested OSCORE',
+    '   protections, e.g., both end-to-end between origin application',
+    '   endpoints; and between an application endpoint and an intermediary or',
+    '   between two intermediaries.  Therefore, this document updates RFC',
+    '   8613.  Furthermore, this document updates RFC 8768, by explicitly',
+    '   defining the processing with OSCORE for the CoAP Hop-Limit Option.',
+    '   The approach defined in this document can be seamlessly employed also',
+    '   with Group OSCORE, for protecting CoAP messages when group',
+    '   communication is used in the presence of intermediaries.',
+    '',
+    'Discussion Venues',
+    '',
+    '   This note is to be removed before publishing as an RFC.',
+    '',
+    '   Discussion of this document takes place on the Constrained RESTful',
+    '   Environments Working Group mailing list (core@ietf.org), which is',
+    '   archived at https://mailarchive.ietf.org/arch/browse/core/.',
+    ''
+  ].join('\n')
+
+  test('A wrapped line of the abstract starting with a number and a period is abstract text', async () => {
+    const result = await parse(abstractWrappedNumberTXT, 'draft-ietf-core-oscore-capable-proxies-07.txt')
+    expect(result.data.content.abstract).toHaveLength(19)
+    expect(result.data.content.abstract).toContain('8613.  Furthermore, this document updates RFC 8768, by explicitly')
+    expect(result.data.content.abstract.at(-1)).toBe('communication is used in the presence of intermediaries.')
+  })
+
+  // Excerpt from RFC 1284, whose Abstract is a numbered section
+  const numberedAbstractTXT = [
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    'Network Working Group                                    J. Cook, Editor',
+    'Request for Comments: 1284                           Chipcom Corporation',
+    '                                                           December 1991',
+    '',
+    '',
+    '                     Definitions of Managed Objects',
+    '                 for the Ethernet-like Interface Types',
+    '',
+    'Status of this Memo',
+    '',
+    '   This memo is an extension to the SNMP MIB.  This RFC specifies an IAB',
+    '   standards track protocol for the Internet community, and requests',
+    '   discussion and suggestions for improvements.  Please refer to the',
+    '   current edition of the "IAB Official Protocol Standards" for the',
+    '   standardization state and status of this protocol.  Distribution of',
+    '   this memo is unlimited.',
+    '   Author\'s Address..........................................   21',
+    '',
+    '1.  Abstract',
+    '',
+    '   This memo defines a portion of the Management Information Base (MIB)',
+    '   for use with network management protocols in TCP/IP-based internets.',
+    '   In particular, it defines objects for managing ethernet-like objects.',
+    '',
+    '2.  The Network Management Framework',
+    '',
+    '   The Internet-standard Network Management Framework consists of three',
+    '   components.  They are:',
+    ''
+  ].join('\n')
+
+  test('A numbered Abstract heading starts the abstract, not the next section', async () => {
+    const result = await parse(numberedAbstractTXT, 'rfc1284.txt')
+    expect(result.data.content.abstract).toEqual([
+      '1.  Abstract',
+      'This memo defines a portion of the Management Information Base (MIB)',
+      'for use with network management protocols in TCP/IP-based internets.',
+      'In particular, it defines objects for managing ethernet-like objects.'
+    ])
+    expect(result.data.possibleIssues.isAbstractNumbered).toBe(true)
+  })
+
   test('A body section repeating the abstract is not the abstract', async () => {
     const result = await parse(abstractRepeatedInBodyTXT, 'draft-juwan-ars-00.txt')
     expect(result.data.content.abstract).toHaveLength(5)
