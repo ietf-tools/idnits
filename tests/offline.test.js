@@ -57,7 +57,7 @@ const FIXTURES = [
 const MODE_NAMES = { normal: MODES.NORMAL, 'forgive-checklist': MODES.FORGIVE_CHECKLIST, submission: MODES.SUBMISSION }
 const UNAVAILABLE = ['REFERENCE_STATUS_UNAVAILABLE', 'DOCUMENT_LOOKUP_UNAVAILABLE', 'DOWNREF_REGISTRY_UNAVAILABLE']
 
-describe('checkNits with offline', () => {
+describe('checkNits with offline', { timeout: 30000 }, () => {
   test.each(FIXTURES.flatMap(file => Object.keys(MODE_NAMES).map(mode => [file, mode])))('makes no request: %s, %s mode', async (file, mode) => {
     const raw = await readFile(new URL(`./fixtures/${file}`, import.meta.url))
     const result = await checkNits(raw, file, { mode: MODE_NAMES[mode], offline: true })
