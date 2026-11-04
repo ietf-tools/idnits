@@ -299,6 +299,15 @@ describe('XML parser: character references', () => {
       message: 'char \'&\' is not expected.:6:14'
     }))
   })
+
+  // -> The validator gives no column for an unclosed comment in the internal subset
+  test('a parse error without a column ends with its line alone', async () => {
+    const xml = '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE rfc [\n<!-- not closed\n]>\n<rfc/>'
+    await expect(parse(xml, 'draft-test-00.xml')).rejects.toThrow(expect.objectContaining({
+      name: 'XML_PARSING_FAILED',
+      message: 'Start tag expected.:1'
+    }))
+  })
 })
 
 describe('XML parser: names of JavaScript object properties', () => {
