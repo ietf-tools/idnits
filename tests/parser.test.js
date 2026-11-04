@@ -5325,3 +5325,69 @@ describe('Long lines are parsed in time growing with their length, not its squar
     expect(result.data.extractedElements.draftStatusReferences.map((el) => el.value)).toEqual(['draft-ietf-foo-bar-01'])
   })
 })
+
+describe('Values found many times, or many values, are recorded in time growing with their number', () => {
+  // Each list of extracted elements holds a value once: searching it for every value found took the
+  // parser 11 to 17 seconds for each document here, and now takes under one second: the default
+  // test timeout (5 seconds) catches a return of that behavior
+  const numbers = Array.from({ length: 40000 }, (_, idx) => idx + 1)
+
+  test('Many RFCs, cited in the text and listed in the references section', async () => {
+    const txt = `
+1.  Introduction
+
+${numbers.map((n) => `   See RFC ${n}.`).join('\n')}
+
+2.  References
+
+2.1.  Normative References
+
+${numbers.map((n) => `   [RFC${n}]  Example, A., "Example", RFC ${n}, June 2005.`).join('\n')}
+`
+    const result = await parse(txt, 'txt')
+    const values = numbers.map(String)
+    expect(result.data.extractedElements.nonReferenceSectionRfc).toEqual(values)
+    expect(result.data.extractedElements.referenceSectionRfc.map((el) => el.value)).toEqual(values)
+    expect(getLocations(result, 'referenceSectionRfc', '40000')).toHaveLength(2)
+  })
+
+  test('Many domains', async () => {
+    const txt = `
+1.  Introduction
+
+${numbers.map((n) => `   See host${n}.example.com and host${n}.example.com.`).join('\n')}
+`
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.fqdnDomains).toEqual(numbers.map((n) => `host${n}.example.com`))
+    expect(getLocations(result, 'fqdnDomains', 'host40000.example.com')).toHaveLength(2)
+  })
+
+  test('Many labels, cited in the text and declared in the references section', async () => {
+    const txt = `
+1.  Introduction
+
+${numbers.map((n) => `   See [L${n}].`).join('\n')}
+
+2.  References
+
+2.1.  Normative References
+
+${numbers.map((n) => `   [L${n}]  Example, A., "Example", June 2005.`).join('\n')}
+`
+    const result = await parse(txt, 'txt')
+    const labels = numbers.map((n) => `[L${n}]`)
+    expect(result.data.extractedElements.nonReferenceSectionDraftReferences).toEqual(labels)
+    expect(result.data.extractedElements.referenceSectionDraftReferences.map((el) => el.value)).toEqual(labels)
+  })
+
+  test('Many drafts, cited by label and named in the text', async () => {
+    const txt = `
+1.  Introduction
+
+${numbers.map((n) => `   See [I-D.ietf-foo-bar${n}] and draft-ietf-foo-bar${n}-01.`).join('\n')}
+`
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.nonReferenceSectionDraftLabels).toEqual(numbers.map((n) => `[I-D.ietf-foo-bar${n}]`))
+    expect(result.data.extractedElements.nonReferenceSectionDraftNames).toEqual(numbers.map((n) => `draft-ietf-foo-bar${n}`))
+  })
+})

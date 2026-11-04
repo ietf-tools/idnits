@@ -1852,6 +1852,16 @@ describe('validateInformativeReferences', () => {
     ])
   })
 
+  test('an RFC listed 5,000 times is located at its first entries', async () => {
+    // The locations of a finding were kept once each by comparing each with all those kept before: 10,000
+    // locations took 13 seconds, and now take milliseconds (the default test timeout is 5 seconds)
+    const doc = await parseTXTRfcReferences({ informative: Array(5000).fill('5087') })
+
+    const [result] = await validateInformativeReferences(doc, { mode: MODES.NORMAL })
+    expect(result.name).toBe('OBSOLETE_INFORMATIVE_REFERENCE')
+    expect(result.lines).toEqual(rfcEntry(doc, '5087').slice(0, 20))
+  })
+
   test('an obsolete informative RFC is a question in each mode, not an error', async () => {
     const doc = await parseTXTRfcReferences({ normative: ['4088'], informative: ['5087'] })
     const message = 'Obsolete informative reference: RFC 5087 has been replaced by RFC9000, RFC9001. Is this intentional?'
