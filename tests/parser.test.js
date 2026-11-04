@@ -5112,3 +5112,55 @@ describe('parser output structure conforms to expected shape', () => {
     expect(doc).toMatchSnapshot()
   })
 })
+
+describe('Long lines are parsed in time growing with their length, not its square or cube', () => {
+  // Each line here took the parser 6 to 30 seconds, as a pattern read on to the end of the line again
+  // from every character or every link in it, and now takes milliseconds: the default test timeout
+  // (5 seconds) catches a return of that behavior
+  const referencesWith = (entry) => `
+1.  Introduction
+
+   See [I-D.x].
+
+2.  References
+
+2.1.  Normative References
+
+   [I-D.x]  ${entry}
+`
+
+  test('A line of letters, then a URL wrapped onto the next line', async () => {
+    const txt = `
+   ${'a'.repeat(200000)} https://json-
+   schema.org/draft/2020-12/meta/core
+    `
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.fqdnDomains).toEqual([])
+  })
+
+  test('A line of dots', async () => {
+    const txt = `${metaTXTBlock}
+   ${'.'.repeat(100000)}
+   See example.com.
+    `
+    const result = await parse(txt, 'txt')
+    expect(result.data.extractedElements.fqdnDomains).toContain('example.com')
+  })
+
+  test('A references entry of unclosed bracketed RFC labels', async () => {
+    const result = await parse(referencesWith('[RFC1'.repeat(40000)), 'txt')
+    expect(result.data.extractedElements.referenceSectionRfc).toEqual([])
+  })
+
+  test('A references entry of links not closed by ">", then a link to a draft', async () => {
+    const entry = `${'<http://a/draft-a/'.repeat(2000)} <https://datatracker.ietf.org/doc/draft-ietf-foo-bar/>`
+    const result = await parse(referencesWith(entry), 'txt')
+    expect(result.data.extractedElements.draftStatusReferences.map((el) => el.value)).toEqual(['draft-ietf-foo-bar'])
+  })
+
+  test('A references entry of words joined by hyphens, going on with a "+", on the first page', async () => {
+    const entry = `${'draft-'.repeat(20000)}+ and draft-ietf-foo-bar-01`
+    const result = await parse(referencesWith(entry), 'txt')
+    expect(result.data.extractedElements.draftStatusReferences.map((el) => el.value)).toEqual(['draft-ietf-foo-bar-01'])
+  })
+})
