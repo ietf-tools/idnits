@@ -727,6 +727,21 @@ describe('document should have valid obsoletes / updates references', () => {
       const { doc: many } = await parse(xml('Foo', `<![CDATA[${'<!--'.repeat(100000)}]]>`), 'draft-foo-bar-00.xml')
       await expect(validateObsoleteUpdateRef(many, { offline: true })).resolves.toHaveLength(0)
     })
+    test('the abstract is found in time linear in the length of the source', async () => {
+      const xml = (elements) => `<?xml version="1.0" encoding="UTF-8"?>
+<rfc version="3" docName="draft-foo-bar-00" obsoletes="1234">
+  <front>
+    <title>Foo</title>
+  </front>
+  <middle><section><name>A</name><t>This document obsoletes RFC 1234.</t>${elements}</section></middle>
+</rfc>`
+      // -> 100,000 start tags with no "</abstract>" after them (this took 15 s), and as many of another
+      //    element whose name starts with "abstract"
+      for (const element of ['<abstract/>', '<abstract-x/>']) {
+        const { doc } = await parse(xml(element.repeat(100000)), 'draft-foo-bar-00.xml')
+        await expect(validateObsoleteUpdateRef(doc, { offline: true })).resolves.toContainError('OBSOLETES_NOT_IN_ABSTRACT', ValidationWarning)
+      }
+    })
     test('reads the abstract phrasings that name obsoleted and updated RFCs', async () => {
       const names = async (abstract, attrs) => {
         const { doc } = await parse(`<?xml version="1.0" encoding="UTF-8"?>
