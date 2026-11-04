@@ -324,3 +324,90 @@ describe('XML parser: names of JavaScript object properties', () => {
     }))
   })
 })
+
+describe('XML parser should refuse internal entities over the parser\'s limits', () => {
+  const withEntities = (declarations, body) => `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE rfc [
+${declarations}
+]>
+<rfc version="3" docName="draft-test-00">
+  <front><seriesInfo name="Internet-Draft" value="draft-test-00"/></front>
+  <middle><section><t>${body}</t></section></middle>
+</rfc>`
+  const declare = (name, value) => `<!ENTITY ${name} "${value}">`
+  const declareMany = (count) => Array.from({ length: count }, (_, i) => declare(`e${i}`, 'x')).join('\n')
+  const tooLarge = (message) => expect.objectContaining({ name: 'XML_ENTITY_EXPANSION_TOO_LARGE', message })
+
+  test('one entity of 20,000 characters used 20,000 times', async () => {
+    // 80 KB that expanded to 400 million characters (1.2 GB of memory and 12 seconds with fast-xml-parser 5.2.5)
+    const xml = withEntities(declare('a', 'x'.repeat(20000)), '&a;'.repeat(20000))
+    await expect(parse(xml, 'draft-test-00.xml')).rejects.toThrow(tooLarge(
+      'The internal entity "a" has a value of 20000 characters, more than the 10000 the XML parser accepts.'))
+  })
+
+  test('a value of up to 10,000 characters is accepted', async () => {
+    const { doc } = await parse(withEntities(declare('a', 'x'.repeat(10000)), '&a;'), 'draft-test-00.xml')
+    expect(doc.data.rfc.middle.section.t).toHaveLength(10000)
+  })
+
+  test('the declared name of an aliased entity is given', async () => {
+    const xml = withEntities(declare('long-entity.name', 'x'.repeat(10001)), '&long-entity.name;')
+    await expect(parse(xml, 'draft-test-00.xml')).rejects.toThrow(tooLarge(
+      'The internal entity "long-entity.name" has a value of 10001 characters, more than the 10000 the XML parser accepts.'))
+  })
+
+  test('up to 1,000 entities are accepted', async () => {
+    const { doc } = await parse(withEntities(declareMany(1000), '&e999;'), 'draft-test-00.xml')
+    expect(doc.data.rfc.middle.section.t).toBe('x')
+  })
+
+  test('more than 1,000 entities are refused', async () => {
+    await expect(parse(withEntities(declareMany(1001), '&e0;'), 'draft-test-00.xml')).rejects.toThrow(tooLarge(
+      'This document declares more than the 1000 internal entities the XML parser accepts.'))
+  })
+
+  test('entities whose value holds an "&" are not counted, as the parser ignores them', async () => {
+    const declarations = `${declareMany(1000)}\n${declare('amps', '&amp;')}`
+    const { doc } = await parse(withEntities(declarations, '&e0;'), 'draft-test-00.xml')
+    expect(doc.data.rfc.middle.section.t).toBe('x')
+  })
+
+  test('expanding them may add up to 100,000 characters', async () => {
+    // each "&a;" (3 characters) adds 1,000 characters
+    const { doc } = await parse(withEntities(declare('a', 'x'.repeat(1003)), '&a;'.repeat(100)), 'draft-test-00.xml')
+    expect(doc.data.rfc.middle.section.t).toHaveLength(100300)
+  })
+
+  test('adding more than 100,000 characters is refused, counting attribute values', async () => {
+    const xml = withEntities(declare('a', 'x'.repeat(1003)), `<xref target="&a;"/>${'&a;'.repeat(100)}`)
+    await expect(parse(xml, 'draft-test-00.xml')).rejects.toThrow(tooLarge(
+      'Expanding the internal entities of this document adds 101000 characters, more than the 100000 the XML parser accepts.'))
+  })
+
+  test('references in comments and CDATA sections are not expanded, so not counted', async () => {
+    const body = `&a;<!-- ${'&a;'.repeat(2000)} --><![CDATA[${'&a;'.repeat(2000)}]]>`
+    const { doc } = await parse(withEntities(declare('a', 'x'.repeat(1000)), body), 'draft-test-00.xml')
+    expect(doc.data.rfc.middle.section.t).toMatch(/^x{1000}&a;/)
+  })
+})
+
+describe('XML parser should reject unclosed markup in time growing with its length', () => {
+  // Each of these took the parser 7 to 12 seconds, as a pattern read on to the end of the document from
+  // every unclosed start, and now takes milliseconds: the default test timeout (5 seconds) catches a
+  // return of that behavior
+  const draft = (body, dtd = '') => `<?xml version="1.0" encoding="UTF-8"?>
+${dtd}<rfc version="3" docName="draft-test-00">
+  <front><seriesInfo name="Internet-Draft" value="draft-test-00"/></front>
+  <middle><section>${body}</section></middle>
+</rfc>`
+
+  test.each([
+    ['comments', draft('<!--x'.repeat(100000))],
+    ['comments in the DTD', draft('<t>x</t>', `<!DOCTYPE rfc [\n${'<!--'.repeat(100000)}\n]>\n`)],
+    ['processing instructions', draft('<?'.repeat(150000))],
+    ['CDATA sections', draft('<![CDATA[x'.repeat(80000))],
+    ['document type declarations', draft('<!DOCTYPE x ['.repeat(60000))]
+  ])('%s', async (_, xml) => {
+    await expect(parse(xml, 'draft-test-00.xml')).rejects.toThrow(expect.objectContaining({ name: 'XML_PARSING_FAILED' }))
+  })
+})
