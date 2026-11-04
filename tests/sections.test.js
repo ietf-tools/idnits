@@ -2067,6 +2067,17 @@ Author's Address
         await expect(validateReferencesInText(doc)).resolves.toEqual([])
       })
 
+      test('finds the members of a <referencegroup> in time growing with the document', async () => {
+        // -> 100,000 <referencegroup> start tags with no end tag after them took 23 seconds, a pattern reading on
+        //    to the end of the document from each one: the default test timeout (5 seconds) catches a return of that
+        const unclosed = '<referencegroup/>'.repeat(100000)
+        const doc = await parseDoc('See <xref target="IDNA2008"/>.', `<referencegroup anchor="IDNA2008">
+          <?rfc include="reference.RFC.5890.xml"?>
+          <?rfc include="reference.RFC.5891.xml"?>
+        </referencegroup>${unclosed}`)
+        await expect(validateReferencesInText(doc)).resolves.toEqual([])
+      })
+
       test('counts the RFCs the document updates as mentioned, as the text header names them', async () => {
         // From draft-dahm-tacacs-sshpk-00
         const { doc } = await parse(`<rfc version="3" updates="RFC8907" xmlns:xi="http://www.w3.org/2001/XInclude">
