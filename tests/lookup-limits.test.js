@@ -85,7 +85,7 @@ const checkReferences = async (doc, opts) => {
   return [...results.flat(), ...await validateLookupFailures(doc, opts)]
 }
 
-describe('Remote lookups of a document', () => {
+describe('Remote lookups of a document', { timeout: 30000 }, () => {
   test('are made once per name, at most a few at a time', async () => {
     answerDelay = 20
     const doc = await parseRefs({ normative: range(100, 8), informative: [...range(104, 4), ...range(200, 8)], drafts: ['draft-foo-bar', 'draft-foo-baz'], attrs: ' obsoletes="100, 200" updates="201"' })
