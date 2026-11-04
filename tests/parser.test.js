@@ -5391,3 +5391,67 @@ ${numbers.map((n) => `   See [I-D.ietf-foo-bar${n}] and draft-ietf-foo-bar${n}-0
     expect(result.data.extractedElements.nonReferenceSectionDraftNames).toEqual(numbers.map((n) => `draft-ietf-foo-bar${n}`))
   })
 })
+
+describe('Drafts linked from and named in references entries are matched in time growing with their number', { timeout: 30000 }, () => {
+  // For each draft linked to, the parser read the whole entry again and looked for its entry among all, and
+  // compared each draft an entry names with every other one and with every draft linked to: the documents
+  // here took the parser 48 to 78 seconds, and now take under one
+  const references = (entries) => `
+1.  Introduction
+
+   See the drafts.
+
+2.  References
+
+2.1.  Normative References
+
+${entries}
+`
+  const numbers = (count) => Array.from({ length: count }, (_, idx) => idx + 1)
+
+  test('One entry linking to 8,000 drafts, named with other revisions', async () => {
+    const lines = numbers(8000).map((n) => `              draft-ietf-foo-bar${n}-02, <https://datatracker.ietf.org/doc/html/draft-ietf-foo-bar${n}-01>,`)
+    const result = await parse(references(`   [I-D.foo]  Example, A., "Example", Work in Progress, Internet-Draft,
+${lines.join('\n')}
+              June 2005.`), 'txt')
+    const mismatches = result.data.extractedElements.draftRevisionMismatches
+    expect(mismatches).toHaveLength(1)
+    expect(mismatches[0].drafts).toHaveLength(8000)
+    expect(mismatches[0].drafts[7999]).toEqual({ linked: 'draft-ietf-foo-bar8000-01', named: ['draft-ietf-foo-bar8000-02'] })
+  })
+
+  test('One entry linking to 8,000 drafts without a revision, named with one', async () => {
+    const lines = numbers(8000).map((n) => `              draft-ietf-foo-bar${n}-02, <https://datatracker.ietf.org/doc/draft-ietf-foo-bar${n}/>,`)
+    const result = await parse(references(`   [I-D.foo]  Example, A., "Example", Work in Progress, Internet-Draft,
+${lines.join('\n')}
+              June 2005.`), 'txt')
+    const values = numbers(8000).map((n) => `draft-ietf-foo-bar${n}-02`)
+    expect(result.data.extractedElements.draftStatusReferences.map((el) => el.value)).toEqual(values)
+  })
+
+  test('One entry naming 25,000 drafts without links', async () => {
+    const lines = numbers(25000).map((n) => `              draft-ietf-foo-bar${n}-02,`)
+    const result = await parse(references(`   [I-D.foo]  Example, A., "Example", Work in Progress, Internet-Draft,
+${lines.join('\n')}
+              June 2005.`), 'txt')
+    const values = numbers(25000).map((n) => `draft-ietf-foo-bar${n}-02`)
+    expect(result.data.extractedElements.draftStatusReferences.map((el) => el.value)).toEqual(values)
+  })
+
+  test('One entry naming 10,000 drafts and linking to 10,000 others', async () => {
+    const lines = numbers(10000).map((n) => `              draft-ietf-foo-baz${n}-03, <https://datatracker.ietf.org/doc/html/draft-ietf-foo-bar${n}-01>,`)
+    const result = await parse(references(`   [I-D.foo]  Example, A., "Example", Work in Progress, Internet-Draft,
+${lines.join('\n')}
+              June 2005.`), 'txt')
+    const values = result.data.extractedElements.draftStatusReferences.map((el) => el.value)
+    expect(values).toHaveLength(20000)
+    expect(values.slice(9999, 10001)).toEqual(['draft-ietf-foo-bar10000-01', 'draft-ietf-foo-baz1-03'])
+  })
+
+  test('50,000 entries, each linking to another draft', async () => {
+    const entries = numbers(50000).map((n) => `   [${n}] <https://datatracker.ietf.org/doc/html/draft-ietf-foo-bar${n}-01>`)
+    const result = await parse(references(entries.join('\n')), 'txt')
+    const values = numbers(50000).map((n) => `draft-ietf-foo-bar${n}-01`)
+    expect(result.data.extractedElements.draftStatusReferences.map((el) => el.value)).toEqual(values)
+  })
+})
