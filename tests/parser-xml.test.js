@@ -400,6 +400,42 @@ ${declarations}
   })
 })
 
+describe('XML parser should replace references to external entities and long entity names in one pass', { timeout: 30000 }, () => {
+  // Each reference was replaced by reading the whole document again for each entity: the documents here took
+  // the parser 55 and 34 seconds, and now take under one
+  const withEntities = (declarations, body) => `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE rfc [
+${declarations}
+]>
+<rfc version="3" docName="draft-test-00">
+  <front><seriesInfo name="Internet-Draft" value="draft-test-00"/></front>
+  <middle><section>${body}</section></middle>
+</rfc>`
+  const numbers = (count) => Array.from({ length: count }, (_, idx) => idx)
+
+  test('70,000 external entities used in 70,000 paragraphs', async () => {
+    const declarations = numbers(70000).map((n) => `<!ENTITY ref${n} SYSTEM "https://example.com/${n}.xml">`)
+    declarations.push('<!ENTITY long-name "named">')
+    const body = numbers(70000).map((n) => `<t>${n}&ref${n};</t>`)
+    // -> A reference that removing another one forms is removed or renamed as when the references to each
+    //    entity were removed in the order declared: "&ref1&ref0;;" gives "&ref1;" once "&ref0;" is removed, then
+    //    nothing once "&ref1;" is (declared after ref0)
+    body.push('<t>x&ref1&ref0;;y &long-name&ref0;; z</t>')
+    const { doc } = await parse(withEntities(declarations.join('\n'), body.join('\n')), 'draft-test-00.xml')
+    expect(doc.externalEntities).toHaveLength(70000)
+    expect(doc.data.rfc.middle.section.t).toEqual([...numbers(70000), 'xy named z'])
+  })
+
+  test('40,000 internal entities with long names used in 40,000 paragraphs, refused as too many', async () => {
+    const declarations = numbers(40000).map((n) => `<!ENTITY a-very-long-entity-name-number-${n} "${n}">`).join('\n')
+    const body = numbers(40000).map((n) => `<t>&a-very-long-entity-name-number-${n};</t>`).join('\n')
+    await expect(parse(withEntities(declarations, body), 'draft-test-00.xml')).rejects.toThrow(expect.objectContaining({
+      name: 'XML_ENTITY_EXPANSION_TOO_LARGE',
+      message: 'This document declares more than the 1000 internal entities the XML parser accepts.'
+    }))
+  })
+})
+
 describe('XML parser should reject unclosed markup in time growing with its length', () => {
   // Each of these took the parser 7 to 12 seconds, as a pattern read on to the end of the document from
   // every unclosed start, and now takes milliseconds: the default test timeout (5 seconds) catches a
