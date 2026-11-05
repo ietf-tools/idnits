@@ -372,3 +372,28 @@ describe('listXmlReferences', () => {
     expect(collectXmlReferences(doc)).toHaveLength(6)
   })
 })
+
+describe('References pulled in by external entities are found in time growing with their number', { timeout: 30000 }, () => {
+  // Each entity was searched for in the whole document: the document here took 71 seconds to search, and now takes
+  // well under one
+  test('120,000 external entities, each used in the references', async () => {
+    const count = 120000
+    const numbers = Array.from({ length: count }, (_, idx) => idx + 1)
+    const declarations = numbers.map((n) => `<!ENTITY RFC${n} SYSTEM "https://bib.ietf.org/public/rfc/bibxml/reference.RFC.${n}.xml">`)
+    const entityReferences = numbers.map((n) => `&RFC${n};`)
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE rfc [
+${declarations.join('\n')}
+]>
+<rfc version="3" docName="draft-test-references-00">
+  <front><seriesInfo name="Internet-Draft" value="draft-test-references-00"/></front>
+  <back><references><name>Normative References</name>
+${entityReferences.join('\n')}
+  </references></back>
+</rfc>`
+    const { doc } = await parse(xml, 'draft-test-references-00.xml')
+    const references = collectXmlReferences(doc)
+    expect(references).toHaveLength(count)
+    expect(references[count - 1]).toEqual({ section: 'normative', rfc: String(count), draft: null, source: 'entity' })
+  })
+})
