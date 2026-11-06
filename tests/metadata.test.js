@@ -764,6 +764,22 @@ describe('document should have valid obsoletes / updates references', () => {
       expect(passiveResult.map(r => r.name)).toEqual(['OBSOLETES_NOT_IN_RFC'])
       expect(passiveResult[0].message).toContain('RFC 1 ')
     })
+    test('the <xref> elements of the abstract are found in time linear in its length', { timeout: 30000 }, async () => {
+      // -> Each element whose name starts with "xref" ("<xref-a>") started a reading of the abstract on to its end,
+      //    looking for a "</xref>": this abstract of 150,000 of them (2.6 MB) took 83 s, and now takes milliseconds
+      const doc = cloneDeep(baseXMLDoc)
+      const elements = '<xref-a></xref-a>'.repeat(150000)
+      set(doc, 'body', `<?xml version="1.0" encoding="UTF-8"?>
+<rfc version="3" docName="draft-foo-bar-00" obsoletes="1234">
+  <front>
+    <title>Foo</title>
+    <abstract><t>${elements} This document obsoletes <xref target="RFC1234"/>.</t></abstract>
+  </front>
+  <middle/>
+</rfc>`)
+      set(doc, 'data.rfc._attr', { version: '3', docName: 'draft-foo-bar-00', obsoletes: '1234' })
+      await expect(validateObsoleteUpdateRef(doc, { offline: true })).resolves.toEqual([])
+    })
     test('reads the abstract phrasings that name obsoleted and updated RFCs', async () => {
       const names = async (abstract, attrs) => {
         const { doc } = await parse(`<?xml version="1.0" encoding="UTF-8"?>
