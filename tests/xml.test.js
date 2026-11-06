@@ -1424,3 +1424,30 @@ ${paragraphs.map((t, idx) => `        <t indent="0" pn="section-boilerplate.${n}
     await expect(findings(doc)).resolves.toHaveLength(0)
   })
 })
+
+describe('Checks reading the document again remove its external entities in time growing with their number', { timeout: 30000 }, () => {
+  // The declaration of each entity, then its references, were removed by reading the whole document again: the
+  // document here took 96 seconds to read again, and now takes well under one
+  test('60,000 external entities used in 60,000 paragraphs', async () => {
+    const numbers = Array.from({ length: 60000 }, (_, idx) => idx + 1)
+    const declarations = numbers.map((n) => `<!ENTITY ref${n} SYSTEM "https://bib.ietf.org/public/rfc/bibxml/reference.RFC.${n}.xml">`)
+    const paragraphs = numbers.map((n) => `<t>${n}&ref${n};</t>`)
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE rfc [
+${declarations.join('\n')}
+]>
+<rfc version="3" docName="draft-test-artwork-00">
+<middle>
+<section><name>Introduction</name>
+${paragraphs.join('\n')}
+<artwork>
+${'x'.repeat(73)}
+</artwork>
+</section>
+</middle>
+</rfc>`
+    const { doc } = await parse(xml, 'draft-test-artwork-00.xml')
+    const result = await validateArtworkSize(doc)
+    expect(result.map((finding) => finding.path)).toEqual(['rfc.middle.section.artwork'])
+  })
+})
