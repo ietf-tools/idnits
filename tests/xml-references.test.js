@@ -397,3 +397,32 @@ ${entityReferences.join('\n')}
     expect(references[count - 1]).toEqual({ section: 'normative', rfc: String(count), draft: null, source: 'entity' })
   })
 })
+
+describe('References pulled in are matched to their sections in time growing with their number', { timeout: 30000 }, () => {
+  // All the <references> sections were searched for the one around each reference pulled in: the document here
+  // took 47 seconds to search, and now takes well under one
+  test('150,000 sections, each pulling in a reference by an external entity', async () => {
+    const count = 150000
+    const numbers = Array.from({ length: count }, (_, idx) => idx + 1)
+    const declarations = numbers.map((n) => `<!ENTITY RFC${n} SYSTEM "https://bib.ietf.org/public/rfc/bibxml/reference.RFC.${n}.xml">`)
+    const sections = numbers.map((n) => {
+      const name = n % 2 === 0 ? 'Normative References' : 'Informative References'
+      return `<references><name>${name}</name>&RFC${n};</references>`
+    })
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE rfc [
+${declarations.join('\n')}
+]>
+<rfc version="3" docName="draft-test-references-00">
+  <front><seriesInfo name="Internet-Draft" value="draft-test-references-00"/></front>
+  <back>
+${sections.join('\n')}
+  </back>
+</rfc>`
+    const { doc } = await parse(xml, 'draft-test-references-00.xml')
+    const references = collectXmlReferences(doc)
+    expect(references).toHaveLength(count)
+    expect(references[0]).toEqual({ section: 'informative', rfc: '1', draft: null, source: 'entity' })
+    expect(references[count - 1]).toEqual({ section: 'normative', rfc: String(count), draft: null, source: 'entity' })
+  })
+})
