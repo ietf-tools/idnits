@@ -82,11 +82,12 @@ A document that can't be parsed isn't checked: the CLI exits with code `1`, and 
 | `XML_UNRECOGNIZED_DOC_KIND` | XML | Neither a draft nor an RFC, from `<seriesInfo>`, `docName`, `number` or the file name |
 | `TXT_PARSING_FAILED` | text | |
 
-A check that fails on a document it can't handle doesn't stop the others: it is reported in its place, and the run completes.
+A check that fails on a document it can't handle doesn't stop the others: it is reported in its place, and the run completes. A check lists at most 10,000 findings (the documents of the corpus give at most about 2,000); past that, one `FINDINGS_LIMIT_REACHED` Error says how many it gave.
 
 | Code | normal | forgive-checklist | submission | Format | Notes |
 |---|---|---|---|---|---|
 | `CHECK_FAILED` | Error | Error | Error | both | A check failed (a bug of idnits): names the check and the error; its findings, if any, are missing. An Error in `submission` too, as the submission check didn't complete |
+| `FINDINGS_LIMIT_REACHED` | Error | Error | Error | both | A check gave more than 10,000 findings: the first 10,000 are listed; names the check and how many it gave. A document with this many findings isn't one to accept |
 
 ### File names and revisions
 

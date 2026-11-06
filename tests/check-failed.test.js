@@ -1,10 +1,10 @@
 import { describe, expect, test, vi } from 'vitest'
 import { MODES } from '../lib/config/modes.mjs'
-import { ValidationError } from '../lib/helpers/error.mjs'
-import { checkNits, finalizeFindings, getAllValidations, getDocType } from '../lib/index.mjs'
+import { ValidationError, ValidationWarning } from '../lib/helpers/error.mjs'
+import { MAX_FINDINGS_PER_CHECK, checkNits, finalizeFindings, getAllValidations, getDocType } from '../lib/index.mjs'
 
-// -> Checks that throw on demand
-const failing = vi.hoisted(() => ({ prepTool: false, labels: false }))
+// -> Checks that throw, or give many findings, on demand
+const failing = vi.hoisted(() => ({ prepTool: false, labels: false, manyFindings: 0 }))
 
 vi.mock('../lib/modules/xml.mjs', async (importOriginal) => {
   const original = await importOriginal()
@@ -13,6 +13,13 @@ vi.mock('../lib/modules/xml.mjs', async (importOriginal) => {
     detectPrepToolOutput: async (...args) => {
       if (failing.prepTool) {
         throw new TypeError('something is not iterable')
+      }
+      if (failing.manyFindings > 0) {
+        const findings = []
+        for (let idx = 0; idx < failing.manyFindings; idx++) {
+          findings.push(new ValidationWarning('MANY', `Finding ${idx + 1}`))
+        }
+        return findings
       }
       return original.detectPrepToolOutput(...args)
     }
@@ -137,5 +144,40 @@ describe('A check that throws', () => {
     } finally {
       failing.labels = false
     }
+  })
+})
+
+describe('A check that gives too many findings', () => {
+  /**
+   * Run the checks with the prep tool output check giving a number of findings
+   *
+   * @param {number} count Number of findings
+   * @param {Object} mode Mode
+   * @returns {Promise<Object[]>} Findings
+   */
+  async function runMany (count, mode) {
+    failing.manyFindings = count
+    try {
+      return await checkNits(Buffer.from(XML), FILENAME, { mode, offline: true })
+    } finally {
+      failing.manyFindings = 0
+    }
+  }
+
+  test.each([MODES.NORMAL, MODES.FORGIVE_CHECKLIST, MODES.SUBMISSION])('lists the first ones and a FINDINGS_LIMIT_REACHED Error (mode %#)', async (mode) => {
+    const result = await runMany(MAX_FINDINGS_PER_CHECK + 5, mode)
+    const many = result.filter(r => r.name === 'MANY')
+    expect(many).toHaveLength(MAX_FINDINGS_PER_CHECK)
+    expect(many.at(-1).message).toBe(`Finding ${MAX_FINDINGS_PER_CHECK}`)
+    const limit = result.filter(r => r.name === 'FINDINGS_LIMIT_REACHED')
+    expect(limit).toHaveLength(1)
+    expect(limit[0].constructor).toBe(ValidationError)
+    expect(limit[0].message).toBe('The "Prep tool output" check gave 10,005 findings; only the first 10,000 are listed. A document with this many findings can\'t be accepted.')
+  })
+
+  test('lists them all up to the limit', async () => {
+    const result = await runMany(MAX_FINDINGS_PER_CHECK, MODES.NORMAL)
+    expect(result.filter(r => r.name === 'MANY')).toHaveLength(MAX_FINDINGS_PER_CHECK)
+    expect(result.map(r => r.name)).not.toContain('FINDINGS_LIMIT_REACHED')
   })
 })
