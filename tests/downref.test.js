@@ -8,6 +8,7 @@ import { parse as parseTXT } from '../lib/parsers/txt.mjs'
 import { CANONICAL_TXT } from './generators/doc-txt.js'
 import { validateDownrefs, validateInformativeReferences, validateNormativeReferences, validateUnclassifiedReferences, validatePublishedDraftReferences, validateReferenceForStale } from '../lib/modules/downref.mjs'
 import { getAllValidations } from '../lib/index.mjs'
+import { MAX_LOOKUPS_PER_DOC } from '../lib/remote/lookups.mjs'
 import { setupServer } from 'msw/node'
 import { http, HttpResponse } from 'msw'
 import { readFileSync } from 'node:fs'
@@ -2527,5 +2528,65 @@ describe('References to RFC numbers that were never issued', () => {
   test('are reported for informative and unclassified references too', async () => {
     await expect(validateInformativeReferences(await parseRefs('Informative References'), { mode: MODES.NORMAL })).resolves.toEqual([finding(ValidationError)])
     await expect(validateUnclassifiedReferences(await parseRefs('References'), { mode: MODES.NORMAL })).resolves.toEqual([finding(ValidationError)])
+  })
+})
+
+describe('Drafts linked from the references are located in time growing with their number', { timeout: 30000 }, () => {
+  // For each draft, the checks read every draft linked to again: the document here took the checks below 810, 530
+  // and 56 seconds, and now takes each under one. Only the first MAX_LOOKUPS_PER_DOC drafts are looked up, but each
+  // draft is located.
+  const count = 70000
+
+  /**
+   * A text draft whose normative references link to many drafts, one per line
+   *
+   * @returns {Object} Document
+   */
+  function manyDraftLinks () {
+    const doc = cloneDeep(baseTXTDoc)
+    const values = Array.from({ length: count }, (_, idx) => `draft-ietf-many-links${idx + 1}-01`)
+    const lines = values.map((value) => `         ${value}`)
+    const locations = Object.fromEntries(values.map((value, idx) => [value, [{ line: idx + 3, pos: 10 }]]))
+    const references = values.map((value) => ({ value, subsection: 'normative_references' }))
+    set(doc, 'body', ['2.  References', '2.1.  Normative References', ...lines].join('\n'))
+    set(doc, 'data.extractedElements.draftStatusReferences', references)
+    set(doc, 'data.extractedElements.locations.draftStatusReferences', locations)
+    return doc
+  }
+
+  /**
+   * Answer every draft lookup with a draft whose last revision is 02, or with a 404
+   *
+   * @param {boolean} found - Whether the drafts are found
+   */
+  function answerDraftLookups (found) {
+    server.use(http.get('https://datatracker.ietf.org/doc/:name/doc.json', ({ params }) => {
+      if (!found) {
+        return new HttpResponse(null, { status: 404 })
+      }
+      return HttpResponse.json({ state: 'Active', rev_history: [{ rev: '02', name: params.name }] })
+    }))
+  }
+
+  test('validatePublishedDraftReferences', async () => {
+    answerDraftLookups(false)
+    const res = await validatePublishedDraftReferences(manyDraftLinks(), { mode: MODES.NORMAL })
+    expect(res).toHaveLength(MAX_LOOKUPS_PER_DOC)
+    expect(res.at(-1).lines).toEqual([{ line: MAX_LOOKUPS_PER_DOC + 2, pos: 10 }])
+  })
+
+  test('validateDownrefs', async () => {
+    answerDraftLookups(false)
+    const res = await validateDownrefs(manyDraftLinks(), { mode: MODES.NORMAL })
+    expect(res).toHaveLength(count)
+    expect(res.at(-1).lines).toEqual([{ line: count + 2, pos: 10 }])
+  })
+
+  test('validateReferenceForStale', async () => {
+    answerDraftLookups(true)
+    const res = await validateReferenceForStale(manyDraftLinks(), { mode: MODES.NORMAL })
+    expect(res).toHaveLength(MAX_LOOKUPS_PER_DOC)
+    expect(res.at(-1).name).toBe('OUTDATED_DRAFT')
+    expect(res.at(-1).lines).toEqual([{ line: MAX_LOOKUPS_PER_DOC + 2, pos: 10 }])
   })
 })
