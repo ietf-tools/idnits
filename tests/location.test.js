@@ -254,6 +254,26 @@ describe('location', () => {
     })
   })
 
+  describe('addXmlSourceLines() on 60,000 sibling elements', { timeout: 30000 }, () => {
+    // For each finding, the children of each element on its path were all read again to find those with the
+    // next name on the path: 60,000 findings among 60,000 <references> sections took minutes
+    test('should locate a finding in each of them', () => {
+      const count = 60000
+      const sections = []
+      for (let idx = 0; idx < count; idx++) {
+        sections.push(`  <references><name>R</name><reference anchor="R${idx}"/></references>`)
+      }
+      const body = `<rfc version="3">\n<back>\n${sections.join('\n')}\n</back>\n</rfc>`
+      const findings = []
+      for (let idx = 0; idx < count; idx++) {
+        findings.push(new ValidationWarning('A', 'a', { path: `rfc.back.references[${idx}].reference` }))
+      }
+      addXmlSourceLines(findings, { type: 'xml', body, data: {} })
+      expect(findings[0].lines).toEqual([{ line: 3, pos: 29 }])
+      expect(findings[count - 1].lines).toEqual([{ line: count + 2, pos: 29 }])
+    })
+  })
+
   describe('checkNits()', () => {
     test('should add a label to XML findings that have a path', async () => {
       const xml = SAMPLE_XML.replace('<t>Intro two.</t>', '<t>Implementations MUST do this.</t>')
