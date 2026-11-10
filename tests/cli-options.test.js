@@ -33,11 +33,17 @@ afterAll(async () => {
  * (the services point at a closed local port all the same)
  *
  * @param {string[]} args Arguments, the document included
+ * @param {Object} [options] Options
+ * @param {boolean} [options.progress] Show the progress of the validations (off by default)
  * @returns {Promise<{code: number, stdout: string, stderr: string}>} Result
  */
-function runCli (args) {
+function runCli (args, { progress = false } = {}) {
+  let progressArg = '--no-progress'
+  if (progress) {
+    progressArg = '--progress'
+  }
   return new Promise((resolve) => {
-    execFile(process.execPath, [CLI, '--offline', '--no-progress', '--no-color', ...args], {
+    execFile(process.execPath, [CLI, '--offline', progressArg, '--no-color', ...args], {
       cwd: dir,
       env: { ...process.env, IDNITS_DATATRACKER_URL: 'http://127.0.0.1:1', IDNITS_RFCEDITOR_URL: 'http://127.0.0.1:1' }
     }, (err, stdout, stderr) => resolve({ code: err ? err.code : 0, stdout, stderr }))
@@ -219,5 +225,37 @@ describe.concurrent('the document argument', { timeout: 30000 }, () => {
     expect(afterDashes.stderr).toContain('Not enough non-option arguments: got 0, need at least 1')
     expect(two.code).toBe(1)
     expect(two.stderr).toContain('Too many non-option arguments: got 2, maximum of 1')
+  })
+})
+
+describe.concurrent('--progress', { timeout: 30000 }, () => {
+  test('shows each group and task, and the same findings as without it', async () => {
+    const [run, plain] = await Promise.all([
+      runCli([draft], { progress: true }),
+      runCli([draft])
+    ])
+    expect(run.stderr).toBe('')
+    expect(run.code).toBe(0)
+    // (stdout isn't a terminal, so each task gets a line when it starts and one when it's done)
+    expect(run.stdout).toContain('✔ Pre-parsing validations\n')
+    expect(run.stdout).toContain('✔ Parsing XML document\n')
+    expect(run.stdout).toContain('✔ XML Boilerplate\n')
+    expect(run.stdout).toContain('✔ Failed lookups\n')
+    expect(run.stdout).toContain('✔ Remote lookups\n')
+    // -> Without the progress lines, and the empty line after them, the output is the same
+    const progressLines = /^[❯✔] .*\n/gm
+    const findings = plain.stdout.replace(' Mode  normal [0]\n\n', ' Mode  normal [0]\n\n\n')
+    expect(run.stdout.replace(progressLines, '')).toBe(findings)
+  })
+
+  test('stops at a document that does not parse', async () => {
+    const malformed = path.join(dir, 'draft-test-cli-malformed-00.xml')
+    await writeFile(malformed, DRAFT_XML.replace('</front>', ''))
+    const run = await runCli([malformed], { progress: true })
+    expect(run.code).toBe(1)
+    // (the line marking the task as failed may not reach a pipe before the CLI exits, as before)
+    expect(run.stdout).toContain('❯ Parsing XML document\n')
+    expect(run.stdout).not.toContain('Common validations')
+    expect(run.stderr).toContain('Validation did not complete. Error:\n- ')
   })
 })
