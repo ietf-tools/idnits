@@ -7,7 +7,6 @@ import { ValidationComment, ValidationError, ValidationWarning } from '../lib/he
 import { validateDownrefs } from '../lib/modules/downref.mjs'
 import { parse } from '../lib/parsers/xml.mjs'
 import { checkNits } from '../lib/index.mjs'
-import { clearDownrefRegistryCache, DOWNREF_REGISTRY_FAILURE_TTL } from '../lib/remote/downref.mjs'
 
 const REGISTRY_URL = 'https://datatracker.ietf.org/doc/downref/'
 const BCP97_REF = 'https://www.rfc-editor.org/info/bcp97'
@@ -32,7 +31,6 @@ const server = setupServer(
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
 beforeEach(() => {
-  clearDownrefRegistryCache()
   registryRequests = 0
   registryResponse = () => HttpResponse.text(REGISTRY_HTML)
 })
@@ -41,10 +39,7 @@ afterEach(() => {
   setRemoteTimeout(null)
   vi.restoreAllMocks()
 })
-afterAll(() => {
-  server.close()
-  clearDownrefRegistryCache()
-})
+afterAll(() => server.close())
 
 const references = (...rfcs) => rfcs.map(rfc => `<reference anchor="RFC${rfc}"><front><title>T</title></front><seriesInfo name="RFC" value="${rfc}"/></reference>`).join('')
 
@@ -68,8 +63,10 @@ describe('Downref Registry', () => {
   test('tells the downrefs listed in it from the others', async () => {
     const doc = await parseDraft('1094', '1234')
     await expect(validateDownrefs(doc, { mode: MODES.NORMAL })).resolves.toEqual([inRegistry('1094'), notInRegistry('1234')])
-    await expect(validateDownrefs(await parseDraft('5678'), { mode: MODES.FORGIVE_CHECKLIST })).resolves.toEqual([notInRegistry('5678', ValidationWarning)])
     expect(registryRequests).toBe(1)
+    // -> Fetched again for another document
+    await expect(validateDownrefs(await parseDraft('5678'), { mode: MODES.FORGIVE_CHECKLIST })).resolves.toEqual([notInRegistry('5678', ValidationWarning)])
+    expect(registryRequests).toBe(2)
   })
 
   describe.each([
@@ -111,12 +108,15 @@ describe('Downref Registry', () => {
       const doc = await parseDraft('1094', '1234')
       // -> A Warning in both modes: the downref may be registered
       expectFindings(await validateDownrefs(doc, { mode: MODES.NORMAL }), [unchecked('1094'), unchecked('1234')])
-      expectFindings(await validateDownrefs(await parseDraft('5678'), { mode: MODES.FORGIVE_CHECKLIST }), [unchecked('5678')])
-
-      // -> The failure is remembered: fetched, and warned about, once for both documents
+      // -> The failure is remembered for the document: fetched, and warned about, once for both downrefs
       expect(registryRequests).toBe(1)
       expect(warn).toHaveBeenCalledTimes(1)
       expect(warn.mock.calls[0][0]).toMatch(/^Failed to fetch Downref Registry: /)
+
+      // -> Tried again, and warned about again, for another document
+      expectFindings(await validateDownrefs(await parseDraft('5678'), { mode: MODES.FORGIVE_CHECKLIST }), [unchecked('5678')])
+      expect(registryRequests).toBe(2)
+      expect(warn).toHaveBeenCalledTimes(2)
     })
 
     test('is not needed without a downref', async () => {
@@ -144,38 +144,40 @@ describe('Downref Registry', () => {
     })
   })
 
-  test('is fetched again once a failure is old enough, and kept once fetched', async () => {
+  test('is fetched again by the next run after a failure', async () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const raw = Buffer.from(`<?xml version="1.0" encoding="utf-8"?>
+<rfc version="3" category="std" docName="draft-test-registry-00" ipr="trust200902" submissionType="IETF">
+  <front><title>Test</title><author fullname="A. Author"/><date year="2026" month="October" day="20"/><abstract><t>Abstract.</t></abstract></front>
+  <middle><section><name>Introduction</name><t>See <xref target="RFC1094"/>.</t></section></middle>
+  <back><references><name>Normative References</name>${references('1094')}</references></back>
+</rfc>`)
+    const run = async () => {
+      const result = await checkNits(raw, 'draft-test-registry-00.xml', { mode: MODES.NORMAL })
+      return result.filter(r => r.name.startsWith('DOWNREF_')).map(r => r.name)
+    }
     registryResponse = () => new HttpResponse(null, { status: 503 })
-    const now = Date.now()
-    const clock = vi.spyOn(Date, 'now').mockReturnValue(now)
-    await validateDownrefs(await parseDraft('1094'), { mode: MODES.NORMAL })
-    clock.mockReturnValue(now + DOWNREF_REGISTRY_FAILURE_TTL - 1)
-    await validateDownrefs(await parseDraft('1094'), { mode: MODES.NORMAL })
+    await expect(run()).resolves.toEqual(['DOWNREF_TO_LOWER_STATUS_UNCHECKED', 'DOWNREF_REGISTRY_UNAVAILABLE'])
     expect(registryRequests).toBe(1)
 
     registryResponse = () => HttpResponse.text(REGISTRY_HTML)
-    clock.mockReturnValue(now + DOWNREF_REGISTRY_FAILURE_TTL)
-    await expect(validateDownrefs(await parseDraft('1094'), { mode: MODES.NORMAL })).resolves.toEqual([inRegistry('1094')])
-    expect(registryRequests).toBe(2)
-
-    registryResponse = () => new HttpResponse(null, { status: 503 })
-    clock.mockReturnValue(now + 10 * DOWNREF_REGISTRY_FAILURE_TTL)
-    await expect(validateDownrefs(await parseDraft('1094'), { mode: MODES.NORMAL })).resolves.toEqual([inRegistry('1094')])
+    await expect(run()).resolves.toEqual(['DOWNREF_TO_LOWER_STATUS_IN_REGISTRY'])
     expect(registryRequests).toBe(2)
   })
 
-  test('checks running at once share one request', async () => {
-    vi.spyOn(console, 'warn').mockImplementation(() => {})
+  test('checks of a document running at once share one request', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     registryResponse = async () => {
       await delay(20)
       return new HttpResponse(null, { status: 500 })
     }
-    const results = await Promise.all([parseDraft('1094'), parseDraft('1234')].map(async doc => validateDownrefs(await doc, { mode: MODES.NORMAL })))
+    const doc = await parseDraft('1094', '1234')
+    const results = await Promise.all([validateDownrefs(doc, { mode: MODES.NORMAL }), validateDownrefs(doc, { mode: MODES.NORMAL })])
     expect(results.map(r => r.map(f => f.name))).toEqual([
-      ['DOWNREF_TO_LOWER_STATUS_UNCHECKED', 'DOWNREF_REGISTRY_UNAVAILABLE'],
-      ['DOWNREF_TO_LOWER_STATUS_UNCHECKED', 'DOWNREF_REGISTRY_UNAVAILABLE']
+      ['DOWNREF_TO_LOWER_STATUS_UNCHECKED', 'DOWNREF_TO_LOWER_STATUS_UNCHECKED', 'DOWNREF_REGISTRY_UNAVAILABLE'],
+      ['DOWNREF_TO_LOWER_STATUS_UNCHECKED', 'DOWNREF_TO_LOWER_STATUS_UNCHECKED', 'DOWNREF_REGISTRY_UNAVAILABLE']
     ])
     expect(registryRequests).toBe(1)
+    expect(warn).toHaveBeenCalledTimes(1)
   })
 })

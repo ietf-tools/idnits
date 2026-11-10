@@ -5,8 +5,6 @@ import { checkNits } from '../lib/index.mjs'
 import { MODES } from '../lib/config/modes.mjs'
 import { parse } from '../lib/parsers/xml.mjs'
 import { parse as parseTxt } from '../lib/parsers/txt.mjs'
-import { clearRemoteCache } from '../lib/remote/common.mjs'
-import { clearDownrefRegistryCache } from '../lib/remote/downref.mjs'
 import {
   validateDownrefs,
   validateInformativeReferences,
@@ -30,8 +28,6 @@ beforeAll(() => {
 })
 beforeEach(() => {
   requests.length = 0
-  clearRemoteCache()
-  clearDownrefRegistryCache()
   fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
     throw new Error(`Unexpected request with offline: ${url}`)
   })
