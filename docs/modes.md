@@ -181,7 +181,7 @@ A check that fails on a document it can't handle doesn't stop the others: it is 
 | `INVALID_SECURITY_CONSIDERATIONS_SECTION` | Error | Error | Warning | XML | Empty section |
 | `INVALID_SECURITY_CONSIDERATIONS_SECTION_CHILD` | Error | Error | Error | XML | |
 | `MISSING_IANA_CONSIDERATIONS_SECTION` | Error | Warning | — | both | (drafts) |
-| `MISSING_IANA_CONSIDERATIONS_SECTION` | Comment | Comment | — | both | (RFCs) |
+| `RFC_MISSING_IANA_CONSIDERATIONS_SECTION` | Comment | Comment | — | both | (RFCs) |
 | `INVALID_IANA_CONSIDERATIONS_SECTION` | Error | Error | Warning | both | Empty section |
 | `INVALID_IANA_CONSIDERATIONS_SECTION_CHILD` | Error | Error | Error | XML | |
 | `MISSING_AUTHOR_SECTION` | Error | Warning | — | both | |
@@ -198,7 +198,7 @@ A check that fails on a document it can't handle doesn't stop the others: it is 
 | Code | normal | forgive-checklist | submission | Format | Notes |
 |---|---|---|---|---|---|
 | `MISSING_DOC_DATE` | Warning | Warning | Warning | both | Date can't be determined |
-| `MISSING_DOC_DATE` | Comment | Comment | Comment | XML | No `<date>`: the prep tool will fill it in |
+| `MISSING_DATE_ELEMENT` | Comment | Comment | Comment | XML | No `<date>`: the prep tool will fill it in |
 | `DOC_DATE_IN_PAST` | Warning | Warning | Warning | both | More than 3 days |
 | `DOC_DATE_IN_FUTURE` | Warning | Warning | Warning | both | More than 3 days |
 | `MISSING_DOC_CATEGORY` | Warning | Warning | Warning | both | Text RFC: no `Category:` line. Text draft: no `Intended status:` line (a `Category:` line instead doesn't count). XML: no `category` attribute |
@@ -254,14 +254,14 @@ These checks apply to text drafts only. An XML draft gets this boilerplate from 
 | `OBSOLETE_COPYRIGHT_LINE` | Error | Error | Error | text | |
 | `TLP5_LICENSE_RESTRICTION_NOTICE_MISSING` | Error | Error | Error | text | |
 | `TLP5_LICENSE_RESTRICTION_NOTICE` | Warning | Warning | Warning | text | `draft-ietf-` names only; TLP Section 6.c(i) |
-| `TLP5_LICENSE_RESTRICTION_NOTICE` | Error | Error | Error | text | `draft-ietf-` names only; TLP Section 6.c(ii) |
+| `TLP5_INTERNET_DRAFT_ONLY_NOTICE` | Error | Error | Error | text | `draft-ietf-` names only; TLP Section 6.c(ii) |
 | `TLP5_LICENSE_RESTRICTION_NOTICE_REPEATED` | Warning | Warning | Warning | text | |
 | `CODE_BLOCK_MISSING_LICENSE` | Warning | Warning | — | text | |
 | `COMMENT_OUT_OF_CODE_BLOCK` | Warning | Warning | Warning | text | |
 | `MISSING_IPR_ATTRIBUTE` | Error | Error | Error | XML | |
 | `INVALID_IPR_VALUE` | Warning | Warning | Warning | XML | |
 | `FORBIDDEN_IPR_VALUE_FOR_STREAM` | Error | Warning | Error | XML | No-derivatives `ipr` in the IETF stream (lookup; with `--offline`, the stream comes from the name or `submissionType` only) |
-| `FORBIDDEN_IPR_VALUE_FOR_STREAM` | Warning | Warning | Warning | XML | No-derivatives `ipr`, stream unknown |
+| `POSSIBLE_FORBIDDEN_IPR_VALUE` | Warning | Warning | Warning | XML | No-derivatives `ipr`, stream unknown |
 | `UNNECESSARY_BOILERPLATE_TEXT` | Warning | Warning | Warning | XML | Boilerplate that xml2rfc generates, pasted in |
 | `RFC_BOILERPLATE_MISSING` | Error | Warning | — | XML | (RFCs) Prepped, without `<boilerplate>` |
 | `RFC_STATUS_BOILERPLATE_MISMATCH` | Error | Warning | — | XML | (RFCs) Status of This Memo isn't xml2rfc's |
@@ -275,19 +275,19 @@ These checks apply to text drafts only. An XML draft gets this boilerplate from 
 | `SUBMISSION_TYPE_INVALID` | Error | Error | Error | XML | |
 | `SUBMISSION_TYPE_MISMATCH` | Error | Error | Error | XML | `submissionType` vs. a `draft-iab-` or `draft-irtf-` name |
 | `SUBMISSION_TYPE_UNEXPECTED` | Error | Warning | Error | both | (lookup, offline) Datatracker has the document in another stream |
-| `SUBMISSION_TYPE_UNEXPECTED` | Error | Warning | Comment | both | (lookup, offline) Datatracker has no stream for it yet |
+| `DATATRACKER_STREAM_NOT_SET` | Error | Warning | Comment | both | (lookup, offline) Datatracker has no stream for it yet |
 | `CROSS_STREAM_OBSOLETES_UPDATES` | Warning | Warning | Warning | both | (lookup, offline) Updates or obsoletes an RFC of another stream |
-| `CROSS_STREAM_OBSOLETES_UPDATES` | Comment | Comment | Comment | both | (lookup, offline) Same, the RFC is Legacy or this document's stream is unknown |
+| `POSSIBLE_CROSS_STREAM_OBSOLETES_UPDATES` | Comment | Comment | Comment | both | (lookup, offline) Updates or obsoletes an RFC that is Legacy, or when this document's stream is unknown |
 
-For text documents, `SUBMISSION_TYPE_UNEXPECTED` compares the stream implied by a `draft-ietf-`, `draft-iab-` or `draft-irtf-` name (drafts), or named in the header (RFCs).
+For text documents, `SUBMISSION_TYPE_UNEXPECTED` and `DATATRACKER_STREAM_NOT_SET` compare the stream implied by a `draft-ietf-`, `draft-iab-` or `draft-irtf-` name (drafts), or named in the header (RFCs).
 
 ### Requirement keywords and terms
 
 | Code | normal | forgive-checklist | submission | Format | Notes |
 |---|---|---|---|---|---|
 | `MISSING_REQLEVEL_BOILERPLATE` | Error | Warning | — | both | Keywords, without BCP 14 boilerplate or reference |
-| `MISSING_REQLEVEL_BOILERPLATE` | Warning | Warning | — | both | Keywords and reference, without boilerplate |
-| `MISSING_REQLEVEL_BOILERPLATE` | Error | Error | — | text | A boilerplate close to the BCP 14 one |
+| `MISSING_REQLEVEL_BOILERPLATE_REFERENCED` | Warning | Warning | — | both | Keywords and reference, without boilerplate |
+| `REQLEVEL_BOILERPLATE_MISMATCH` | Error | Error | — | text | A boilerplate close to the BCP 14 one, not an accepted wording |
 | `MISSING_REQLEVEL_KEYWORDS` | Warning | Warning | — | both | |
 | `MISSING_NOTRECOMMENDED_IN_BOILERPLATE` | Warning | Warning | — | both | |
 | `MISSING_REQLEVEL_REF` | Error | Error | — | XML | |
@@ -330,7 +330,8 @@ For text documents, `SUBMISSION_TYPE_UNEXPECTED` compares the stream implied by 
 | `RFC_REFERENCE_URL_FORMAT` | Warning | Warning | — | XML | Link to `/rfc/` instead of `/info/` |
 | `RFC_REFERENCE_URL_FORMAT` | Comment | Comment | — | text | Same; xml2rfc renders references without a target this way |
 | `DRAFT_REFERENCE_REVISION_MISMATCH` | Warning | Warning | — | both | Entry links to one revision of a draft and names another: in its text (text), in its Internet-Draft `<seriesInfo>` (XML). Links to IETF hosts only |
-| `DOWNREF_TO_LOWER_STATUS` | Error | Warning | — | both | (lookup, offline) Not in the Downref Registry; a Warning in both modes when the registry can't be fetched |
+| `DOWNREF_TO_LOWER_STATUS` | Error | Warning | — | both | (lookup, offline) Not in the Downref Registry |
+| `DOWNREF_TO_LOWER_STATUS_UNCHECKED` | Warning | Warning | — | both | (lookup, offline) The Downref Registry couldn't be fetched to check it |
 | `DOWNREF_TO_LOWER_STATUS_IN_REGISTRY` | Warning | Warning | — | both | (lookup, offline) |
 | `POSSIBLE_DOWNREF` | Warning | Warning | — | both | (lookup, offline) Standards Track and BCP documents; status of a normative RFC not recognised (e.g. `UNKNOWN`) |
 | `DOWNREF_REGISTRY_UNAVAILABLE` | Comment | Comment | — | both | (lookup, offline) The Downref Registry can't be fetched |
@@ -365,8 +366,8 @@ Some checks look up the document, and the documents it cites, on Datatracker and
 
 | Lookup | Used by | Skipped with `--offline` |
 |---|---|---|
-| The document's stream and latest revision on Datatracker | `SUBMISSION_TYPE_UNEXPECTED`, `FORBIDDEN_IPR_VALUE_FOR_STREAM`, `DUPLICATE_DOC_VERSION`, `UNEXPECTED_DOC_VERSION` | Yes |
-| The RFCs the document updates or obsoletes, on Datatracker and the RFC Editor site | `CROSS_STREAM_OBSOLETES_UPDATES`, `OBSOLETES_*_RFC`, `UPDATES_*_RFC` | Yes |
+| The document's stream and latest revision on Datatracker | `SUBMISSION_TYPE_UNEXPECTED`, `DATATRACKER_STREAM_NOT_SET`, `FORBIDDEN_IPR_VALUE_FOR_STREAM`, `POSSIBLE_FORBIDDEN_IPR_VALUE`, `DUPLICATE_DOC_VERSION`, `UNEXPECTED_DOC_VERSION` | Yes |
+| The RFCs the document updates or obsoletes, on Datatracker and the RFC Editor site | `CROSS_STREAM_OBSOLETES_UPDATES`, `POSSIBLE_CROSS_STREAM_OBSOLETES_UPDATES`, `OBSOLETES_*_RFC`, `UPDATES_*_RFC` | Yes |
 | Status of the cited RFCs, on the RFC Editor site | downref, obsolete and status findings of [References](#references) | Yes |
 | State and revisions of the cited drafts, on Datatracker | `NORMATIVE_REFERENCE_TO_LOWER_STATUS_DRAFT`, `UNDEFINED_STATE`, `INVALID_STATE_FOR_DRAFT`, `OUTDATED_DRAFT`; the RFC a cited draft became, for `NORMATIVE_REFERENCE_TO_DRAFT` | Yes |
 | The Downref Registry, on Datatracker | `DOWNREF_TO_LOWER_STATUS*`, `DOWNREF_REGISTRY_UNAVAILABLE` | Yes |
@@ -375,7 +376,7 @@ With `--offline`, nothing is reported about what a skipped lookup would have tol
 
 The lookups about cited documents are only made in `normal` and `forgive-checklist`, as `submission` doesn't run those checks.
 
-A lookup that fails, or times out, prints a warning and the check goes on without its result. Nothing is reported about the document that the lookup couldn't establish; instead, one comment per document says what couldn't be checked and why: `REFERENCE_STATUS_UNAVAILABLE` lists the RFCs (cited, or in Obsoletes and Updates) whose rfc-editor.org lookup failed and the cited drafts whose Datatracker lookup failed, and `DOCUMENT_LOOKUP_UNAVAILABLE` (in every mode, including `submission`) names the documents whose Datatracker lookup failed and the checks that didn't run (revision, stream, submission type, cross-stream, ipr). A lookup that `--offline` skips isn't a failure, so `--offline` never gives `DOCUMENT_LOOKUP_UNAVAILABLE`, `REFERENCE_STATUS_UNAVAILABLE` or `DOWNREF_REGISTRY_UNAVAILABLE`. `UNDEFINED_STATE` is given only for a draft Datatracker doesn't have, or gives no state. A cited draft name ending in two digits is looked up without them, as a revision: Datatracker draft revisions have two digits. A Downref Registry that can't be fetched when it is needed (an error or a timeout) doesn't stop the check either: each downref is reported as a `DOWNREF_TO_LOWER_STATUS` Warning (not an Error, as it may be registered), without telling whether it is in the registry, and one `DOWNREF_REGISTRY_UNAVAILABLE` comment per document names the reason.
+A lookup that fails, or times out, prints a warning and the check goes on without its result. Nothing is reported about the document that the lookup couldn't establish; instead, one comment per document says what couldn't be checked and why: `REFERENCE_STATUS_UNAVAILABLE` lists the RFCs (cited, or in Obsoletes and Updates) whose rfc-editor.org lookup failed and the cited drafts whose Datatracker lookup failed, and `DOCUMENT_LOOKUP_UNAVAILABLE` (in every mode, including `submission`) names the documents whose Datatracker lookup failed and the checks that didn't run (revision, stream, submission type, cross-stream, ipr). A lookup that `--offline` skips isn't a failure, so `--offline` never gives `DOCUMENT_LOOKUP_UNAVAILABLE`, `REFERENCE_STATUS_UNAVAILABLE` or `DOWNREF_REGISTRY_UNAVAILABLE`. `UNDEFINED_STATE` is given only for a draft Datatracker doesn't have, or gives no state. A cited draft name ending in two digits is looked up without them, as a revision: Datatracker draft revisions have two digits. A Downref Registry that can't be fetched when it is needed (an error or a timeout) doesn't stop the check either: each downref is reported as a `DOWNREF_TO_LOWER_STATUS_UNCHECKED` Warning (not an Error, as it may be registered), without telling whether it is in the registry, and one `DOWNREF_REGISTRY_UNAVAILABLE` comment per document names the reason.
 
 A document makes at most 1,000 lookups of other documents (the RFCs and drafts it cites, obsoletes or updates; its own lookups aren't counted), at most 3 at a time. The documents of the corpus need far fewer. Beyond that, the other documents aren't looked up: as for a failed lookup, nothing is reported about them, and one `LOOKUP_LIMIT_REACHED` comment per document names them.
 

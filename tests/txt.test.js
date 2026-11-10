@@ -1103,14 +1103,17 @@ describe('validateLicenseDeclarations', () => {
     const doc = cloneDeep(baseTXTDoc)
     doc.data.slug = 'draft-ietf-example'
     doc.data.contains.license6_c_ii = true
-    const result = await validateLicenseDeclarations(doc)
-    expect(result).toContainEqual(
-      new ValidationError(
-        'TLP5_LICENSE_RESTRICTION_NOTICE',
-        'The document has an IETF Trust Provisions, 28 Dec 2009, Section 6.c(ii) Publication Limitation clause.',
-        { ref: 'https://trustee.ietf.org/license-info' }
+    for (const mode of [MODES.NORMAL, MODES.FORGIVE_CHECKLIST, MODES.SUBMISSION]) {
+      const result = await validateLicenseDeclarations(doc, { mode })
+      expect(result).toContainEqual(
+        new ValidationError(
+          'TLP5_INTERNET_DRAFT_ONLY_NOTICE',
+          'The document has an IETF Trust Provisions of 28 Dec 2009, Section 6.c(ii) Publication Limitation clause.',
+          { ref: 'https://trustee.ietf.org/license-info' }
+        )
       )
-    )
+      expect(result.map((e) => e.name)).not.toContain('TLP5_LICENSE_RESTRICTION_NOTICE')
+    }
   })
 
   test('should not check for licence6_c if slug does not start with "draft-ietf-"', async () => {
@@ -1316,9 +1319,9 @@ Status of This Memo
 
   test('reports an RFC Datatracker has no stream for by mode', async () => {
     const doc = await parse(rfcHeader('Independent Submission', '9998'), 'rfc9998.txt')
-    await expect(validateStream(doc)).resolves.toContainError('SUBMISSION_TYPE_UNEXPECTED', ValidationError)
-    await expect(validateStream(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('SUBMISSION_TYPE_UNEXPECTED', ValidationWarning)
-    await expect(validateStream(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('SUBMISSION_TYPE_UNEXPECTED', ValidationComment)
+    await expect(validateStream(doc)).resolves.toContainError('DATATRACKER_STREAM_NOT_SET', ValidationError)
+    await expect(validateStream(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('DATATRACKER_STREAM_NOT_SET', ValidationWarning)
+    await expect(validateStream(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('DATATRACKER_STREAM_NOT_SET', ValidationComment)
   })
 
   test('skips the comparison when offline', async () => {
@@ -1373,9 +1376,9 @@ ${abstractTXTBlock}
 
   test('reports a draft Datatracker has no stream for by mode', async () => {
     const doc = await parseDraft('draft-ietf-idr-nostream-01')
-    await expect(validateStream(doc)).resolves.toContainError('SUBMISSION_TYPE_UNEXPECTED', ValidationError)
-    await expect(validateStream(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('SUBMISSION_TYPE_UNEXPECTED', ValidationWarning)
-    await expect(validateStream(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('SUBMISSION_TYPE_UNEXPECTED', ValidationComment)
+    await expect(validateStream(doc)).resolves.toContainError('DATATRACKER_STREAM_NOT_SET', ValidationError)
+    await expect(validateStream(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('DATATRACKER_STREAM_NOT_SET', ValidationWarning)
+    await expect(validateStream(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('DATATRACKER_STREAM_NOT_SET', ValidationComment)
   })
 
   test('skips the draft comparison when offline', async () => {

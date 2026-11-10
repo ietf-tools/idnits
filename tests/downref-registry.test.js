@@ -61,7 +61,7 @@ async function parseDraft (...rfcs) {
 
 const inRegistry = (rfc) => new ValidationWarning('DOWNREF_TO_LOWER_STATUS_IN_REGISTRY', `Reference to RFC ${rfc}, which has a lower status than this draft's intended status and is listed in the Downref Registry.`, { ref: BCP97_REF })
 const notInRegistry = (rfc, Severity = ValidationError) => new Severity('DOWNREF_TO_LOWER_STATUS', `Reference to RFC ${rfc}, which has a lower status than this draft's intended status. This reference is not in the Downref Registry.`, { ref: BCP97_REF })
-const unchecked = (rfc, Severity = ValidationWarning) => new Severity('DOWNREF_TO_LOWER_STATUS', `Reference to RFC ${rfc}, which has a lower status than this draft's intended status. The Downref Registry couldn't be checked for it.`, { ref: BCP97_REF })
+const unchecked = (rfc, Severity = ValidationWarning) => new Severity('DOWNREF_TO_LOWER_STATUS_UNCHECKED', `Reference to RFC ${rfc}, which has a lower status than this draft's intended status. The Downref Registry couldn't be checked for it.`, { ref: BCP97_REF })
 const unavailable = (reason) => new ValidationComment('DOWNREF_REGISTRY_UNAVAILABLE', `The Downref Registry couldn't be checked (${reason}), so downrefs are reported without telling whether they are listed in it.`, { ref: REGISTRY_URL })
 
 describe('Downref Registry', () => {
@@ -134,11 +134,11 @@ describe('Downref Registry', () => {
 </rfc>`)
       const result = await checkNits(raw, 'draft-test-registry-00.xml', { mode: MODES.NORMAL })
       expect(result.filter(r => r.name === 'DOWNREF_REGISTRY_UNAVAILABLE')).toHaveLength(1)
-      expect(result.filter(r => r.name === 'DOWNREF_TO_LOWER_STATUS').map(r => r.message)).toEqual([
+      expect(result.filter(r => r.name === 'DOWNREF_TO_LOWER_STATUS_UNCHECKED').map(r => r.message)).toEqual([
         "Reference to RFC 1094, which has a lower status than this draft's intended status. The Downref Registry couldn't be checked for it.",
         "Reference to RFC 1234, which has a lower status than this draft's intended status. The Downref Registry couldn't be checked for it."
       ])
-      const downrefs = result.filter(r => r.name === 'DOWNREF_TO_LOWER_STATUS')
+      const downrefs = result.filter(r => r.name === 'DOWNREF_TO_LOWER_STATUS_UNCHECKED')
       expect(downrefs.every(r => r instanceof ValidationWarning)).toBe(true)
       expect(result.some(r => r.name === 'DOWNREF_TO_LOWER_STATUS_IN_REGISTRY')).toBe(false)
     })
@@ -173,8 +173,8 @@ describe('Downref Registry', () => {
     }
     const results = await Promise.all([parseDraft('1094'), parseDraft('1234')].map(async doc => validateDownrefs(await doc, { mode: MODES.NORMAL })))
     expect(results.map(r => r.map(f => f.name))).toEqual([
-      ['DOWNREF_TO_LOWER_STATUS', 'DOWNREF_REGISTRY_UNAVAILABLE'],
-      ['DOWNREF_TO_LOWER_STATUS', 'DOWNREF_REGISTRY_UNAVAILABLE']
+      ['DOWNREF_TO_LOWER_STATUS_UNCHECKED', 'DOWNREF_REGISTRY_UNAVAILABLE'],
+      ['DOWNREF_TO_LOWER_STATUS_UNCHECKED', 'DOWNREF_REGISTRY_UNAVAILABLE']
     ])
     expect(registryRequests).toBe(1)
   })

@@ -79,7 +79,7 @@ describe('document should have valid RFC2119 keywords', () => {
 
       expect(result).toEqual([
         new ValidationWarning(
-          'MISSING_REQLEVEL_BOILERPLATE',
+          'MISSING_REQLEVEL_BOILERPLATE_REFERENCED',
           'One or more BCP14 keywords are present but a BCP14 boilerplate is missing.',
           { ref: 'https://www.rfc-editor.org/rfc/rfc7322.html#section-4.8.2' }
         ),
@@ -238,7 +238,7 @@ describe('document should have valid RFC2119 keywords', () => {
       const result = await validate2119Keywords(doc, { mode: MODES.NORMAL })
 
       expect(result).toEqual([
-        new ValidationWarning('MISSING_REQLEVEL_BOILERPLATE', 'One or more BCP14 keywords are present but a BCP14 boilerplate is missing.', {
+        new ValidationWarning('MISSING_REQLEVEL_BOILERPLATE_REFERENCED', 'One or more BCP14 keywords are present but a BCP14 boilerplate is missing.', {
           ref: 'https://www.rfc-editor.org/rfc/rfc7322.html#section-4.8.2'
         }),
         new ValidationWarning(
@@ -312,7 +312,7 @@ describe('document should have valid RFC2119 keywords', () => {
 
       expect(result).toEqual([
         new ValidationWarning(
-          'MISSING_REQLEVEL_BOILERPLATE',
+          'MISSING_REQLEVEL_BOILERPLATE_REFERENCED',
           'One or more BCP14 keywords are present but a BCP14 boilerplate is missing.',
           { ref: 'https://www.rfc-editor.org/rfc/rfc7322.html#section-4.8.2' }
         ),
@@ -471,7 +471,7 @@ describe('document should have valid RFC2119 keywords', () => {
       const result = await validate2119Keywords(doc, { mode: MODES.NORMAL })
 
       expect(result).toEqual([
-        new ValidationWarning('MISSING_REQLEVEL_BOILERPLATE', 'One or more BCP14 keywords are present but a BCP14 boilerplate is missing.', {
+        new ValidationWarning('MISSING_REQLEVEL_BOILERPLATE_REFERENCED', 'One or more BCP14 keywords are present but a BCP14 boilerplate is missing.', {
           ref: 'https://www.rfc-editor.org/rfc/rfc7322.html#section-4.8.2'
         }),
         new ValidationWarning(
@@ -511,7 +511,7 @@ describe('document should have valid RFC2119 keywords', () => {
       expect(result).toEqual(
         expect.arrayContaining([
           new ValidationError(
-            'MISSING_REQLEVEL_BOILERPLATE',
+            'REQLEVEL_BOILERPLATE_MISMATCH',
             'A BCP14 boilerplate is missing but a similar boilerplate was found.',
             { ref: 'https://www.rfc-editor.org/rfc/rfc7322.html#section-4.8.2' }
           ),
@@ -522,6 +522,39 @@ describe('document should have valid RFC2119 keywords', () => {
           )
         ])
       )
+    })
+
+    test('a similar boilerplate and a referenced BCP 14 have their own codes in every mode', async () => {
+      const doc = {
+        type: 'txt',
+        data: {
+          extractedElements: {
+            keywords2119: [{ keyword: 'SHOULD', line: 15 }],
+            boilerplate2119Keywords: []
+          },
+          boilerplate: {
+            rfc2119: false,
+            rfc8174: false,
+            similar2119boilerplate: true
+          },
+          references: {
+            rfc2119: false,
+            rfc8174: false,
+            bcp14: true
+          },
+          possibleIssues: {
+            misspeled2119Keywords: []
+          }
+        }
+      }
+
+      for (const mode of [MODES.NORMAL, MODES.FORGIVE_CHECKLIST]) {
+        const result = await validate2119Keywords(doc, { mode })
+        expect(result).toContainError('REQLEVEL_BOILERPLATE_MISMATCH', ValidationError)
+        expect(result).toContainError('MISSING_REQLEVEL_BOILERPLATE_REFERENCED', ValidationWarning)
+        expect(result.map((e) => e.name)).not.toContain('MISSING_REQLEVEL_BOILERPLATE')
+      }
+      await expect(validate2119Keywords(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
 
     test('NOT RECOMMENDED used but not in boilerplate', async () => {
@@ -625,7 +658,7 @@ describe('document should have valid RFC2119 keywords', () => {
       const result = await validate2119Keywords(doc, { mode: MODES.NORMAL })
       expect(result).toEqual([
         new ValidationWarning(
-          'MISSING_REQLEVEL_BOILERPLATE',
+          'MISSING_REQLEVEL_BOILERPLATE_REFERENCED',
           'One or more BCP14 keywords are present but a BCP14 boilerplate is missing.',
           { ref: 'https://www.rfc-editor.org/rfc/rfc7322.html#section-4.8.2' }
         ),
@@ -735,9 +768,9 @@ describe('document should have valid RFC2119 keywords', () => {
         const result = await validate2119Keywords(doc, { mode: MODES.NORMAL })
         expect(result.map((e) => [e.name, e.lines])).toEqual([
           // The paragraph starting as a boilerplate does
-          ['MISSING_REQLEVEL_BOILERPLATE', [{ line: 4, pos: 4 }]],
+          ['REQLEVEL_BOILERPLATE_MISMATCH', [{ line: 4, pos: 4 }]],
           // The keywords, the paragraph's included as it isn't a boilerplate
-          ['MISSING_REQLEVEL_BOILERPLATE', [
+          ['MISSING_REQLEVEL_BOILERPLATE_REFERENCED', [
             { line: 4, pos: 19 }, { line: 4, pos: 27 }, { line: 4, pos: 39 }, { line: 4, pos: 51 }, { line: 4, pos: 60 },
             { line: 5, pos: 5 }, { line: 5, pos: 15 }, { line: 5, pos: 29 }, { line: 5, pos: 44 }, { line: 5, pos: 55 },
             { line: 9, pos: 24 }
@@ -792,7 +825,7 @@ describe('document should have valid RFC2119 keywords', () => {
 `, 'draft-ietf-emu-teapv2-00.txt')
 
         const result = await validate2119Keywords(doc, { mode: MODES.NORMAL })
-        const keywordsFinding = result.find((e) => e.name === 'MISSING_REQLEVEL_BOILERPLATE' && e.message.includes('keywords are present'))
+        const keywordsFinding = result.find((e) => e.name === 'MISSING_REQLEVEL_BOILERPLATE_REFERENCED' && e.message.includes('keywords are present'))
         expect(doc.data.extractedElements.keywords2119).toHaveLength(23)
         expect(keywordsFinding.lines).toHaveLength(20)
         expect(keywordsFinding.lines[0]).toEqual({ line: 4, pos: 19 })
@@ -964,8 +997,8 @@ describe('document should have valid RFC2119 keywords', () => {
       const doc = cloneDeep(baseXMLDoc)
       doc.externalEntities = [{ name: 'RFC2119' }]
       set(doc, 'data.rfc.middle.t', 'Lorem ipsum SHALL lorem ipsum MUST NOT lorem RECOMMENDED.')
-      await expect(validate2119Keywords(doc)).resolves.toContainError('MISSING_REQLEVEL_BOILERPLATE', ValidationWarning)
-      await expect(validate2119Keywords(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('MISSING_REQLEVEL_BOILERPLATE', ValidationWarning)
+      await expect(validate2119Keywords(doc)).resolves.toContainError('MISSING_REQLEVEL_BOILERPLATE_REFERENCED', ValidationWarning)
+      await expect(validate2119Keywords(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('MISSING_REQLEVEL_BOILERPLATE_REFERENCED', ValidationWarning)
       await expect(validate2119Keywords(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
     test('boilerplate present but no keywords', async () => {
@@ -1228,6 +1261,7 @@ ${entities}<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3">
         const names = await errorNames(doc)
         expect(names).not.toContain('MISSING_REQLEVEL_REF')
         expect(names).not.toContain('MISSING_REQLEVEL_BOILERPLATE')
+        expect(names).not.toContain('MISSING_REQLEVEL_BOILERPLATE_REFERENCED')
         expect(names).not.toContain('MISSING_RFC8174_REF')
         expect(names).not.toContain('MISSING_RFC2119_REF')
         expect(names).not.toContain('BCP14_CITED_INSTEAD_OF_RFCS')

@@ -368,9 +368,9 @@ describe('document should have valid date', () => {
     }
     test('date missing', async () => {
       const doc = await parseDate('')
-      await expect(validateDate(doc)).resolves.toContainError('MISSING_DOC_DATE', ValidationComment)
-      await expect(validateDate(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('MISSING_DOC_DATE', ValidationComment)
-      await expect(validateDate(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('MISSING_DOC_DATE', ValidationComment)
+      await expect(validateDate(doc)).resolves.toContainError('MISSING_DATE_ELEMENT', ValidationComment)
+      await expect(validateDate(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('MISSING_DATE_ELEMENT', ValidationComment)
+      await expect(validateDate(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('MISSING_DATE_ELEMENT', ValidationComment)
       const result = await validateDate(doc)
       expect(result).toHaveLength(1)
       expect(result[0].path).toBe('rfc.front.date')
@@ -1166,7 +1166,7 @@ describe('TXT Document Type', () => {
 })
 
 describe('document should not obsolete or update RFCs of another stream without notice', () => {
-  const crossStream = result => result.filter(r => r.name === 'CROSS_STREAM_OBSOLETES_UPDATES')
+  const crossStream = result => result.filter(r => r.name.endsWith('CROSS_STREAM_OBSOLETES_UPDATES'))
   const xml = async (opts, filename = 'draft-smith-foo-bar-02.xml') => (await parse(xmlStreamDoc(opts), filename)).doc
 
   test('reports an RFC of another stream in every mode', async () => {
@@ -1198,22 +1198,25 @@ describe('document should not obsolete or update RFCs of another stream without 
   test('reports an RFC of a known stream as a comment when the document stream is unknown', async () => {
     const doc = await xml({ docName: 'draft-smith-foo-unknown-00', updates: '2222' })
     expect(crossStream(await validateObsoleteUpdateRef(doc))).toEqual([
-      new ValidationComment('CROSS_STREAM_OBSOLETES_UPDATES', 'This document attempts to update RFC 2222, which is in the Independent Submission stream. If this document is not in that stream, specific rules may apply to this process, and you will need sign-off from both stream heads before this document can proceed.', {
+      new ValidationComment('POSSIBLE_CROSS_STREAM_OBSOLETES_UPDATES', 'This document attempts to update RFC 2222, which is in the Independent Submission stream. If this document is not in that stream, specific rules may apply to this process, and you will need sign-off from both stream heads before this document can proceed.', {
         ref: 'https://authors.ietf.org/en/rfcxml-vocabulary#updates',
         path: 'rfc.updates'
       })
     ])
+    for (const mode of [MODES.FORGIVE_CHECKLIST, MODES.SUBMISSION]) {
+      await expect(validateObsoleteUpdateRef(doc, { mode })).resolves.toContainError('POSSIBLE_CROSS_STREAM_OBSOLETES_UPDATES', ValidationComment)
+    }
   })
   test('reports a Legacy RFC as a comment whatever the document stream', async () => {
     const doc = await xml({ submissionType: 'IAB', obsoletes: '791' })
     expect(crossStream(await validateObsoleteUpdateRef(doc))).toEqual([
-      new ValidationComment('CROSS_STREAM_OBSOLETES_UPDATES', 'This document attempts to obsolete RFC 791, which is in the Legacy stream (published before the current RFC streams were defined). Check whether specific rules apply to this process.', {
+      new ValidationComment('POSSIBLE_CROSS_STREAM_OBSOLETES_UPDATES', 'This document attempts to obsolete RFC 791, which is in the Legacy stream (published before the current RFC streams were defined). Check whether specific rules apply to this process.', {
         ref: 'https://authors.ietf.org/en/rfcxml-vocabulary#obsoletes',
         path: 'rfc.obsoletes'
       })
     ])
     const unknown = await xml({ docName: 'draft-smith-foo-unknown-00', obsoletes: '791' })
-    await expect(validateObsoleteUpdateRef(unknown)).resolves.toContainError('CROSS_STREAM_OBSOLETES_UPDATES', ValidationComment)
+    await expect(validateObsoleteUpdateRef(unknown)).resolves.toContainError('POSSIBLE_CROSS_STREAM_OBSOLETES_UPDATES', ValidationComment)
   })
   test('ignores RFCs Datatracker has no stream for or doesn\'t know', async () => {
     const doc = await xml({ obsoletes: '3333', updates: '4444' })
