@@ -6,7 +6,6 @@ import { setRemoteTimeout } from '../lib/config/remote.mjs'
 import { ValidationComment } from '../lib/helpers/error.mjs'
 import { parse } from '../lib/parsers/xml.mjs'
 import { parse as parseTxt } from '../lib/parsers/txt.mjs'
-import { clearRemoteCache } from '../lib/remote/common.mjs'
 import { validateDownrefs, validateInformativeReferences, validateNormativeReferences, validatePublishedDraftReferences, validateReferenceForStale, validateUnclassifiedReferences } from '../lib/modules/downref.mjs'
 import { validateObsoleteUpdateRef, validateVersion } from '../lib/modules/metadata.mjs'
 import { validateIprAttribute, validateSubmissionType } from '../lib/modules/xml.mjs'
@@ -32,7 +31,6 @@ const server = setupServer(
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
 afterEach(() => {
   server.resetHandlers()
-  clearRemoteCache()
   setRemoteTimeout(null)
   vi.restoreAllMocks()
 })
@@ -248,7 +246,6 @@ describe('DOCUMENT_LOOKUP_UNAVAILABLE', () => {
     expect(await runBoth()).toEqual(expected)
 
     server.resetHandlers()
-    clearRemoteCache()
     server.use(
       http.get('https://datatracker.ietf.org/api/v1/doc/document/rfc5246/', async () => {
         await delay(50)

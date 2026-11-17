@@ -15,15 +15,12 @@ import {
   getRemoteTimeout,
   getRfcEditorUrl,
   normalizeBaseUrl,
+  normalizeRemoteOptions,
   normalizeTimeout,
   setRemoteTimeout,
   setRemoteUrls
 } from '../lib/config/remote.mjs'
 import {
-  cachedLookup,
-  clearRemoteCache,
-  DOC_INFO_CACHE_SIZE,
-  DOC_INFO_CACHE_TTL,
   fetchRemoteDocInfo,
   fetchRemoteDocInfoJson,
   fetchRemoteRfcInfo,
@@ -34,6 +31,7 @@ import {
   remoteFetch
 } from '../lib/remote/common.mjs'
 import { checkReferencesInDownrefs } from '../lib/remote/downref.mjs'
+import { getDocInfo } from '../lib/remote/lookups.mjs'
 
 const pkgInfo = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'))
 
@@ -68,7 +66,6 @@ beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
 afterEach(() => {
   server.resetHandlers()
   requests.length = 0
-  clearRemoteCache()
   setRemoteUrls()
   setRemoteTimeout()
   vi.unstubAllEnvs()
@@ -147,7 +144,7 @@ describe('Remote lookups', () => {
     await expect(fetchRemoteDocInfo('draft-foo-bar-03')).resolves.toEqual({ name: 'draft-foo-bar', rev: '03' })
     await expect(fetchRemoteDocInfoJson('draft-foo-bar')).resolves.toEqual({ name: 'draft-foo-bar', state: 'Active' })
     await expect(fetchRemoteRfcInfo(1234)).resolves.toEqual({ status: 'INFORMATIONAL' })
-    await expect(checkReferencesInDownrefs(['RFC 1234', 'RFC 2345'])).resolves.toEqual(['RFC 1234'])
+    await expect(checkReferencesInDownrefs({}, ['RFC 1234', 'RFC 2345'])).resolves.toEqual(['RFC 1234'])
     expect(requests.map(r => r.url)).toEqual([
       'http://datatracker.svc:8000/api/v1/doc/document/draft-foo-bar/',
       'http://datatracker.svc:8000/doc/draft-foo-bar/doc.json',
@@ -157,28 +154,40 @@ describe('Remote lookups', () => {
     expect(requests.every(r => r.userAgent.startsWith('idnits3/'))).toBe(true)
   })
 
-  test('of a document are fetched once, with or without its version', async () => {
+  test('of a document are fetched once for the document being checked, with or without its version', async () => {
+    const doc = {}
     const results = await Promise.all([
-      fetchRemoteDocInfo('draft-foo-bar'),
-      fetchRemoteDocInfo('draft-foo-bar-02'),
-      fetchRemoteDocInfo('draft-foo-bar-03')
+      getDocInfo(doc, 'draft-foo-bar', 'revision'),
+      getDocInfo(doc, 'draft-foo-bar-02', 'revision'),
+      getDocInfo(doc, 'draft-foo-bar-03', 'stream')
     ])
-    await fetchRemoteDocInfo('draft-foo-bar-02')
+    await getDocInfo(doc, 'draft-foo-bar-02', 'revision')
     expect(results).toEqual(Array(3).fill({ name: 'draft-foo-bar', rev: '02' }))
     expect(requests).toHaveLength(1)
+
+    // -> Fetched again for another document
+    await getDocInfo({}, 'draft-foo-bar-02', 'revision')
+    expect(requests).toHaveLength(2)
   })
 
   test('that find nothing are shared too', async () => {
-    await expect(fetchRemoteDocInfo('draft-foo-unknown-00')).resolves.toBeNull()
-    await expect(fetchRemoteDocInfo('draft-foo-unknown-01')).resolves.toBeNull()
+    const doc = {}
+    await expect(getDocInfo(doc, 'draft-foo-unknown-00', 'revision')).resolves.toBeNull()
+    await expect(getDocInfo(doc, 'draft-foo-unknown-01', 'revision')).resolves.toBeNull()
     expect(requests).toHaveLength(1)
   })
 
-  test('are made again after the configured service changes', async () => {
-    await fetchRemoteDocInfo('draft-foo-bar-02')
-    setRemoteUrls({ datatracker: 'http://datatracker.svc:8000' })
-    await expect(fetchRemoteDocInfo('draft-foo-bar-02')).resolves.toEqual({ name: 'draft-foo-bar', rev: '03' })
-    expect(requests).toHaveLength(2)
+  test('go to the services given for the run before the configured ones', async () => {
+    setRemoteUrls({ datatracker: 'http://datatracker.example', rfcEditor: 'http://rfc-editor.example' })
+    const options = normalizeRemoteOptions({ datatrackerUrl: 'http://datatracker.svc:8000/', rfcEditorUrl: 'http://rfc-editor.svc' })
+    await expect(fetchRemoteDocInfo('draft-foo-bar-02', options)).resolves.toEqual({ name: 'draft-foo-bar', rev: '03' })
+    await expect(fetchRemoteDocInfoJson('draft-foo-bar', options)).resolves.toEqual({ name: 'draft-foo-bar', state: 'Active' })
+    await expect(fetchRemoteRfcInfo(1234, options)).resolves.toEqual({ status: 'INFORMATIONAL' })
+    expect(requests.map(r => r.url)).toEqual([
+      'http://datatracker.svc:8000/api/v1/doc/document/draft-foo-bar/',
+      'http://datatracker.svc:8000/doc/draft-foo-bar/doc.json',
+      'http://rfc-editor.svc/rfc/rfc1234.json'
+    ])
   })
 
   test('are not made to an invalid service', async () => {
@@ -278,38 +287,31 @@ describe('Lookups of names taken from a document', () => {
   })
 })
 
-describe('cachedLookup', () => {
-  test('shares a lookup until it expires', async () => {
-    const now = vi.spyOn(Date, 'now').mockReturnValue(1000)
-    const fetcher = vi.fn(async () => 'value')
-    await expect(cachedLookup('key', fetcher)).resolves.toBe('value')
-    now.mockReturnValue(1000 + DOC_INFO_CACHE_TTL - 1)
-    await cachedLookup('key', fetcher)
-    expect(fetcher).toHaveBeenCalledTimes(1)
-    now.mockReturnValue(1000 + DOC_INFO_CACHE_TTL)
-    await cachedLookup('key', fetcher)
-    expect(fetcher).toHaveBeenCalledTimes(2)
+describe('normalizeRemoteOptions', () => {
+  test('checks the options given for a run, leaving out those not given', () => {
+    expect(normalizeRemoteOptions()).toEqual({ datatrackerUrl: null, rfcEditorUrl: null, remoteTimeout: null })
+    expect(normalizeRemoteOptions({ datatrackerUrl: 'http://datatracker.svc:8000/', rfcEditorUrl: 'http://rfc-editor.svc//', remoteTimeout: '2.5' })).toEqual({
+      datatrackerUrl: 'http://datatracker.svc:8000',
+      rfcEditorUrl: 'http://rfc-editor.svc',
+      remoteTimeout: 2.5
+    })
+    expect(() => normalizeRemoteOptions({ datatrackerUrl: 'datatracker.svc' })).toThrow('Datatracker URL must be an http(s) URL')
+    expect(() => normalizeRemoteOptions({ rfcEditorUrl: 'ftp://rfc-editor.svc' })).toThrow('RFC Editor URL must be an http(s) URL')
+    expect(() => normalizeRemoteOptions({ remoteTimeout: 0 })).toThrow('Remote timeout must be a positive number of seconds')
   })
 
-  test('keeps a bounded number of lookups, dropping the oldest', async () => {
-    const fetcher = vi.fn(async () => 'value')
-    for (let i = 0; i <= DOC_INFO_CACHE_SIZE; i++) {
-      cachedLookup(`key${i}`, fetcher)
-    }
-    expect(fetcher).toHaveBeenCalledTimes(DOC_INFO_CACHE_SIZE + 1)
-    cachedLookup(`key${DOC_INFO_CACHE_SIZE}`, fetcher)
-    cachedLookup('key1', fetcher)
-    expect(fetcher).toHaveBeenCalledTimes(DOC_INFO_CACHE_SIZE + 1)
-    cachedLookup('key0', fetcher)
-    expect(fetcher).toHaveBeenCalledTimes(DOC_INFO_CACHE_SIZE + 2)
-  })
-
-  test('forgets all lookups when cleared', async () => {
-    const fetcher = vi.fn(async () => 'value')
-    await cachedLookup('key', fetcher)
-    clearRemoteCache()
-    await cachedLookup('key', fetcher)
-    expect(fetcher).toHaveBeenCalledTimes(2)
+  test('take precedence over the process-wide settings', () => {
+    vi.stubEnv('IDNITS_REMOTE_TIMEOUT', '30')
+    setRemoteUrls({ datatracker: 'http://datatracker.example', rfcEditor: 'http://rfc-editor.example' })
+    setRemoteTimeout(5)
+    const options = normalizeRemoteOptions({ datatrackerUrl: 'http://datatracker.svc:8000', rfcEditorUrl: 'http://rfc-editor.svc', remoteTimeout: 1 })
+    expect(getDatatrackerUrl(options)).toBe('http://datatracker.svc:8000')
+    expect(getRfcEditorUrl(options)).toBe('http://rfc-editor.svc')
+    expect(getRemoteTimeout(options)).toBe(1)
+    const none = normalizeRemoteOptions()
+    expect(getDatatrackerUrl(none)).toBe('http://datatracker.example')
+    expect(getRfcEditorUrl(none)).toBe('http://rfc-editor.example')
+    expect(getRemoteTimeout(none)).toBe(5)
   })
 })
 
@@ -368,11 +370,12 @@ describe('Remote lookups that time out', () => {
     setRemoteTimeout(0.05)
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const start = Date.now()
+    const doc = {}
     const results = await Promise.all([
-      fetchRemoteDocInfo('draft-foo-bar-02'),
-      fetchRemoteDocInfo('draft-foo-bar-03')
+      getDocInfo(doc, 'draft-foo-bar-02', 'revision'),
+      getDocInfo(doc, 'draft-foo-bar-03', 'stream')
     ])
-    await expect(fetchRemoteDocInfo('draft-foo-bar')).resolves.toBeUndefined()
+    await expect(getDocInfo(doc, 'draft-foo-bar', 'revision')).resolves.toBeUndefined()
     expect(Date.now() - start).toBeLessThan(900)
     expect(results).toEqual([undefined, undefined])
     expect(requests).toHaveLength(1)
@@ -419,7 +422,6 @@ describe('Remote lookups that time out', () => {
     const shouldBe00 = unknown.filter(f => f.name === 'UNEXPECTED_DOC_VERSION' && f.message.includes('should be version 00'))
     expect(shouldBe00).toHaveLength(1)
 
-    clearRemoteCache()
     stall()
     setRemoteTimeout(0.05)
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
@@ -462,5 +464,73 @@ describe('Remote lookups answered with an HTTP error', () => {
       ['Request to datatracker.ietf.org failed: HTTP 502'],
       ['Request to datatracker.ietf.org failed: HTTP 503']
     ])
+  })
+})
+
+describe('Runs in the same process', () => {
+  const draft = (name) => Buffer.from(`<?xml version="1.0" encoding="utf-8"?>
+<rfc version="3" category="std" docName="${name}" ipr="trust200902" submissionType="IETF">
+  <front><title>Test</title><author fullname="A. Author"/><date year="2026" month="October" day="20"/><abstract><t>Abstract.</t></abstract></front>
+  <middle><section><name>Introduction</name><t>See <xref target="RFC1234"/>.</t></section></middle>
+  <back><references><name>Normative References</name><reference anchor="RFC1234"><front><title>T</title></front><seriesInfo name="RFC" value="1234"/></reference></references></back>
+</rfc>`)
+
+  test('do not reuse a lookup that failed in an earlier run', async () => {
+    const raw = await readFile(new URL('./fixtures/draft-ietf-ippm-ioam-ipv6-options-10.xml', import.meta.url))
+    const run = () => checkNits(raw, 'draft-ietf-ippm-ioam-ipv6-options-10.xml', { mode: MODES.SUBMISSION })
+    const ownLookup = 'https://datatracker.ietf.org/api/v1/doc/document/draft-ietf-ippm-ioam-ipv6-options/'
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    server.use(http.get(ownLookup, () => new HttpResponse('down', { status: 503 })))
+    const failed = await run()
+    expect(failed.filter(f => f.name === 'DOCUMENT_LOOKUP_UNAVAILABLE')).toHaveLength(1)
+
+    server.resetHandlers()
+    const answered = await run()
+    expect(answered.filter(f => f.name === 'DOCUMENT_LOOKUP_UNAVAILABLE')).toEqual([])
+    expect(requests.filter(r => r.url === ownLookup)).toHaveLength(2)
+  })
+
+  test('running at once each use their own services, timeout and lookups', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const slowRegistry = async () => {
+      await delay(100)
+      return HttpResponse.text('<a href="/doc/rfc1234/">RFC 1234</a>')
+    }
+    server.use(
+      http.get('http://rfc-editor-a.example/rfc/rfc1234.json', () => HttpResponse.json({ status: 'INFORMATIONAL' })),
+      http.get('http://rfc-editor-b.example/rfc/rfc1234.json', () => HttpResponse.json({ status: 'INFORMATIONAL' })),
+      http.get('http://datatracker-a.example/doc/downref/', slowRegistry),
+      http.get('http://datatracker-b.example/doc/downref/', slowRegistry)
+    )
+    const [a, b] = await Promise.all([
+      checkNits(draft('draft-test-run-a-00'), 'draft-test-run-a-00.xml', {
+        datatrackerUrl: 'http://datatracker-a.example',
+        rfcEditorUrl: 'http://rfc-editor-a.example'
+      }),
+      checkNits(draft('draft-test-run-b-00'), 'draft-test-run-b-00.xml', {
+        datatrackerUrl: 'http://datatracker-b.example/',
+        rfcEditorUrl: 'http://rfc-editor-b.example',
+        remoteTimeout: 0.05
+      })
+    ])
+    const downrefs = (result) => result.filter(f => f.name.startsWith('DOWNREF_')).map(f => f.name)
+    expect(downrefs(a)).toEqual(['DOWNREF_TO_LOWER_STATUS_IN_REGISTRY'])
+    expect(downrefs(b)).toEqual(['DOWNREF_TO_LOWER_STATUS_UNCHECKED', 'DOWNREF_REGISTRY_UNAVAILABLE'])
+    expect(b.find(f => f.name === 'DOWNREF_REGISTRY_UNAVAILABLE').message).toContain('Request to datatracker-b.example timed out after 0.05 s')
+
+    const hosts = (run) => new Set(requests.filter(r => r.url.includes(`-${run}.example/`)).map(r => new URL(r.url).host))
+    expect(hosts('a')).toEqual(new Set(['datatracker-a.example', 'rfc-editor-a.example']))
+    expect(hosts('b')).toEqual(new Set(['datatracker-b.example', 'rfc-editor-b.example']))
+    expect(requests.every(r => /-[ab]\.example\//.test(r.url))).toBe(true)
+    expect(requests.filter(r => r.url.endsWith('/rfc/rfc1234.json'))).toHaveLength(2)
+    expect(requests.filter(r => r.url.endsWith('/doc/downref/'))).toHaveLength(2)
+  })
+
+  test('reject an invalid option before checking anything', async () => {
+    const onProgress = vi.fn()
+    await expect(checkNits(draft('draft-test-run-a-00'), 'draft-test-run-a-00.xml', { datatrackerUrl: 'datatracker.example', onProgress })).rejects.toThrow('Datatracker URL must be an http(s) URL')
+    await expect(checkNits(draft('draft-test-run-a-00'), 'draft-test-run-a-00.xml', { remoteTimeout: -1, onProgress })).rejects.toThrow('Remote timeout must be a positive number of seconds')
+    expect(onProgress).not.toHaveBeenCalled()
+    expect(requests).toEqual([])
   })
 })

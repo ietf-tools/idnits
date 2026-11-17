@@ -4,7 +4,6 @@ import { delay, http, HttpResponse } from 'msw'
 import { MODES } from '../lib/config/modes.mjs'
 import { parse } from '../lib/parsers/xml.mjs'
 import { parse as parseTxt } from '../lib/parsers/txt.mjs'
-import { clearRemoteCache } from '../lib/remote/common.mjs'
 import { MAX_CONCURRENT_LOOKUPS_PER_DOC, MAX_LOOKUPS_PER_DOC } from '../lib/remote/lookups.mjs'
 import { validateDownrefs, validateInformativeReferences, validateNormativeReferences, validatePublishedDraftReferences, validateReferenceForStale, validateUnclassifiedReferences } from '../lib/modules/downref.mjs'
 import { validateObsoleteUpdateRef, validateVersion } from '../lib/modules/metadata.mjs'
@@ -49,7 +48,6 @@ const server = setupServer(
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
 afterEach(() => {
   server.resetHandlers()
-  clearRemoteCache()
   vi.restoreAllMocks()
   requests.length = 0
   maxInFlight = 0
@@ -189,7 +187,6 @@ ${entries}`, 'draft-test-limits-00.txt')
     const doc = (n) => `<rfc version="3" category="std" docName="draft-test-limits-00" ipr="trust200902" obsoletes="${range(1, n).join(', ')}"><front><title>T</title><seriesInfo name="Internet-Draft" value="draft-test-limits-00"/></front></rfc>`
     for (const mode of [MODES.NORMAL, MODES.FORGIVE_CHECKLIST, MODES.SUBMISSION]) {
       requests.length = 0
-      clearRemoteCache()
       const result = await checkNits(Buffer.from(doc(MAX_LOOKUPS_PER_DOC + 1)), 'draft-test-limits-00.xml', { mode })
       expect(requests.length).toBeLessThanOrEqual(MAX_LOOKUPS_PER_DOC + 2)
       expect(result.filter(f => f.name === 'LOOKUP_LIMIT_REACHED')).toHaveLength(1)

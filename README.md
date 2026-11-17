@@ -81,7 +81,7 @@ The mode says at which stage of its life the document is checked, not how strict
 
 #### Remote lookups
 
-Some validations look up the document and the documents it references on the Datatracker (e.g. its latest revision and stream) and the RFC Editor site (e.g. the status of RFCs). `--offline` skips all of them: see [Remote lookups and `--offline`](docs/modes.md#remote-lookups-and---offline). The lookups of a document are made once per run, with a `User-Agent` header naming idnits3 and its version (e.g. `idnits3/3.0.0 (+https://github.com/ietf-tools/idnits)`).
+Some validations look up the document and the documents it references on the Datatracker (e.g. its latest revision and stream) and the RFC Editor site (e.g. the status of RFCs). `--offline` skips all of them: see [Remote lookups and `--offline`](docs/modes.md#remote-lookups-and---offline). The lookups of a document are made once per run, and nothing looked up is kept for the next run, so a lookup that failed is tried again. They are made with a `User-Agent` header naming idnits3 and its version (e.g. `idnits3/3.0.0 (+https://github.com/ietf-tools/idnits)`).
 
 The services they are sent to, and the time each lookup is allowed, can be changed with these environment variables, or the matching flags, which take precedence. URLs must be `http` or `https` URLs, a trailing slash is ignored. The timeout is a positive number of seconds; it covers the whole request, response included.
 
@@ -91,9 +91,9 @@ The services they are sent to, and the time each lookup is allowed, can be chang
 | `IDNITS_RFCEDITOR_URL` | `--rfceditor-url` | `https://www.rfc-editor.org` |
 | `IDNITS_REMOTE_TIMEOUT` | `--remote-timeout` | `10` |
 
-A lookup that times out fails like one to a service that can't be reached: a warning naming the host is printed once, and the validations carry on without its result. If the Downref Registry can't be fetched (an error or a timeout), downrefs are reported as `DOWNREF_TO_LOWER_STATUS_UNCHECKED` without telling whether they are listed in it, and a `DOWNREF_REGISTRY_UNAVAILABLE` comment names the reason. A failed fetch of the registry is not retried for a minute, so the checks of a run don't each wait for it.
+A lookup that times out fails like one to a service that can't be reached: a warning naming the host is printed once, and the validations carry on without its result. If the Downref Registry can't be fetched (an error or a timeout), downrefs are reported as `DOWNREF_TO_LOWER_STATUS_UNCHECKED` without telling whether they are listed in it, and a `DOWNREF_REGISTRY_UNAVAILABLE` comment names the reason. A failed fetch of the registry is not retried during the run, so its checks don't each wait for it; the next run tries again.
 
-The environment variables also apply when idnits is used as a library in Node.js. In the browser, lookups go through the `/idnits3/api/` endpoints of the page's server instead.
+The environment variables also apply when idnits is used as a library in Node.js, where each run can also be given its own services and timeout (see [Remote lookup options](#remote-lookup-options)). In the browser, lookups go through the `/idnits3/api/` endpoints of the page's server instead.
 
 > [!NOTE]
 > **Datatracker deployments:** when idnits runs next to the Datatracker (e.g. in its celery containers), set `IDNITS_DATATRACKER_URL` to the in-cluster Datatracker web service (e.g. `http://datatracker:8000`), so that the lookups made for each submission stay in the cluster instead of going out through the public internet and its CDN. `IDNITS_REMOTE_TIMEOUT` bounds how long a slow or unresponsive Datatracker can hold up the check of a submission.
@@ -147,6 +147,17 @@ const results = await checkNits(documentRawBuffer, documentFileName, {
 })
 ```
 
+#### Remote lookup options
+
+Pass `datatrackerUrl`, `rfcEditorUrl` or `remoteTimeout` (in seconds) to send the lookups of one run to other services, or give them another timeout. They take precedence, for that run only, over `setRemoteUrls()`, `setRemoteTimeout()` and the environment variables of [Remote lookups](#remote-lookups), so runs made at once in the same process can each use their own. `checkNits()` throws before checking anything if one of them isn't valid.
+
+```js
+const results = await checkNits(documentRawBuffer, documentFileName, {
+  datatrackerUrl: 'http://datatracker:8000',
+  remoteTimeout: 5
+})
+```
+
 #### Task Runner
 
 You can implement your own task runner to have full control over how the validations are executed. The `getAllValidations()` method returns a list of all validations that should be run.
@@ -163,7 +174,11 @@ const ctx = {
     allowedDomains,
     mode,
     offline,
-    year
+    year,
+    // -> Optional: services and timeout of the remote lookups of this run
+    datatrackerUrl,
+    rfcEditorUrl,
+    remoteTimeout
   }
 }
 

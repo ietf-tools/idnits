@@ -6,7 +6,6 @@ import { addXmlSourceLines, findXmlSourceOffset, getXmlLocationLabel, labelFindi
 import { scanXmlSource } from '../lib/helpers/xml-source.mjs'
 import { ValidationWarning } from '../lib/helpers/error.mjs'
 import { checkNits } from '../lib/index.mjs'
-import { clearRemoteCache } from '../lib/remote/common.mjs'
 
 // -> checkNits looks up the RFCs SAMPLE_XML cites (offline skips only the document's own lookups).
 //    Any other request fails the test that made it.
@@ -24,7 +23,6 @@ beforeAll(() => server.listen({
 }))
 afterEach(() => {
   server.resetHandlers()
-  clearRemoteCache()
   expect(unhandledRequests.splice(0), 'requests without a handler').toEqual([])
 })
 afterAll(() => server.close())
