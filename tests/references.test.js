@@ -142,7 +142,7 @@ describe('References to RFCs link to the RFC\'s info page', () => {
              <https://www.rfc-editor.org/rfc/rfc8446>.
 `, 'draft-ietf-grow-bmp-over-quic-00.txt')
 
-      await expectInAllButSubmission(doc, new ValidationComment('RFC_REFERENCE_URL_FORMAT', 'References to RFCs should link to the RFC\'s info page, https://www.rfc-editor.org/info/rfcN. Found 2 links to RFC text instead: https://www.rfc-editor.org/rfc/rfc2119 (and 1 more); for that one, use https://www.rfc-editor.org/info/rfc2119. xml2rfc currently renders references without a target this way and will switch to /info/: if this document was produced by xml2rfc from XML without explicit targets, nothing needs changing in the source.', {
+      await expectInAllButSubmission(doc, new ValidationComment('RENDERED_RFC_REFERENCE_URL_FORMAT', 'References to RFCs should link to the RFC\'s info page, https://www.rfc-editor.org/info/rfcN. Found 2 links to RFC text instead: https://www.rfc-editor.org/rfc/rfc2119 (and 1 more); for that one, use https://www.rfc-editor.org/info/rfc2119. xml2rfc currently renders references without a target this way and will switch to /info/: if this document was produced by xml2rfc from XML without explicit targets, nothing needs changing in the source.', {
         ref: REF,
         lines: [{ line: 10, pos: 45 }, { line: 20, pos: 15 }]
       }))

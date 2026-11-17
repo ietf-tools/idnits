@@ -92,7 +92,7 @@ describe('document should have valid date', () => {
 
       expect(result).toContainEqual(
         new ValidationComment(
-          'OBSOLETES_NOT_IN_ABSTRACT',
+          'POSSIBLE_OBSOLETES_NOT_IN_ABSTRACT',
           'RFC 5678 is listed as "obsoleted" in metadata but is not mentioned in the abstract.',
           {
             ref: 'https://authors.ietf.org/en/required-content#abstract',
@@ -120,13 +120,35 @@ describe('document should have valid date', () => {
 
       expect(result).toContainEqual(
         new ValidationComment(
-          'UPDATES_NOT_IN_ABSTRACT',
+          'POSSIBLE_UPDATES_NOT_IN_ABSTRACT',
           'RFC 1234 is listed as "updated" in metadata but is not mentioned in the abstract.',
           {
             ref: 'https://authors.ietf.org/en/required-content#abstract'
           }
         )
       )
+    })
+
+    test('RFCs missing in the abstract are comments in normal and forgive-checklist, and not reported in submission', async () => {
+      const doc = {
+        type: 'txt',
+        data: {
+          content: {
+            abstract: ['This document provides new guidelines for implementation.']
+          },
+          extractedElements: {
+            obsoletesRfc: ['5678'],
+            updatesRfc: ['1234']
+          }
+        }
+      }
+
+      for (const mode of [MODES.NORMAL, MODES.FORGIVE_CHECKLIST]) {
+        const result = await validateObsoleteUpdateRef(doc, { mode, offline: true })
+        expect(result).toContainError('POSSIBLE_OBSOLETES_NOT_IN_ABSTRACT', ValidationComment)
+        expect(result).toContainError('POSSIBLE_UPDATES_NOT_IN_ABSTRACT', ValidationComment)
+      }
+      await expect(validateObsoleteUpdateRef(doc, { mode: MODES.SUBMISSION, offline: true })).resolves.toHaveLength(0)
     })
 
     test('RFC mentioned in abstract but not in obsoletes metadata', async () => {
@@ -201,7 +223,7 @@ describe('document should have valid date', () => {
 
       expect(result).toContainEqual(
         new ValidationComment(
-          'OBSOLETES_NOT_IN_ABSTRACT',
+          'POSSIBLE_OBSOLETES_NOT_IN_ABSTRACT',
           'RFC 5678 is listed as "obsoleted" in metadata but is not mentioned in the abstract.',
           {
             ref: 'https://authors.ietf.org/en/required-content#abstract'
@@ -210,7 +232,7 @@ describe('document should have valid date', () => {
       )
       expect(result).toContainEqual(
         new ValidationComment(
-          'UPDATES_NOT_IN_ABSTRACT',
+          'POSSIBLE_UPDATES_NOT_IN_ABSTRACT',
           'RFC 1234 is listed as "updated" in metadata but is not mentioned in the abstract.',
           {
             ref: 'https://authors.ietf.org/en/required-content#abstract'
@@ -237,8 +259,8 @@ describe('document should have valid date', () => {
 
       const result = await validateObsoleteUpdateRef(doc)
 
-      expect(result).not.toContainError('OBSOLETES_NOT_IN_ABSTRACT')
-      expect(result).not.toContainError('UPDATES_NOT_IN_ABSTRACT')
+      expect(result).not.toContainError('POSSIBLE_OBSOLETES_NOT_IN_ABSTRACT')
+      expect(result).not.toContainError('POSSIBLE_UPDATES_NOT_IN_ABSTRACT')
     })
 
     test('No obsoletes/updates metadata and no mentions in abstract', async () => {
@@ -981,8 +1003,8 @@ Abstract
       await expect(codes('Obsoletes: 1846, 7504, 7505 (if approved)\n', 'This document supersedes RFCs 1846, 7504, and 7505.')).resolves.toEqual([])
       await expect(codes('Obsoletes: 6096, 7053 (if approved)\n', 'Therefore, RFCs 6096 and 7053 are also obsoleted by this document.')).resolves.toEqual([])
       // An RFC named elsewhere in the abstract isn't named as updated
-      await expect(codes('Updates: 4271 (if approved)\n', 'BGP [RFC4271] is widely deployed. This document defines a new\n   attribute.')).resolves.toEqual(['UPDATES_NOT_IN_ABSTRACT 4271'])
-      await expect(codes('Updates: 7935 (if approved)\n', 'It does not update RFC 7935.')).resolves.toEqual(['UPDATES_NOT_IN_ABSTRACT 7935'])
+      await expect(codes('Updates: 4271 (if approved)\n', 'BGP [RFC4271] is widely deployed. This document defines a new\n   attribute.')).resolves.toEqual(['POSSIBLE_UPDATES_NOT_IN_ABSTRACT 4271'])
+      await expect(codes('Updates: 7935 (if approved)\n', 'It does not update RFC 7935.')).resolves.toEqual(['POSSIBLE_UPDATES_NOT_IN_ABSTRACT 7935'])
       // An RFC named after a phrase counts for a listed RFC, but doesn't need one listed (from RFC 9659 and
       // draft-wang-grow-bmp-bgp-rib-stats-ext-01)
       await expect(codes('Updates: 8878 (if approved)\n', 'This document updates the window size limit in RFC 8878.')).resolves.toEqual([])
@@ -1015,7 +1037,7 @@ ${lines.join('\n')}
 `, 'draft-ietf-foo-bar-02.txt')
       expect(doc.data.content.abstract).toHaveLength(2003)
       const result = await validateObsoleteUpdateRef(doc, { offline: true })
-      expect(result.map(r => r.name)).toEqual(['UPDATES_NOT_IN_ABSTRACT'])
+      expect(result.map(r => r.name)).toEqual(['POSSIBLE_UPDATES_NOT_IN_ABSTRACT'])
       expect(result[0].message).toContain('RFC 6096')
     })
   })

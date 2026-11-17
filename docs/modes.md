@@ -203,9 +203,9 @@ A check that fails on a document it can't handle doesn't stop the others: it is 
 | `DOC_DATE_IN_FUTURE` | Warning | Warning | Warning | both | More than 3 days |
 | `MISSING_DOC_CATEGORY` | Warning | Warning | Warning | both | Text RFC: no `Category:` line. Text draft: no `Intended status:` line (a `Category:` line instead doesn't count). XML: no `category` attribute |
 | `INVALID_DOC_CATEGORY` | Warning | Warning | Warning | both | |
-| `OBSOLETES_NOT_IN_ABSTRACT` | Comment | Comment | — | text | See below |
+| `POSSIBLE_OBSOLETES_NOT_IN_ABSTRACT` | Comment | Comment | — | text | See below |
 | `OBSOLETES_NOT_IN_ABSTRACT` | Warning | Warning | — | XML | See below |
-| `UPDATES_NOT_IN_ABSTRACT` | Comment | Comment | — | text | See below |
+| `POSSIBLE_UPDATES_NOT_IN_ABSTRACT` | Comment | Comment | — | text | See below |
 | `UPDATES_NOT_IN_ABSTRACT` | Warning | Warning | — | XML | See below |
 | `MENTIONED_NOT_IN_OBSOLETES` | Comment | Comment | — | text | |
 | `MENTIONED_NOT_IN_UPDATES` | Comment | Comment | — | text | |
@@ -221,7 +221,8 @@ A check that fails on a document it can't handle doesn't stop the others: it is 
 | `OBSOLETES_NOT_RFC_NUMBER` | Warning | Warning | — | XML | Neither an RFC number nor an Internet-Draft name, or a number no RFC can have (0, more than 5 digits) |
 | `UPDATES_NOT_RFC_NUMBER` | Warning | Warning | — | XML | Neither an RFC number nor an Internet-Draft name, or a number no RFC can have (0, more than 5 digits) |
 
-`OBSOLETES_NOT_IN_ABSTRACT` and `UPDATES_NOT_IN_ABSTRACT` look for the abstract to say that the document obsoletes or
+`OBSOLETES_NOT_IN_ABSTRACT` and `UPDATES_NOT_IN_ABSTRACT` (for text, `POSSIBLE_OBSOLETES_NOT_IN_ABSTRACT` and
+`POSSIBLE_UPDATES_NOT_IN_ABSTRACT`) look for the abstract to say that the document obsoletes or
 updates each RFC it lists. The check recognises the common phrasings, such as "obsoletes RFC 2747 and RFC 3097",
 "obsoletes both RFC 2747 and RFC 3097", "supersedes RFCs 1846, 7504, and 7505", "updates BCP 38 (RFC 2827)",
 "updates the registry defined in RFC 9605" and "RFCs 6096 and 7053 are also obsoleted". A relation stated in an
@@ -328,7 +329,7 @@ For text documents, `SUBMISSION_TYPE_UNEXPECTED` and `DATATRACKER_STREAM_NOT_SET
 | `DOCUMENT_USE_NUMERIC_REFERENCES` | Comment | Comment | — | text | |
 | `DOCUMENT_USE_STRING_REFERENCES` | Comment | Comment | — | text | |
 | `RFC_REFERENCE_URL_FORMAT` | Warning | Warning | — | XML | Link to `/rfc/` instead of `/info/` |
-| `RFC_REFERENCE_URL_FORMAT` | Comment | Comment | — | text | Same; xml2rfc renders references without a target this way |
+| `RENDERED_RFC_REFERENCE_URL_FORMAT` | Comment | Comment | — | text | Link to `/rfc/` instead of `/info/`; xml2rfc renders references without a target this way |
 | `DRAFT_REFERENCE_REVISION_MISMATCH` | Warning | Warning | — | both | Entry links to one revision of a draft and names another: in its text (text), in its Internet-Draft `<seriesInfo>` (XML). Links to IETF hosts only |
 | `DOWNREF_TO_LOWER_STATUS` | Error | Warning | — | both | (lookup, offline) Not in the Downref Registry |
 | `DOWNREF_TO_LOWER_STATUS_UNCHECKED` | Warning | Warning | — | both | (lookup, offline) The Downref Registry couldn't be fetched to check it |
