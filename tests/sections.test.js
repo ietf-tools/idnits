@@ -12,6 +12,7 @@ import {
 } from '../lib/modules/sections.mjs'
 import { getMiddleSections, getSectionName } from '../lib/helpers/sections.mjs'
 import { parse } from '../lib/parsers/xml.mjs'
+import { addXmlSourceLines, labelFindings } from '../lib/helpers/location.mjs'
 import { parse as parseTXT } from '../lib/parsers/txt.mjs'
 import { CANONICAL_TXT } from './generators/doc-txt.js'
 import { baseTXTDoc, baseXMLDoc } from './fixtures/base-doc.mjs'
@@ -706,6 +707,12 @@ describe('document should have a valid security considerations section', () => {
         'MISSING_SECURITY_CONSIDERATIONS_SECTION',
         ValidationError
       )
+      // -> A missing text section has no location
+      await expect(validateSecurityConsiderationsSection(doc)).resolves.toEqual([
+        new ValidationError('MISSING_SECURITY_CONSIDERATIONS_SECTION', 'The security considerations section is missing.', {
+          ref: 'https://authors.ietf.org/en/required-content#security-considerations'
+        })
+      ])
     })
 
     test('security considerations section in TOC is ignored', async () => {
@@ -778,6 +785,9 @@ describe('document should have a valid security considerations section', () => {
       const doc = cloneDeep(baseXMLDoc)
       set(doc, 'data.rfc.middle.section', [])
       await expect(validateSecurityConsiderationsSection(doc)).resolves.toContainError('MISSING_SECURITY_CONSIDERATIONS_SECTION', ValidationError)
+      // -> Located where the section would be declared
+      const result = await validateSecurityConsiderationsSection(doc)
+      expect(result[0].path).toBe('rfc.middle')
       await expect(validateSecurityConsiderationsSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('MISSING_SECURITY_CONSIDERATIONS_SECTION', ValidationWarning)
       await expect(validateSecurityConsiderationsSection(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
@@ -785,6 +795,17 @@ describe('document should have a valid security considerations section', () => {
       const doc = cloneDeep(baseXMLDoc)
       set(doc, 'data.rfc.middle.section[0].name', 'Security Considerations')
       await expect(validateSecurityConsiderationsSection(doc)).resolves.toContainError('INVALID_SECURITY_CONSIDERATIONS_SECTION', ValidationError)
+    })
+    test('empty security considerations section is located at the section', async () => {
+      const doc = cloneDeep(baseXMLDoc)
+      set(doc, 'data.rfc.middle.section', [
+        { name: 'Introduction', t: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.' },
+        { name: 'Security Considerations' }
+      ])
+      const result = await validateSecurityConsiderationsSection(doc)
+      expect(result.map(r => [r.name, r.path])).toEqual([
+        ['INVALID_SECURITY_CONSIDERATIONS_SECTION', 'rfc.middle.section[1]']
+      ])
     })
     test('invalid security considerations section children', async () => {
       const doc = cloneDeep(baseXMLDoc)
@@ -971,6 +992,9 @@ Authors" Addresses
       const doc = cloneDeep(baseXMLDoc)
       set(doc, 'data.rfc.front.author', [])
       await expect(validateAuthorSection(doc)).resolves.toContainError('MISSING_AUTHOR_SECTION', ValidationError)
+      // -> Located where the <author> elements would be declared
+      const result = await validateAuthorSection(doc)
+      expect(result[0].path).toBe('rfc.front.author')
       await expect(validateAuthorSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('MISSING_AUTHOR_SECTION', ValidationWarning)
       await expect(validateAuthorSection(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
@@ -1551,10 +1575,15 @@ describe('document should have a valid IANA considerations section', () => {
       await expect(validateIANAConsiderationsSection(doc)).resolves.toContainError('MISSING_IANA_CONSIDERATIONS_SECTION', ValidationError)
       await expect(validateIANAConsiderationsSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('MISSING_IANA_CONSIDERATIONS_SECTION', ValidationWarning)
       await expect(validateIANAConsiderationsSection(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+      // -> Located where the section would be declared
+      const draftResult = await validateIANAConsiderationsSection(doc)
+      expect(draftResult[0].path).toBe('rfc.middle')
       doc.docKind = 'rfc'
       await expect(validateIANAConsiderationsSection(doc)).resolves.toContainError('RFC_MISSING_IANA_CONSIDERATIONS_SECTION', ValidationComment)
       await expect(validateIANAConsiderationsSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('RFC_MISSING_IANA_CONSIDERATIONS_SECTION', ValidationComment)
       await expect(validateIANAConsiderationsSection(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+      const rfcResult = await validateIANAConsiderationsSection(doc)
+      expect(rfcResult[0].path).toBe('rfc.middle')
     })
     test('invalid IANA considerations section', async () => {
       const doc = cloneDeep(baseXMLDoc)
@@ -2288,5 +2317,56 @@ describe('an empty section is a Warning in submission mode, an Error in the othe
       const abstract = await parse('<rfc version="3" docName="draft-test-sections-00"><front><abstract><t>Text.</t><figure><artwork>x</artwork></figure></abstract></front></rfc>', 'draft-test-sections-00.xml')
       await expect(validateAbstractSection(abstract.doc, { mode: MODES.SUBMISSION })).resolves.toContainError('INVALID_ABSTRACT_SECTION_CHILD', ValidationError)
     })
+  })
+})
+
+describe('a missing <middle> section of an XML document is located at the <middle> element', () => {
+  /**
+   * Findings of the missing introduction, security considerations and IANA considerations sections,
+   * with the label and source line the output adds from their path
+   *
+   * @param {string} xml XML document
+   * @returns {Promise<Array>} [name, path, label, lines] of each finding
+   */
+  async function locatedMissingFindings (xml) {
+    const { doc } = await parse(xml, 'draft-test-sections-00.xml')
+    doc.docKind = 'draft'
+    const findings = [
+      ...await validateIntroductionSection(doc),
+      ...await validateSecurityConsiderationsSection(doc),
+      ...await validateIANAConsiderationsSection(doc)
+    ]
+    addXmlSourceLines(labelFindings(findings, doc), doc)
+    return findings.map(f => [f.name, f.path, f.label, f.lines])
+  }
+
+  test('with a single section, at <middle> and not at that section', async () => {
+    const xml = `<rfc version="3" docName="draft-test-sections-00">
+<front><title>Test</title></front>
+<middle>
+<section><name>Overview</name><t>Text.</t></section>
+</middle>
+</rfc>`
+    await expect(locatedMissingFindings(xml)).resolves.toEqual([
+      ['MISSING_SECURITY_CONSIDERATIONS_SECTION', 'rfc.middle', undefined, [{ line: 3, pos: 1 }]],
+      ['MISSING_IANA_CONSIDERATIONS_SECTION', 'rfc.middle', undefined, [{ line: 3, pos: 1 }]]
+    ])
+    const terminology = xml.replace('Overview', 'Terminology')
+    await expect(locatedMissingFindings(terminology)).resolves.toEqual([
+      ['MISSING_INTRODUCTION_SECTION', 'rfc.middle', undefined, [{ line: 3, pos: 1 }]],
+      ['MISSING_SECURITY_CONSIDERATIONS_SECTION', 'rfc.middle', undefined, [{ line: 3, pos: 1 }]],
+      ['MISSING_IANA_CONSIDERATIONS_SECTION', 'rfc.middle', undefined, [{ line: 3, pos: 1 }]]
+    ])
+  })
+
+  test('without a <middle> element, at the <rfc> element', async () => {
+    const xml = `<rfc version="3" docName="draft-test-sections-00">
+<front><title>Test</title></front>
+</rfc>`
+    await expect(locatedMissingFindings(xml)).resolves.toEqual([
+      ['MISSING_INTRODUCTION_SECTION', 'rfc.middle', undefined, [{ line: 1, pos: 1 }]],
+      ['MISSING_SECURITY_CONSIDERATIONS_SECTION', 'rfc.middle', undefined, [{ line: 1, pos: 1 }]],
+      ['MISSING_IANA_CONSIDERATIONS_SECTION', 'rfc.middle', undefined, [{ line: 1, pos: 1 }]]
+    ])
   })
 })
