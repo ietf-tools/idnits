@@ -128,6 +128,25 @@ const results = await checkNits(documentRawBuffer, documentFileName)
 
 For XML documents, results that have a `path` (e.g. `rfc.middle.section[2].section[1].t[0]`) also get a human-readable `label` describing that location (e.g. `Section 3.2 (Security Considerations), paragraph 1`). The CLI shows it next to the path, and includes it as `label` in the `json` output. They also get the source line and column of that element in `lines` (e.g. `[{ line: 42, pos: 7 }]`), unless the check already gave one.
 
+#### Progress
+
+Pass an `onProgress` function to follow the run, as the CLI does for its progress display. It is called with one event at a time, where `group` and `task` are the `key`s of the groups and tasks that `getAllValidations()` returns:
+
+| Event | When |
+|-------|------|
+| `{ type: 'groupStarted', group }` | The tasks of a group are about to run |
+| `{ type: 'groupSkipped', group }` | The condition of a group isn't met, so its tasks don't run |
+| `{ type: 'taskDone', group, task }` | A task has returned |
+| `{ type: 'taskFailed', group, task, error }` | A task has thrown, which stops the run (only decoding and parsing can: the other checks give a `CHECK_FAILED` finding instead) |
+
+```js
+const results = await checkNits(documentRawBuffer, documentFileName, {
+  onProgress: (event) => {
+    console.log(event.type, event.group, event.task)
+  }
+})
+```
+
 #### Task Runner
 
 You can implement your own task runner to have full control over how the validations are executed. The `getAllValidations()` method returns a list of all validations that should be run.

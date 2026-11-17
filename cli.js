@@ -9,7 +9,7 @@ import { pad } from 'lodash-es'
 import { readFile } from 'node:fs/promises'
 import { satisfies } from 'semver'
 import { Listr, ListrDefaultRendererLogLevels } from 'listr2'
-import { checkNits, finalizeFindings, getAllValidations, getDocType } from './lib/index.mjs'
+import { checkNits, getAllValidations, getDocType } from './lib/index.mjs'
 import { getModeByName } from './lib/config/modes.mjs'
 import { ALLOWED_DOMAINS_DEFAULT } from './lib/config/externals.mjs'
 import {
@@ -334,68 +334,130 @@ function chalkAdapted (color) {
   }
 }
 
+/**
+ * A promise that a progress event of checkNits() settles later
+ *
+ * @returns {Object} The promise, with its resolve and reject functions
+ */
+function progressPromise () {
+  const pending = {}
+  pending.promise = new Promise((resolve, reject) => {
+    pending.resolve = resolve
+    pending.reject = reject
+  })
+  // The display may wait for it only later: a failure isn't an unhandled rejection meanwhile
+  pending.promise.catch(() => {})
+  return pending
+}
+
+/**
+ * Run checkNits() and show its progress, each group and task of getAllValidations() as a Listr
+ * task that ends when checkNits() says it has
+ *
+ * @param {Object} checkOptions Options of checkNits()
+ * @returns {Array} Validation results
+ */
+async function checkNitsWithProgress (checkOptions) {
+  const validations = getAllValidations(getDocType(docPathObj.base))
+
+  // -> What checkNits() said of each group (whether it was skipped) and task (done or failed)
+  const groupStarts = new Map()
+  const taskEnds = new Map()
+  for (const valGroup of validations) {
+    groupStarts.set(valGroup.key, progressPromise())
+    for (const valTask of valGroup.tasks) {
+      taskEnds.set(`${valGroup.key}/${valTask.key}`, progressPromise())
+    }
+  }
+
+  function onProgress (event) {
+    switch (event.type) {
+      case 'groupStarted': {
+        groupStarts.get(event.group).resolve(false)
+        break
+      }
+      case 'groupSkipped': {
+        groupStarts.get(event.group).resolve(true)
+        break
+      }
+      case 'taskDone': {
+        taskEnds.get(`${event.group}/${event.task}`).resolve()
+        break
+      }
+      case 'taskFailed': {
+        taskEnds.get(`${event.group}/${event.task}`).reject(event.error)
+        break
+      }
+    }
+  }
+
+  const display = new Listr(
+    validations.map(valGroup => ({
+      title: valGroup.title,
+      task: () => new Listr(
+        valGroup.tasks.map(valTask => ({
+          title: valTask.title,
+          task: () => taskEnds.get(`${valGroup.key}/${valTask.key}`).promise
+        })),
+        {
+          concurrent: valGroup.concurrent
+        }
+      ),
+      skip: () => groupStarts.get(valGroup.key).promise
+    })),
+    {
+      collectErrors: 'minimal',
+      exitOnError: true,
+      rendererOptions: {
+        collapseErrors: false,
+        collapseSubtasks: true,
+        showErrorMessage: false,
+        icon: {
+          [ListrDefaultRendererLogLevels.COMPLETED]: '☑️',
+          [ListrDefaultRendererLogLevels.FAILED]: '❌'
+        }
+      }
+    }
+  )
+  const displayDone = display.run()
+
+  // -> The display stops at the task that failed: let it show that before the error is reported.
+  //    A failure outside any task (no taskFailed event) ends the display wherever it waits.
+  let result
+  try {
+    result = await checkNits(docRaw, docPathObj.base, { ...checkOptions, onProgress })
+  } catch (err) {
+    for (const pending of groupStarts.values()) {
+      pending.reject(err)
+    }
+    for (const pending of taskEnds.values()) {
+      pending.reject(err)
+    }
+    await displayDone.catch(() => {})
+    throw err
+  }
+  await displayDone
+  return result
+}
+
 // Validate document
 try {
   let result = []
   const docSizeBytes = Buffer.byteLength(docRaw)
 
-  // Validate document using task processor
+  const checkOptions = {
+    allowedDomains: argv.allowedDomains,
+    mode,
+    offline: argv.offline,
+    year: argv.year
+  }
+
+  // Validate document, showing the progress of the validations in pretty output
   if (argv.output === 'pretty' && argv.progress) {
-    const validations = getAllValidations(getDocType(docPathObj.base))
-    const tasks = new Listr(
-      validations.map(valGroup => ({
-        title: valGroup.title,
-        task: () => new Listr(
-          valGroup.tasks.map(valTask => ({
-            title: valTask.title,
-            task: async (ctx) => {
-              if (valTask.isVoid) {
-                return valTask.task(ctx)
-              } else {
-                result.push(...(await valTask.task(ctx)))
-              }
-            }
-          })),
-          {
-            concurrent: valGroup.concurrent
-          }
-        ),
-        skip: valGroup.condition ? (ctx) => !valGroup.condition(ctx) : undefined
-      })),
-      {
-        ctx: {
-          raw: docRaw,
-          filename: docPathObj.base,
-          options: {
-            allowedDomains: argv.allowedDomains,
-            mode,
-            offline: argv.offline,
-            year: argv.year
-          }
-        },
-        collectErrors: 'minimal',
-        exitOnError: true,
-        rendererOptions: {
-          collapseErrors: false,
-          collapseSubtasks: true,
-          showErrorMessage: false,
-          icon: {
-            [ListrDefaultRendererLogLevels.COMPLETED]: '☑️',
-            [ListrDefaultRendererLogLevels.FAILED]: '❌'
-          }
-        }
-      }
-    )
-    const ctx = await tasks.run()
-    finalizeFindings(result, ctx.doc)
+    result = await checkNitsWithProgress(checkOptions)
     console.info('')
   } else {
-    result = await checkNits(docRaw, docPathObj.base, {
-      allowedDomains: argv.allowedDomains,
-      mode,
-      offline: argv.offline,
-      year: argv.year
-    })
+    result = await checkNits(docRaw, docPathObj.base, checkOptions)
   }
 
   // Filter severity types
