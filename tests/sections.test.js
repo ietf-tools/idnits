@@ -1552,8 +1552,8 @@ describe('document should have a valid IANA considerations section', () => {
       await expect(validateIANAConsiderationsSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('MISSING_IANA_CONSIDERATIONS_SECTION', ValidationWarning)
       await expect(validateIANAConsiderationsSection(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
       doc.docKind = 'rfc'
-      await expect(validateIANAConsiderationsSection(doc)).resolves.toContainError('MISSING_IANA_CONSIDERATIONS_SECTION', ValidationComment)
-      await expect(validateIANAConsiderationsSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('MISSING_IANA_CONSIDERATIONS_SECTION', ValidationComment)
+      await expect(validateIANAConsiderationsSection(doc)).resolves.toContainError('RFC_MISSING_IANA_CONSIDERATIONS_SECTION', ValidationComment)
+      await expect(validateIANAConsiderationsSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('RFC_MISSING_IANA_CONSIDERATIONS_SECTION', ValidationComment)
       await expect(validateIANAConsiderationsSection(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
     test('invalid IANA considerations section', async () => {
@@ -1641,8 +1641,8 @@ describe('document should have a valid IANA considerations section', () => {
       await expect(validateIANAConsiderationsSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('MISSING_IANA_CONSIDERATIONS_SECTION', ValidationWarning)
       await expect(validateIANAConsiderationsSection(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
       doc.docKind = 'rfc'
-      await expect(validateIANAConsiderationsSection(doc)).resolves.toContainError('MISSING_IANA_CONSIDERATIONS_SECTION', ValidationComment)
-      await expect(validateIANAConsiderationsSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('MISSING_IANA_CONSIDERATIONS_SECTION', ValidationComment)
+      await expect(validateIANAConsiderationsSection(doc)).resolves.toContainError('RFC_MISSING_IANA_CONSIDERATIONS_SECTION', ValidationComment)
+      await expect(validateIANAConsiderationsSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('RFC_MISSING_IANA_CONSIDERATIONS_SECTION', ValidationComment)
       await expect(validateIANAConsiderationsSection(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
     test('invalid IANA considerations section', async () => {

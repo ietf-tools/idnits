@@ -278,7 +278,7 @@ describe('XML document should only use a restricted ipr value outside the IETF s
           for (const [docName, opts] of [['draft-beep-boop8-00', {}], ['draft-beep-boop9-00', {}], ['draft-beep-boop7-00', { offline: true }]]) {
             const result = await findings(ipr, docName, submissionType, { ...opts, mode })
             expect(result).toHaveLength(1)
-            expect(result).toContainError('FORBIDDEN_IPR_VALUE_FOR_STREAM', ValidationWarning)
+            expect(result).toContainError('POSSIBLE_FORBIDDEN_IPR_VALUE', ValidationWarning)
           }
         }
       }
@@ -319,6 +319,7 @@ describe('XML document should only use a restricted ipr value outside the IETF s
     await expect(validateIprAttribute(await parseRfc('independent'))).resolves.toContainError('FORBIDDEN_IPR_VALUE_FOR_STREAM', ValidationError)
     const [entry] = await validateIprAttribute(await parseRfc(null), { offline: true })
     expect(entry).toBeInstanceOf(ValidationWarning)
+    expect(entry.name).toBe('POSSIBLE_FORBIDDEN_IPR_VALUE')
     expect(entry.message).toContain('so the RFC is treated as submissionType="IETF", and its stream was not looked up on Datatracker (offline). If the RFC is meant')
     await expect(validateIprAttribute(await parseRfc('independent'), { offline: true })).resolves.toHaveLength(0)
   })
@@ -944,12 +945,23 @@ describe('XML document should have a valid submission type', () => {
   })
   test('no stream on Datatracker yet', async () => {
     const doc = makeDoc('IETF', 'draft-ietf-beep-boop4')
-    await expect(validateSubmissionType(doc)).resolves.toContainError('SUBMISSION_TYPE_UNEXPECTED', ValidationError)
-    await expect(validateSubmissionType(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('SUBMISSION_TYPE_UNEXPECTED', ValidationWarning)
-    await expect(validateSubmissionType(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('SUBMISSION_TYPE_UNEXPECTED', ValidationComment)
+    await expect(validateSubmissionType(doc)).resolves.toContainError('DATATRACKER_STREAM_NOT_SET', ValidationError)
+    await expect(validateSubmissionType(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('DATATRACKER_STREAM_NOT_SET', ValidationWarning)
+    await expect(validateSubmissionType(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('DATATRACKER_STREAM_NOT_SET', ValidationComment)
     const [entry] = await validateSubmissionType(doc, { mode: MODES.SUBMISSION })
     expect(entry.message).toContain('IETF stream')
     expect(entry.message).toContain('no stream')
+  })
+  test('Datatracker findings give the message, ref and path of the rfc tag', async () => {
+    const refOpts = { ref: 'https://www.rfc-editor.org/rfc/rfc7841.html', path: 'rfc.submissionType' }
+    await expect(validateSubmissionType(makeDoc('IETF', 'draft-ietf-beep-boop4'))).resolves.toEqual([
+      new ValidationError('DATATRACKER_STREAM_NOT_SET', 'The rfc tag declares the IETF stream (submissionType="IETF"), but Datatracker has no stream for this draft yet.', refOpts)
+    ])
+    await expect(validateSubmissionType(makeDoc('IETF', 'draft-ietf-beep-boop3'))).resolves.toEqual([
+      new ValidationError('SUBMISSION_TYPE_UNEXPECTED', 'The rfc tag declares the IETF stream (submissionType="IETF"), but Datatracker has this draft in the IAB stream.', refOpts)
+    ])
+    const result = await validateSubmissionType(makeDoc(null, 'draft-ietf-beep-boop4'))
+    expect(result[1]).toEqual(new ValidationError('DATATRACKER_STREAM_NOT_SET', 'The document is treated as the IETF stream, but Datatracker has no stream for this draft yet.', refOpts))
   })
   test('independent matches Datatracker ise stream', async () => {
     for (const mode of ALL_MODES) {
@@ -958,7 +970,7 @@ describe('XML document should have a valid submission type', () => {
     await expect(validateSubmissionType(makeDoc('IETF', 'draft-beep-boop5'))).resolves.toContainError('SUBMISSION_TYPE_UNEXPECTED', ValidationError)
   })
   test('independent compared when Datatracker has no stream or a different one', async () => {
-    await expect(validateSubmissionType(makeDoc('independent', 'draft-ietf-beep-boop4'), { mode: MODES.SUBMISSION })).resolves.toContainError('SUBMISSION_TYPE_UNEXPECTED', ValidationComment)
+    await expect(validateSubmissionType(makeDoc('independent', 'draft-ietf-beep-boop4'), { mode: MODES.SUBMISSION })).resolves.toContainError('DATATRACKER_STREAM_NOT_SET', ValidationComment)
     await expect(validateSubmissionType(makeDoc('independent', 'draft-ietf-beep-boop'), { mode: MODES.SUBMISSION })).resolves.toContainError('SUBMISSION_TYPE_UNEXPECTED', ValidationError)
   })
   test('editorial stream compared', async () => {
@@ -976,7 +988,7 @@ describe('XML document should have a valid submission type', () => {
       expect(result[0].message).toContain('submissionType="IETF"')
     }
     await expect(validateSubmissionType(makeDoc(null, 'draft-ietf-beep-boop3'))).resolves.toContainError('SUBMISSION_TYPE_UNEXPECTED', ValidationError)
-    await expect(validateSubmissionType(makeDoc(null, 'draft-ietf-beep-boop4'), { mode: MODES.SUBMISSION })).resolves.toContainError('SUBMISSION_TYPE_UNEXPECTED', ValidationComment)
+    await expect(validateSubmissionType(makeDoc(null, 'draft-ietf-beep-boop4'), { mode: MODES.SUBMISSION })).resolves.toContainError('DATATRACKER_STREAM_NOT_SET', ValidationComment)
   })
   test('offline skips the Datatracker comparison but keeps the missing submissionType comment', async () => {
     for (const mode of ALL_MODES) {

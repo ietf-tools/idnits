@@ -167,10 +167,10 @@ describe('checkDatatrackerStream', () => {
   })
   test('reports a document with no stream yet by mode', async () => {
     await expect(checkDatatrackerStream('draft-foo-nostream', 'ietf', { ...opts, docType: 'RFC' })).resolves.toEqual([
-      new ValidationError('SUBMISSION_TYPE_UNEXPECTED', 'The document declares the IETF stream, but Datatracker has no stream for this RFC yet.', opts.findingOpts)
+      new ValidationError('DATATRACKER_STREAM_NOT_SET', 'The document declares the IETF stream, but Datatracker has no stream for this RFC yet.', opts.findingOpts)
     ])
-    await expect(checkDatatrackerStream('draft-foo-nostream', 'ietf', { ...opts, mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('SUBMISSION_TYPE_UNEXPECTED', ValidationWarning)
-    await expect(checkDatatrackerStream('draft-foo-nostream', 'ietf', { ...opts, mode: MODES.SUBMISSION })).resolves.toContainError('SUBMISSION_TYPE_UNEXPECTED', ValidationComment)
+    await expect(checkDatatrackerStream('draft-foo-nostream', 'ietf', { ...opts, mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('DATATRACKER_STREAM_NOT_SET', ValidationWarning)
+    await expect(checkDatatrackerStream('draft-foo-nostream', 'ietf', { ...opts, mode: MODES.SUBMISSION })).resolves.toContainError('DATATRACKER_STREAM_NOT_SET', ValidationComment)
   })
 })
 
