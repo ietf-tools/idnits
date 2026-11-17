@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, vi, test } from 'vitest'
 import { generateTXTDoc } from './generators/doc-txt.js'
-import { getSubsectionHeadings } from '../lib/modules/downref.mjs'
+import { getSubsectionHeadings } from '../lib/model/references.mjs'
 import {
   abstractTXTBlock,
   tableOfContentsTXTBlock,
