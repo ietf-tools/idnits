@@ -1231,6 +1231,53 @@ module example {
         const doc = await parseXML({ body: '<t>The client <bcp14>SHOULD</bcp14> retry.</t>' })
         expect(await names(doc)).toEqual([])
       })
+
+      describe('a boilerplate broken across lines and indented', () => {
+        // RFC 2119 phrasing, untagged, broken inside "in this document"
+        const rfc2119 = `<t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD",
+          "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
+          document are to be interpreted as described in RFC 2119 <xref target="RFC2119"/>.</t>`
+        // RFC 8174 phrasing, untagged, broken inside "in this document", "NOT RECOMMENDED" and
+        // "when, and only when"
+        const rfc8174 = `<t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD",
+            "SHOULD NOT", "RECOMMENDED", "NOT
+            RECOMMENDED", "MAY", and "OPTIONAL" in
+            this   document are to be interpreted as described in BCP 14 <xref target="RFC2119"/>
+            <xref target="RFC8174"/> when, and only
+            when, they appear in all capitals, as shown here.</t>`
+        // RFC 8174 phrasing, tagged, broken inside "The key words" and "in this document"
+        const tagged8174 = tagged().replace('The key words', 'The key\n    words').replace('in this document', 'in\n        this\tdocument')
+
+        test('RFC 2119 phrasing: recognised, and its keywords aren\'t flagged', async () => {
+          const doc = await parseXML({ boilerplate: rfc2119 })
+          expect((await validate2119Keywords(doc)).map(r => r.name)).toEqual(['MISSING_REQLEVEL_KEYWORDS'])
+          const used = await parseXML({ boilerplate: rfc2119, body: '<t>The client <bcp14>MUST</bcp14> connect.</t>' })
+          expect(await validate2119Keywords(used)).toEqual([])
+        })
+        test('RFC 8174 phrasing: recognised, and its keywords aren\'t flagged', async () => {
+          const doc = await parseXML({ boilerplate: rfc8174 })
+          expect((await validate2119Keywords(doc)).map(r => r.name)).toEqual(['MISSING_REQLEVEL_KEYWORDS'])
+          const used = await parseXML({ boilerplate: rfc8174, body: '<t>The client <bcp14>MUST</bcp14> connect.</t>' })
+          expect(await validate2119Keywords(used)).toEqual([])
+        })
+        test('RFC 8174 phrasing: listing NOT RECOMMENDED across a line break', async () => {
+          const doc = await parseXML({ boilerplate: rfc8174, body: '<t>Retrying is <bcp14>NOT RECOMMENDED</bcp14>.</t>' })
+          expect(await validate2119Keywords(doc)).toEqual([])
+          // Only NOT RECOMMENDED broken, "in this document" on one line
+          const notRecommended = rfc8174.replace(/in\s+this\s+document/, 'in this document')
+          const onlyNotRecommended = await parseXML({ boilerplate: notRecommended, body: '<t>Retrying is <bcp14>NOT RECOMMENDED</bcp14>.</t>' })
+          expect(await validate2119Keywords(onlyNotRecommended)).toEqual([])
+        })
+        test('RFC 8174 phrasing, tagged: recognised', async () => {
+          expect(await names(await parseXML({ boilerplate: tagged8174 }))).toEqual(['MISSING_REQLEVEL_KEYWORDS'])
+          expect(await names(await parseXML({ boilerplate: tagged8174, body: '<t>The client <bcp14>MUST</bcp14> connect.</t>' }))).toEqual([])
+        })
+        test('without a reference: the boilerplate is there, the reference missing', async () => {
+          const doc = await parseXML({ boilerplate: rfc2119.replace(' <xref target="RFC2119"/>', ''), body: '<t>The client <bcp14>MUST</bcp14> connect.</t>' })
+          doc.data.rfc.back = {}
+          expect((await validate2119Keywords(doc)).map(r => r.name)).toEqual(['MISSING_REQLEVEL_REF'])
+        })
+      })
     })
 
     describe('BCP14 reference detection (parsed XML)', () => {
