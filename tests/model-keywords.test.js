@@ -143,14 +143,26 @@ describe('BCP 14 keywords of an XML document are declared in <bcp14>, located by
     expect(getBcp14Boilerplate(without)).toMatchObject({ present: false, notRecommended: false, location: {} })
   })
 
-  test('references are declared, cited when an <xref> targets them', async () => {
+  test('references are declared, cited when an <xref> targets them, located at the first <xref> or else where declared', async () => {
     const doc = await parseXmlDraft({
       middle: '<t>See <xref target="BCP14"/>.</t>',
       back: '<references><name>Normative References</name><reference anchor="RFC8174"><front><title>Z</title></front></reference></references>'
     })
     expect(getBcp14References(doc)).toEqual([
-      { id: 'RFC8174', certainty: CERTAINTY.DECLARED, cited: false, location: {} },
-      { id: 'BCP14', certainty: CERTAINTY.DECLARED, cited: true, location: {} }
+      { id: 'RFC8174', certainty: CERTAINTY.DECLARED, cited: false, location: { path: 'rfc.back.references.reference' } },
+      { id: 'BCP14', certainty: CERTAINTY.DECLARED, cited: true, location: { path: 'rfc.middle.t.xref' } }
+    ])
+  })
+
+  test('a reference declared by an entity only is located nowhere, one of several elements by its index', async () => {
+    const doc = await parseXmlDraft({
+      middle: '<t>Text.</t><t>See <xref target="X"/> and <xref target="RFC2119"/>.</t>',
+      back: '<references><name>Normative References</name><reference anchor="X"><front><title>X</title></front></reference><reference anchor="RFC2119"><front><title>Y</title></front></reference></references>'
+    })
+    doc.externalEntities = [{ name: 'RFC8174' }]
+    expect(getBcp14References(doc).map(ref => ref.location)).toEqual([
+      { path: 'rfc.middle.t[1].xref[1]' },
+      {}
     ])
   })
 })
