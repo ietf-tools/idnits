@@ -165,7 +165,7 @@ describe('sections of an XML document are declared, located by path', () => {
       certainty: CERTAINTY.DECLARED,
       present: false,
       empty: false,
-      location: { path: 'rfc.middle.section' }
+      location: { path: 'rfc.middle' }
     })
   })
 
