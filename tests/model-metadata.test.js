@@ -23,15 +23,20 @@ async function parseXmlDraft ({ attrs = '', front = '' }) {
 }
 
 describe('metadata of a text document is inferred', () => {
-  test('category, date and name, read once per document', async () => {
+  test('category, date and name, read once per document and located at their lines', async () => {
     const doc = await parseTXT(CANONICAL_TXT, '')
     const category = getCategory(doc)
-    expect(category).toMatchObject({ certainty: CERTAINTY.INFERRED, value: 'Standards Track', known: true, location: {} })
+    expect(category).toMatchObject({ certainty: CERTAINTY.INFERRED, value: 'Standards Track', known: true, location: { lines: [{ line: 8, pos: 1 }] } })
     expect(getCategory(doc)).toBe(category)
     const date = getDate(doc)
-    expect(date).toMatchObject({ certainty: CERTAINTY.INFERRED, present: true, location: {} })
+    expect(date).toMatchObject({ certainty: CERTAINTY.INFERRED, present: true, location: { lines: [{ line: 11, pos: 49 }] } })
     expect(date.date.toISODate()).toBe('2025-01-01')
-    expect(getDocName(doc)).toEqual({ certainty: CERTAINTY.INFERRED, name: 'draft-ietf-beep-boop-01', location: {} })
+    expect(getDocName(doc)).toEqual({ certainty: CERTAINTY.INFERRED, name: 'draft-ietf-beep-boop-01', location: { lines: [{ line: 16, pos: 15 }] } })
+  })
+
+  test('a status given on the other kind of document\'s line is located there', async () => {
+    const doc = await parseTXT(CANONICAL_TXT.replace('Intended status: Standards Track', '  Category: Informational'), '')
+    expect(getCategory(doc)).toMatchObject({ value: undefined, misplacedValue: 'Informational', location: { lines: [{ line: 8, pos: 3 }] } })
   })
 
   test('a draft giving its status on a Category: line, and a date that is not one', () => {
@@ -40,8 +45,8 @@ describe('metadata of a text document is inferred', () => {
       docKind: 'draft',
       data: { header: { category: 'Informational', date: { year: 2026, month: 'Augst', day: 1 } } }
     }
-    expect(getCategory(doc)).toMatchObject({ value: undefined, misplacedValue: 'Informational', known: false })
-    expect(getDate(doc)).toMatchObject({ present: true, date: null })
+    expect(getCategory(doc)).toMatchObject({ value: undefined, misplacedValue: 'Informational', known: false, location: {} })
+    expect(getDate(doc)).toMatchObject({ present: true, date: null, location: {} })
   })
 
   test('RFCs listed on the header lines and mentioned in the abstract', async () => {
@@ -55,7 +60,7 @@ describe('metadata of a text document is inferred', () => {
     })
     expect(getRelations(doc, 'updates').rfcs).toEqual([{ rfc: '1234', location: { lines: [{ line: 12, pos: 10 }] } }])
     expect(await getRelationMentions(doc, 'obsoletes')).toEqual({
-      kind: 'obsoletes', certainty: CERTAINTY.INFERRED, mentioned: ['5678'], stated: ['5678'], location: {}
+      kind: 'obsoletes', certainty: CERTAINTY.INFERRED, mentioned: ['5678'], stated: ['5678'], location: { lines: [{ line: 18, pos: 1 }] }
     })
     expect(await getRelationMentions(doc, 'updates')).toMatchObject({ mentioned: [], stated: [] })
   })
