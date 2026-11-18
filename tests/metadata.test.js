@@ -304,7 +304,7 @@ describe('document should have valid date', () => {
     })
 
     test('Obsoletes a non-existant RFC', async () => {
-      const doc = baseTXTDoc
+      const doc = cloneDeep(baseTXTDoc)
       doc.data.extractedElements.obsoletesRfc = ['1234, 2345']
       doc.data.content.abstract = abstractTXTBlock.split('\n')
 
@@ -315,7 +315,7 @@ describe('document should have valid date', () => {
     })
 
     test('Obsoletes an already obsoleted RFC', async () => {
-      const doc = baseTXTDoc
+      const doc = cloneDeep(baseTXTDoc)
       doc.data.extractedElements.obsoletesRfc = ['1235']
       doc.data.content.abstract = abstractTXTBlock.split('\n')
 
@@ -326,7 +326,7 @@ describe('document should have valid date', () => {
     })
 
     test('Updates a non-existant RFC', async () => {
-      const doc = baseTXTDoc
+      const doc = cloneDeep(baseTXTDoc)
       doc.data.extractedElements.updatesRfc = ['1234, 2345']
       doc.data.content.abstract = abstractTXTBlock.split('\n')
 
@@ -337,7 +337,7 @@ describe('document should have valid date', () => {
     })
 
     test('Updates an already obsoleted RFC', async () => {
-      const doc = baseTXTDoc
+      const doc = cloneDeep(baseTXTDoc)
 
       doc.data.extractedElements.updatesRfc = ['1264']
       doc.data.content.abstract = abstractTXTBlock.split('\n')
@@ -450,7 +450,7 @@ describe('document should have valid date', () => {
   describe('TXT Document Type', () => {
     test('valid date', async () => {
       const today = DateTime.now().setLocale('en-US')
-      const doc = baseTXTDoc
+      const doc = cloneDeep(baseTXTDoc)
 
       doc.data.header.date = {
         year: today.year,
@@ -460,14 +460,14 @@ describe('document should have valid date', () => {
       await expect(validateDate(doc)).resolves.toHaveLength(0)
     })
     test('date missing', async () => {
-      const doc = baseTXTDoc
+      const doc = cloneDeep(baseTXTDoc)
       doc.data.header.date = {}
       await expect(validateDate(doc)).resolves.toContainError('MISSING_DOC_DATE', ValidationWarning)
       await expect(validateDate(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('MISSING_DOC_DATE', ValidationWarning)
       await expect(validateDate(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('MISSING_DOC_DATE', ValidationWarning)
     })
     test('date in the past', async () => {
-      const doc = baseTXTDoc
+      const doc = cloneDeep(baseTXTDoc)
       const today = DateTime.now().setLocale('en-US').minus({ days: 15 })
 
       doc.data.header.date = {
@@ -480,7 +480,7 @@ describe('document should have valid date', () => {
       await expect(validateDate(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('DOC_DATE_IN_PAST', ValidationWarning)
     })
     test('date in the future', async () => {
-      const doc = baseTXTDoc
+      const doc = cloneDeep(baseTXTDoc)
       const today = DateTime.now().setLocale('en-US').plus({ days: 15 })
 
       doc.data.header.date = {
@@ -493,7 +493,7 @@ describe('document should have valid date', () => {
       await expect(validateDate(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('DOC_DATE_IN_FUTURE', ValidationWarning)
     })
     test('abbreviated month', async () => {
-      const doc = baseTXTDoc
+      const doc = cloneDeep(baseTXTDoc)
       const today = DateTime.now().setLocale('en-US').minus({ days: 15 })
 
       doc.data.header.date = {
@@ -504,7 +504,7 @@ describe('document should have valid date', () => {
       await expect(validateDate(doc)).resolves.toContainError('DOC_DATE_IN_PAST', ValidationWarning)
     })
     test('unparseable month is reported, not thrown', async () => {
-      const doc = baseTXTDoc
+      const doc = cloneDeep(baseTXTDoc)
       const today = DateTime.now().setLocale('en-US')
 
       doc.data.header.date = {
@@ -1108,38 +1108,38 @@ describe('document should have valid version', () => {
 
   describe('TXT Document Type', () => {
     test('valid version on existing doc', async () => {
-      const doc = baseTXTDoc
+      const doc = cloneDeep(baseTXTDoc)
       doc.data.slug = 'draft-ietf-beep-boop-01'
       await expect(validateVersion(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
     test('valid version on non-existant doc', async () => {
-      const doc = baseTXTDoc
-      baseTXTDoc.data.slug = 'draft-ietf-beep-buup-00'
+      const doc = cloneDeep(baseTXTDoc)
+      doc.data.slug = 'draft-ietf-beep-buup-00'
       await expect(validateVersion(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
     test('duplicate version', async () => {
-      const doc = baseTXTDoc
+      const doc = cloneDeep(baseTXTDoc)
       doc.data.slug = 'draft-ietf-beep-boop-00'
       await expect(validateVersion(doc)).resolves.toHaveLength(0)
       await expect(validateVersion(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
       await expect(validateVersion(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('DUPLICATE_DOC_VERSION', ValidationWarning)
     })
     test('unexpected version (lower than latest)', async () => {
-      const doc = baseTXTDoc
+      const doc = cloneDeep(baseTXTDoc)
       doc.data.slug = 'draft-ietf-beep-baap-01'
       await expect(validateVersion(doc)).resolves.toHaveLength(0)
       await expect(validateVersion(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
       await expect(validateVersion(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('UNEXPECTED_DOC_VERSION', ValidationWarning)
     })
     test('unexpected version (leaves a gap)', async () => {
-      const doc = baseTXTDoc
+      const doc = cloneDeep(baseTXTDoc)
       doc.data.slug = 'draft-ietf-beep-biip-04'
       await expect(validateVersion(doc)).resolves.toHaveLength(0)
       await expect(validateVersion(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
       await expect(validateVersion(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('UNEXPECTED_DOC_VERSION', ValidationWarning)
     })
     test('unexpected version on non-existant doc', async () => {
-      const doc = baseTXTDoc
+      const doc = cloneDeep(baseTXTDoc)
       doc.data.slug = 'draft-ietf-beep-buup-01'
       await expect(validateVersion(doc)).resolves.toHaveLength(0)
       await expect(validateVersion(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
@@ -1150,38 +1150,38 @@ describe('document should have valid version', () => {
 
 describe('TXT Document Type', () => {
   test('valid version on existing doc', async () => {
-    const doc = baseTXTDoc
+    const doc = cloneDeep(baseTXTDoc)
     doc.data.slug = 'draft-ietf-beep-boop-01'
     await expect(validateVersion(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
   })
   test('valid version on non-existant doc', async () => {
-    const doc = baseTXTDoc
+    const doc = cloneDeep(baseTXTDoc)
     doc.data.slug = 'draft-ietf-beep-buup-00'
     await expect(validateVersion(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
   })
   test('duplicate version', async () => {
-    const doc = baseTXTDoc
+    const doc = cloneDeep(baseTXTDoc)
     doc.data.slug = 'draft-ietf-beep-boop-00'
     await expect(validateVersion(doc)).resolves.toHaveLength(0)
     await expect(validateVersion(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
     await expect(validateVersion(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('DUPLICATE_DOC_VERSION', ValidationWarning)
   })
   test('unexpected version (lower than latest)', async () => {
-    const doc = baseTXTDoc
+    const doc = cloneDeep(baseTXTDoc)
     doc.data.slug = 'draft-ietf-beep-baap-01'
     await expect(validateVersion(doc)).resolves.toHaveLength(0)
     await expect(validateVersion(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
     await expect(validateVersion(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('UNEXPECTED_DOC_VERSION', ValidationWarning)
   })
   test('unexpected version (leaves a gap)', async () => {
-    const doc = baseTXTDoc
+    const doc = cloneDeep(baseTXTDoc)
     doc.data.slug = 'draft-ietf-beep-biip-04'
     await expect(validateVersion(doc)).resolves.toHaveLength(0)
     await expect(validateVersion(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
     await expect(validateVersion(doc, { mode: MODES.SUBMISSION })).resolves.toContainError('UNEXPECTED_DOC_VERSION', ValidationWarning)
   })
   test('unexpected version on non-existant doc', async () => {
-    const doc = baseTXTDoc
+    const doc = cloneDeep(baseTXTDoc)
     doc.data.slug = 'draft-ietf-beep-buup-01'
     await expect(validateVersion(doc)).resolves.toHaveLength(0)
     await expect(validateVersion(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toHaveLength(0)
