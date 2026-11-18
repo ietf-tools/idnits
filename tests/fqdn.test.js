@@ -141,7 +141,7 @@ describe('document should have valid FQDN mentions', () => {
       expect(result).toHaveLength(0)
     })
 
-    test('github-like domains should be mentionned as a comment', async () => {
+    test('github-like domains should be mentioned as a comment', async () => {
       const doc = {
         type: 'txt',
         data: {
@@ -156,11 +156,11 @@ describe('document should have valid FQDN mentions', () => {
 
       const result = await validateFQDNs(doc, { mode: MODES.NORMAL, offline: true, allowedDomains: [] })
       expect(result).toEqual([
-        new ValidationComment('POSSIBLE_INVALID_TLD', 'Ensure "github.com" isn\'t used as a example. For example domains, consider using ".example.(com|org|net)" instead.', {
+        new ValidationComment('POSSIBLE_INVALID_TLD', 'Ensure "github.com" isn\'t used as an example. For example domains, consider using ".example.(com|org|net)" instead.', {
           ref: 'https://www.rfc-editor.org/rfc/rfc6761',
           text: 'github.com'
         }),
-        new ValidationComment('POSSIBLE_INVALID_TLD', 'Ensure "abcdef.gitlab.io" isn\'t used as a example. For example domains, consider using ".example.(com|org|net)" instead.', {
+        new ValidationComment('POSSIBLE_INVALID_TLD', 'Ensure "abcdef.gitlab.io" isn\'t used as an example. For example domains, consider using ".example.(com|org|net)" instead.', {
           ref: 'https://www.rfc-editor.org/rfc/rfc6761',
           text: 'abcdef.gitlab.io'
         })
@@ -256,7 +256,7 @@ SEQUENCE (1 elem)
 
       const result = await validateFQDNs(doc, { mode: MODES.NORMAL, offline: true, allowedDomains: [] })
       expect(result).toEqual([
-        new ValidationComment('POSSIBLE_INVALID_TLD', 'Ensure "github.com" isn\'t used as a example. For example domains, consider using ".example.(com|org|net)" instead.', {
+        new ValidationComment('POSSIBLE_INVALID_TLD', 'Ensure "github.com" isn\'t used as an example. For example domains, consider using ".example.(com|org|net)" instead.', {
           ref: 'https://www.rfc-editor.org/rfc/rfc6761',
           lines: [{ line: 6, pos: 23 }],
           text: 'github.com'

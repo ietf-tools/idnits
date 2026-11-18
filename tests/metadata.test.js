@@ -715,6 +715,7 @@ describe('document should have valid obsoletes / updates references', () => {
       expect(result).not.toContainError('UPDATES_NOT_IN_ABSTRACT')
       expect(result).toContainError('OBSOLETES_NOT_IN_ABSTRACT', ValidationWarning)
       expect(result).not.toContainError('UPDATES_NOT_IN_RFC')
+      expect(result.find(r => r.name === 'OBSOLETES_NOT_IN_ABSTRACT').message).toBe('The document states that it obsoletes RFC 1234 but doesn\'t explicitly mention it in the <abstract> section.')
 
       const targetXml = xml('This document obsoletes <xref target="RFC1234"/> and updates <xref target="RFC7854"/>&#160;and <xref target="RFC8000"/>.', 'updates="7854"')
       const { doc: withTarget } = await parse(targetXml, 'draft-foo-bar-00.xml')
@@ -722,14 +723,15 @@ describe('document should have valid obsoletes / updates references', () => {
       expect(result2).not.toContainError('UPDATES_NOT_IN_ABSTRACT')
       const names = result2.map(r => r.name).sort()
       expect(names).toEqual(['OBSOLETES_NOT_IN_RFC', 'UPDATES_NOT_IN_RFC'])
-      expect(result2.find(r => r.name === 'UPDATES_NOT_IN_RFC').message).toContain('RFC 8000')
+      expect(result2.find(r => r.name === 'UPDATES_NOT_IN_RFC').message).toBe('The document abstract states that it updates RFC 8000 but it\'s not mentioned in the updates <rfc> field.')
+      expect(result2.find(r => r.name === 'OBSOLETES_NOT_IN_RFC').message).toBe('The document abstract states that it obsoletes RFC 1234 but it\'s not mentioned in the obsoletes <rfc> field.')
 
       // From draft-ietf-mailmaint-imap-objectid-bis-06: attributes written "RFC8474"
       const prefixedXml = xml('This document obsoletes <xref target="RFC8474"/> and updates <xref target="RFC9698"/>.', 'obsoletes="RFC8474" updates="RFC3501, RFC9698"')
       const { doc: prefixed } = await parse(prefixedXml, 'draft-foo-bar-00.xml')
       const result3 = await validateObsoleteUpdateRef(prefixed, { offline: true })
       const messages = result3.map(r => r.message)
-      expect(messages).toEqual(["The document states that it updates RFC 3501 but doesn't explicitely mention it in the <abstract> section."])
+      expect(messages).toEqual(["The document states that it updates RFC 3501 but doesn't explicitly mention it in the <abstract> section."])
     })
     test('a "<!--" inside CDATA starts no comment in the abstract\'s source', async () => {
       const xml = (title, code) => `<?xml version="1.0" encoding="UTF-8"?>
