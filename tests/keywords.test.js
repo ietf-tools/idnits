@@ -9,6 +9,7 @@ import { addXmlSourceLines, labelFindings } from '../lib/helpers/location.mjs'
 import { baseTXTDoc, baseXMLDoc } from './fixtures/base-doc.mjs'
 import { parse } from '../lib/parsers/xml.mjs'
 import { parse as parseTXT } from '../lib/parsers/txt.mjs'
+import { getKeywords } from '../lib/model/keywords.mjs'
 import { cloneDeep, set } from 'lodash-es'
 
 expect.extend({
@@ -1276,6 +1277,52 @@ module example {
           const doc = await parseXML({ boilerplate: rfc2119.replace(' <xref target="RFC2119"/>', ''), body: '<t>The client <bcp14>MUST</bcp14> connect.</t>' })
           doc.data.rfc.back = {}
           expect((await validate2119Keywords(doc)).map(r => r.name)).toEqual(['MISSING_REQLEVEL_REF'])
+        })
+      })
+
+      describe('keywords broken across lines and indented', () => {
+        const findings = async (body, boilerplate = tagged()) => {
+          return (await validate2119Keywords(await parseXML({ boilerplate, body }))).map(r => [r.name, r.message])
+        }
+
+        test('an untagged keyword is quoted as one keyword, with a single space', async () => {
+          expect(await findings('<t>The client MUST\n          NOT connect.</t>')).toEqual([
+            ['MISSING_BCP14_TAGS', 'The BCP14 keyword "MUST NOT" should be enclosed in <bcp14></bcp14> tags.']
+          ])
+          expect(await findings('<t>Retrying is NOT\n\t  RECOMMENDED.</t>')).toEqual([
+            ['MISSING_BCP14_TAGS', 'The BCP14 keyword "NOT RECOMMENDED" should be enclosed in <bcp14></bcp14> tags.']
+          ])
+        })
+        test('a tagged keyword is a valid keyword', async () => {
+          expect(await findings('<t>The client <bcp14>SHALL\n          NOT</bcp14> connect.</t>')).toEqual([])
+          // A no-break space, as xml2rfc writes in an RFC
+          expect(await findings('<t>The client <bcp14>MUST NOT</bcp14> connect.</t>')).toEqual([])
+        })
+        test('an invalid combination is quoted with a single space', async () => {
+          expect(await findings('<t>The client <bcp14>MUST\n          not</bcp14> connect.</t>')).toEqual([
+            ['INVALID_REQLEVEL_KEYWORD', 'MUST not is not a valid BCP14 Requirement Level keyword.']
+          ])
+        })
+        test('NOT RECOMMENDED used, and the boilerplate without it', async () => {
+          const body = '<t>Retrying is <bcp14>NOT\n          RECOMMENDED</bcp14>.</t>'
+          expect((await findings(body, tagged(false))).map(([name]) => name)).toEqual(['MISSING_NOTRECOMMENDED_IN_BOILERPLATE'])
+          expect(await findings(body)).toEqual([])
+        })
+        test('a word starting with "not" after a keyword isn\'t NOT', async () => {
+          const should = [['MISSING_BCP14_TAGS', 'The BCP14 keyword "SHOULD" should be enclosed in <bcp14></bcp14> tags.']]
+          expect(await findings('<t>The device SHOULD notify the operator.</t>')).toEqual(should)
+          expect(await findings('<t>The device SHOULD\n          notify the operator.</t>')).toEqual(should)
+          expect(await findings('<t>The device SHOULD NOTIFY the operator.</t>')).toEqual(should)
+        })
+        test('a word ending with "not" before a keyword isn\'t NOT', async () => {
+          expect(await findings('<t>A client that cannot MUST fall back.</t>')).toEqual([
+            ['MISSING_BCP14_TAGS', 'The BCP14 keyword "MUST" should be enclosed in <bcp14></bcp14> tags.']
+          ])
+        })
+        test('the keywords read, with a single space', async () => {
+          const doc = await parseXML({ body: '<t>The client <bcp14>MUST\n  NOT</bcp14> connect, and SHOULD\n  NOT retry.</t>' })
+          const used = getKeywords(doc).keywords.filter(kw => !kw.inBoilerplate)
+          expect(used.map(kw => kw.keyword)).toEqual(['MUST NOT', 'SHOULD NOT'])
         })
       })
     })
