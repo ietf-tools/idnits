@@ -363,6 +363,18 @@ describe('document should have valid date', () => {
       await expect(validateObsoleteUpdateRef(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('UPDATES_OBSOLETED_RFC', ValidationWarning)
       await expect(validateObsoleteUpdateRef(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
+
+    test('Updates an already updated RFC', async () => {
+      const doc = cloneDeep(baseTXTDoc)
+
+      doc.data.extractedElements.updatesRfc = ['1236']
+      doc.data.content.abstract = abstractTXTBlock.split('\n')
+
+      await expect(validateObsoleteUpdateRef(doc)).resolves.toContainError('UPDATES_UPDATED_RFC', ValidationWarning)
+      expect((await validateObsoleteUpdateRef(doc)).find(r => r.name === 'UPDATES_UPDATED_RFC').message).toBe('This document updates RFC 1236. That RFC is already updated by RFC 3456. Verify that this document does not conflict with those.')
+      await expect(validateObsoleteUpdateRef(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toContainError('UPDATES_UPDATED_RFC', ValidationWarning)
+      await expect(validateObsoleteUpdateRef(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
+    })
   })
 
   describe('XML Document Type', () => {
@@ -1360,10 +1372,11 @@ describe('text findings are located at the line they are about', () => {
   })
 
   test('the RFCs looked up, where the header line lists them; one stated in the abstract, at the abstract', async () => {
-    const doc = await draft([['Obsoletes: 5678', 'Obsoletes: 1235'], ['Updates: 1234 (if approved)', 'Updates: 4321']])
+    const doc = await draft([['Obsoletes: 5678', 'Obsoletes: 1235'], ['Updates: 1234 (if approved)', 'Updates: 4321, 1236']])
     const result = await validateObsoleteUpdateRef(doc)
     expect(result.find(r => r.name === 'OBSOLETES_OBSOLETED_RFC')).toMatchObject({ lines: at(10, 12) })
     expect(result.find(r => r.name === 'UPDATES_RFC_NOT_FOUND')).toMatchObject({ lines: at(12, 10) })
+    expect(result.find(r => r.name === 'UPDATES_UPDATED_RFC')).toMatchObject({ lines: at(12, 16) })
     expect(result.find(r => r.name === 'MENTIONED_NOT_IN_OBSOLETES')).toMatchObject({ lines: at(18, 1) })
   })
 
