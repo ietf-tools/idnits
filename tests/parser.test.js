@@ -2932,6 +2932,52 @@ Abstract
     const result = await parse(txt, 'txt')
     expect(result.data.slug).toBe('draft-ietf-idr-rt-derived-community')
   })
+
+  describe('Location of the document slug', () => {
+    const header = [
+      'Network Working Group                                        A. Author',
+      'Internet-Draft                                              Example Inc',
+      'Intended status: Informational                           1 October 2026',
+      'Expires: 4 April 2027',
+      '',
+      '                            An Example Title',
+      '                        draft-author-example-03',
+      '',
+      'Abstract'
+    ]
+
+    test.each([['LF', '\n'], ['CRLF', '\r\n']])('is the slug\'s line with %s line ends', async (name, lineEnd) => {
+      const result = await parse(header.join(lineEnd), 'txt')
+      expect(result.data.slug).toBe('draft-author-example-03')
+      expect(result.data.slugLocation).toEqual({ line: 7, pos: 25 })
+    })
+
+    test('is on the parser\'s lines when a lone CR comes before the slug', async () => {
+      // The lone CR breaks the line for finding the name, as for Datatracker, but not for the parser
+      const lines = [...header]
+      lines[1] = 'Internet-Draft\r                                             Example Inc'
+      const result = await parse(lines.join('\n'), 'txt')
+      expect(result.data.slug).toBe('draft-author-example-03')
+      expect(result.data.slugLocation).toEqual({ line: 7, pos: 25 })
+    })
+
+    test('is on the parser\'s lines when a lone CR on the slug\'s line comes before it', async () => {
+      const lines = [...header]
+      lines[6] = '                   \r     draft-author-example-03'
+      const result = await parse(lines.join('\n'), 'txt')
+      expect(result.data.slug).toBe('draft-author-example-03')
+      expect(result.data.slugLocation).toEqual({ line: 7, pos: 26 })
+    })
+
+    test('is on the parser\'s lines for a slug without a revision after a lone CR', async () => {
+      const lines = [...header]
+      lines[1] = 'Internet-Draft\r                                             Example Inc'
+      lines[6] = '                        draft-author-example.txt'
+      const result = await parse(lines.join('\n'), 'txt')
+      expect(result.data.slug).toBe('draft-author-example')
+      expect(result.data.slugLocation).toEqual({ line: 7, pos: 25 })
+    })
+  })
 })
 
 describe('The document does not appear to be ragged-right', () => {
