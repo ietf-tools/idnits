@@ -1162,7 +1162,7 @@ describe('document should have valid references sections', () => {
       }
       await expect(validateReferencesSection(doc, { mode: MODES.NORMAL })).resolves.toContainError(
         'MISSING_REFERENCES_SECTION',
-        ValidationError
+        ValidationComment
       )
     })
 
@@ -1462,6 +1462,7 @@ ${entry}
     test('valid references section (object)', async () => {
       const doc = cloneDeep(baseXMLDoc)
       set(doc, 'data.rfc.back.references.name', 'Normative References')
+      set(doc, 'data.rfc.back.references.reference._attr.anchor', 'RFC2119')
       await expect(validateReferencesSection(doc)).resolves.toHaveLength(0)
     })
     test('valid references sections (array)', async () => {
@@ -1469,11 +1470,14 @@ ${entry}
       set(doc, 'data.rfc.back.references[0].name', 'Normative References')
       set(doc, 'data.rfc.back.references[1].name', 'Informative References')
       set(doc, 'data.rfc.back.references[1].name["#text"]', 'Informative References')
+      set(doc, 'data.rfc.back.references[0].reference._attr.anchor', 'RFC2119')
+      set(doc, 'data.rfc.back.references[1].reference._attr.anchor', 'RFC8174')
       await expect(validateReferencesSection(doc)).resolves.toHaveLength(0)
     })
     test('references section title attribute is left to DEPRECATED_ATTRIBUTE', async () => {
       const doc = cloneDeep(baseXMLDoc)
       set(doc, 'data.rfc.back.references[0]._attr.title', 'Normative References')
+      set(doc, 'data.rfc.back.references[0].reference._attr.anchor', 'RFC2119')
       await expect(validateReferencesSection(doc)).resolves.toHaveLength(0)
     })
     test('missing references section name', async () => {
@@ -2388,5 +2392,111 @@ describe('a missing <middle> section of an XML document is located at the <middl
       ['MISSING_SECURITY_CONSIDERATIONS_SECTION', 'rfc.middle', undefined, [{ line: 1, pos: 1 }]],
       ['MISSING_IANA_CONSIDERATIONS_SECTION', 'rfc.middle', undefined, [{ line: 1, pos: 1 }]]
     ])
+  })
+})
+
+describe('a missing or empty references section of an XML document', () => {
+  /**
+   * Findings of the references sections, with the label and source line the output adds from their path
+   *
+   * @param {string} xml XML document
+   * @param {number} [mode] Validation mode
+   * @returns {Promise<Array>} [name, severity, path, label, lines] of each finding
+   */
+  async function locatedReferencesFindings (xml, mode = MODES.NORMAL) {
+    const { doc } = await parse(xml, 'draft-test-references-00.xml')
+    const findings = await validateReferencesSection(doc, { mode })
+    addXmlSourceLines(labelFindings(findings, doc), doc)
+    return findings.map(f => [f.name, f.constructor.name, f.path, f.label, f.lines])
+  }
+
+  const front = '<front><title>Test</title></front>\n<middle><section><name>Introduction</name><t>Text.</t></section></middle>'
+  const normative = '<references><name>Normative References</name><reference anchor="RFC2119"/></references>'
+
+  test('without a <references> element, a Comment at <back>, by mode', async () => {
+    const xml = `<rfc version="3" docName="draft-test-references-00">\n${front}\n<back>\n</back>\n</rfc>`
+    await expect(locatedReferencesFindings(xml)).resolves.toEqual([
+      ['MISSING_REFERENCES_SECTION', 'ValidationComment', 'rfc.back.references', undefined, [{ line: 4, pos: 1 }]]
+    ])
+    await expect(locatedReferencesFindings(xml, MODES.FORGIVE_CHECKLIST)).resolves.toEqual([
+      ['MISSING_REFERENCES_SECTION', 'ValidationComment', 'rfc.back.references', undefined, [{ line: 4, pos: 1 }]]
+    ])
+    await expect(locatedReferencesFindings(xml, MODES.SUBMISSION)).resolves.toEqual([])
+  })
+
+  test('without a <back> element, at the <rfc> element', async () => {
+    const { doc } = await parse(`<rfc version="3">\n${front}\n</rfc>`, 'draft-test-references-00.xml')
+    const findings = await validateReferencesSection(doc)
+    addXmlSourceLines(labelFindings(findings, doc), doc)
+    expect(findings).toEqual([
+      new ValidationComment('MISSING_REFERENCES_SECTION', 'The references section is missing.', {
+        ref: 'https://authors.ietf.org/required-content#references',
+        path: 'rfc.back.references',
+        lines: [{ line: 1, pos: 1 }]
+      })
+    ])
+  })
+
+  test('not missing when a file included outside a <references> element may hold it', async () => {
+    const xiInclude = '<xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="references.xml"/>'
+    await expect(locatedReferencesFindings(`<rfc version="3">${front}<back>${xiInclude}</back></rfc>`)).resolves.toEqual([])
+    const entity = '<!DOCTYPE rfc [\n<!ENTITY references SYSTEM "references.xml">\n]>\n'
+    await expect(locatedReferencesFindings(`${entity}<rfc>${front}<back>&references;</back></rfc>`)).resolves.toEqual([])
+    await expect(locatedReferencesFindings(`<rfc>${front}<back><?rfc include="references.xml"?></back></rfc>`)).resolves.toEqual([])
+  })
+
+  test('missing when an external entity is declared but referenced only in a comment, or not at all', async () => {
+    const entity = '<!DOCTYPE rfc [\n<!ENTITY RFC2119 SYSTEM "reference.RFC.2119.xml">\n]>\n'
+    const result = await locatedReferencesFindings(`${entity}<rfc>${front}<back/></rfc>`)
+    expect(result.map(([name, severity, path]) => [name, severity, path])).toEqual([
+      ['MISSING_REFERENCES_SECTION', 'ValidationComment', 'rfc.back.references']
+    ])
+    const commented = await locatedReferencesFindings(`${entity}<rfc>${front}<back><!-- &RFC2119; --></back></rfc>`)
+    expect(commented.map(([name]) => name)).toEqual(['MISSING_REFERENCES_SECTION'])
+  })
+
+  test('an empty <references> element, at the element, by mode', async () => {
+    const xml = `<rfc version="3">\n${front}\n<back>\n${normative}\n<references><name>Informative References</name></references>\n<references/>\n</back>\n</rfc>`
+    await expect(locatedReferencesFindings(xml)).resolves.toEqual([
+      ['EMPTY_REFERENCES_SECTION', 'ValidationError', 'rfc.back.references[1]', 'Informative References', [{ line: 6, pos: 1 }]],
+      ['EMPTY_REFERENCES_SECTION', 'ValidationError', 'rfc.back.references[2]', 'References', [{ line: 7, pos: 1 }]],
+      ['MISSING_REFERENCES_NAME', 'ValidationError', 'rfc.back.references[2].name', 'References', [{ line: 7, pos: 1 }]]
+    ])
+    const forgiven = await locatedReferencesFindings(xml, MODES.FORGIVE_CHECKLIST)
+    expect(forgiven.map(([name, severity]) => [name, severity])).toEqual([
+      ['EMPTY_REFERENCES_SECTION', 'ValidationWarning'],
+      ['EMPTY_REFERENCES_SECTION', 'ValidationWarning'],
+      ['MISSING_REFERENCES_NAME', 'ValidationWarning']
+    ])
+    await expect(locatedReferencesFindings(xml, MODES.SUBMISSION)).resolves.toEqual([])
+  })
+
+  test('an empty <references> element in a <references> wrapper, at the inner element', async () => {
+    const xml = `<rfc version="3">\n${front}\n<back>\n<references><name>References</name>\n${normative}\n<references><name>Informative References</name></references>\n</references>\n</back>\n</rfc>`
+    await expect(locatedReferencesFindings(xml)).resolves.toEqual([
+      ['EMPTY_REFERENCES_SECTION', 'ValidationError', 'rfc.back.references[0].references[1]', 'Informative References', [{ line: 7, pos: 1 }]]
+    ])
+  })
+
+  test('a <references> element holding a <referencegroup> or an include is not empty', async () => {
+    const holding = (content) => `<rfc version="3">${front}<back><references><name>Normative References</name>${content}</references></back></rfc>`
+    await expect(locatedReferencesFindings(holding('<referencegroup anchor="BCP14"/>'))).resolves.toEqual([])
+    const xiInclude = '<xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml"/>'
+    await expect(locatedReferencesFindings(holding(xiInclude))).resolves.toEqual([])
+    const entity = '<!DOCTYPE rfc [\n<!ENTITY RFC2119 SYSTEM "https://bib.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml">\n]>\n'
+    await expect(locatedReferencesFindings(`${entity}${holding('&RFC2119;')}`)).resolves.toEqual([])
+    await expect(locatedReferencesFindings(holding('<?rfc include="reference.RFC.2119.xml"?>'))).resolves.toEqual([])
+  })
+})
+
+describe('a missing references section of a text document', () => {
+  test('is a Comment with a full stop, by mode', async () => {
+    const doc = { type: 'txt', data: { markers: { references: { start: 0 } }, content: {} }, body: '' }
+    const finding = new ValidationComment('MISSING_REFERENCES_SECTION', 'The references section is missing.', {
+      ref: 'https://authors.ietf.org/required-content#references'
+    })
+    await expect(validateReferencesSection(doc)).resolves.toEqual([finding])
+    await expect(validateReferencesSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toEqual([finding])
+    await expect(validateReferencesSection(doc, { mode: MODES.SUBMISSION })).resolves.toEqual([])
   })
 })

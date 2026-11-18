@@ -314,8 +314,8 @@ For text documents, `SUBMISSION_TYPE_UNEXPECTED` and `DATATRACKER_STREAM_NOT_SET
 
 | Code | normal | forgive-checklist | submission | Format | Notes |
 |---|---|---|---|---|---|
-| `MISSING_REFERENCES_SECTION` | Error | Warning | — | text | |
-| `EMPTY_REFERENCES_SECTION` | Error | Warning | — | text | |
+| `MISSING_REFERENCES_SECTION` | Comment | Comment | — | both | XML: no `<references>` element, unless `<back>` has an `xi:include` or the document refers to an external entity or has an `<?rfc include?>` |
+| `EMPTY_REFERENCES_SECTION` | Error | Warning | — | both | XML: each `<references>` element with no `<reference>`, `<referencegroup>`, include or `<references>` |
 | `REFERENCE_TYPE_NOT_DECLARED` | Error | Warning | — | text | Neither normative nor informative |
 | `UNCLASSIFIED_REFERENCES_SUBSECTION` | Error | Warning | — | text | |
 | `MULTIPLE_REFERENCES_SECTION_TITLES` | Warning | Warning | — | text | |
