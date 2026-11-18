@@ -162,6 +162,40 @@ describe('location', () => {
       const doc = await getDoc()
       expect(getXmlLocationLabel(doc.data, path)).toEqual(expected)
     })
+
+    const GROUP_XML = `<rfc version="3" docName="draft-test-group-00"><front><title>T</title></front><middle/><back>
+  <references><name>Normative References</name>
+    <referencegroup anchor="BCP14">
+      <reference anchor="RFC2119"><front><title>Key words</title></front></reference>
+      <reference anchor="RFC8174"><front><title>Ambiguity</title></front></reference>
+    </referencegroup>
+    <referencegroup>
+      <reference anchor="RFC9000"><front><title>QUIC</title></front></reference>
+    </referencegroup>
+    <referencegroup anchor="STD1">
+      <reference><front><title>No anchor</title></front></reference>
+    </referencegroup>
+    <reference anchor="RFC9999"><front><title>Other</title></front></reference>
+  </references>
+</back></rfc>`
+    test.each([
+      // The group itself
+      ['rfc.back.references.referencegroup[0]', 'Normative References, reference group [BCP14]'],
+      // A reference in a group, by the group and its own anchor
+      ['rfc.back.references.referencegroup[0].reference[0]', 'Normative References, reference group [BCP14], reference [RFC2119]'],
+      ['rfc.back.references.referencegroup[0].reference[1].front.title', 'Normative References, reference group [BCP14], reference [RFC8174]'],
+      ['rfc.back.references.referencegroup[1].reference[0]', 'Normative References, reference [RFC9000]'],
+      // A reference in a group that can't be resolved, or has no anchor: the group only
+      ['rfc.back.references.referencegroup[0].reference', 'Normative References, reference group [BCP14]'],
+      ['rfc.back.references.referencegroup[0].reference[5]', 'Normative References, reference group [BCP14]'],
+      ['rfc.back.references.referencegroup[2].reference[0]', 'Normative References, reference group [STD1]'],
+      ['rfc.back.references.referencegroup[7].reference[0]', 'Normative References'],
+      // A reference outside the groups
+      ['rfc.back.references.reference', 'Normative References, reference [RFC9999]']
+    ])('reference group: %s → %s', async (path, expected) => {
+      const { doc } = await parse(GROUP_XML, 'draft-test-group-00.xml')
+      expect(getXmlLocationLabel(doc.data, path)).toEqual(expected)
+    })
   })
 
   describe('labelFindings()', () => {
