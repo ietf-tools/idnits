@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import { parse as parseTXT } from '../lib/parsers/txt.mjs'
 import { CANONICAL_TXT } from './generators/doc-txt.js'
-import { getSubsectionHeadings } from '../lib/modules/downref.mjs'
+import { getSubsectionHeadings } from '../lib/model/references.mjs'
 
 describe('Subsection headings of the references section, as the downref checks read them', () => {
   // From draft-ietf-mailmaint-imap-objectid-bis-06, draft-caini-dtn-quiccl-01 and RFC 758
