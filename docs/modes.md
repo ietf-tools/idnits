@@ -326,6 +326,7 @@ For text documents, `SUBMISSION_TYPE_UNEXPECTED` and `DATATRACKER_STREAM_NOT_SET
 | `REFERENCE_NOT_USED` | Warning | Warning | Warning | both | |
 | `REFERENCE_CITED_AS_TEXT` | Warning | Warning | Warning | XML | mentioned only as typed text in prose, without `<xref>` |
 | `REFERENCE_MISSING_IN_REFERENCE_SECTION` | Warning | Warning | Warning | text | |
+| `XREF_TARGET_NOT_FOUND` | Error | Warning | Warning | XML | `<xref>` or `<relref>` target that is no `anchor` (nor `pn` or `slugifiedName`) in the document, once per target, compared as xml2rfc makes them valid IDs (`3GPP-TS.23.501` is cited as `_GPP-TS.23.501`). Not reported when an included file may give it: an RFC or draft bibliography entry its anchor, a BCP, STD or FYI entry any RFC, an entry of another series an anchor named after it, with or without its first one or two parts (`reference.R.IEEE.754-2019.xml`: `IEEE_754_2019`), any other file anything |
 | `PLACEHOLDER_REFERENCE` | Comment | Comment | Comment | text | e.g. `[RFCXXXX]` |
 | `DOCUMENT_USE_NUMERIC_REFERENCES` | Comment | Comment | — | text | |
 | `DOCUMENT_USE_STRING_REFERENCES` | Comment | Comment | — | text | |
