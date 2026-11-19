@@ -16,6 +16,7 @@ import { setupServer } from 'msw/node'
 import { http, HttpResponse } from 'msw'
 import { parse as parseTxt } from '../lib/parsers/txt.mjs'
 import { txtStreamDraft, txtStreamRfc, xmlStreamDoc } from './fixtures/stream-docs.mjs'
+import { CANONICAL_TXT } from './generators/doc-txt.js'
 
 expect.extend({
   toContainError
@@ -77,6 +78,7 @@ describe('document should have valid date', () => {
       const doc = {
         type: 'txt',
         data: {
+          markers: { abstract: { start: 0 } },
           content: {
             abstract: ['This document updates RFC 1234.']
           },
@@ -106,6 +108,7 @@ describe('document should have valid date', () => {
       const doc = {
         type: 'txt',
         data: {
+          markers: { abstract: { start: 0 } },
           content: {
             abstract: ['This document obsoletes RFC 5678.']
           },
@@ -133,6 +136,7 @@ describe('document should have valid date', () => {
       const doc = {
         type: 'txt',
         data: {
+          markers: { abstract: { start: 0 } },
           content: {
             abstract: ['This document provides new guidelines for implementation.']
           },
@@ -154,7 +158,9 @@ describe('document should have valid date', () => {
     test('RFC mentioned in abstract but not in obsoletes metadata', async () => {
       const doc = {
         type: 'txt',
+        body: 'Internet-Draft\n\nAbstract\n\n   This document obsoletes RFC 5678.\n',
         data: {
+          markers: { abstract: { start: 3 } },
           content: {
             abstract: ['This document obsoletes RFC 5678.']
           },
@@ -167,12 +173,14 @@ describe('document should have valid date', () => {
 
       const result = await validateObsoleteUpdateRef(doc)
 
+      // -> Located at the heading of the abstract
       expect(result).toEqual([
         new ValidationComment(
           'MENTIONED_NOT_IN_OBSOLETES',
           'RFC 5678 is mentioned as "obsoleted" or "replaced" in the abstract but not listed in metadata.',
           {
-            ref: 'https://authors.ietf.org/en/required-content#abstract'
+            ref: 'https://authors.ietf.org/en/required-content#abstract',
+            lines: [{ line: 3, pos: 1 }]
           }
         )
       ])
@@ -181,7 +189,9 @@ describe('document should have valid date', () => {
     test('RFC mentioned in abstract but not in updates metadata', async () => {
       const doc = {
         type: 'txt',
+        body: 'Internet-Draft\n\nAbstract\n\n   This document updates RFC 1234.\n',
         data: {
+          markers: { abstract: { start: 3 } },
           content: {
             abstract: ['This document updates RFC 1234.']
           },
@@ -194,12 +204,14 @@ describe('document should have valid date', () => {
 
       const result = await validateObsoleteUpdateRef(doc)
 
+      // -> Located at the heading of the abstract
       expect(result).toEqual([
         new ValidationComment(
           'MENTIONED_NOT_IN_UPDATES',
           'RFC 1234 is mentioned as "updated" in the abstract but not listed in metadata.',
           {
-            ref: 'https://authors.ietf.org/en/required-content#abstract'
+            ref: 'https://authors.ietf.org/en/required-content#abstract',
+            lines: [{ line: 3, pos: 1 }]
           }
         )
       ])
@@ -209,6 +221,7 @@ describe('document should have valid date', () => {
       const doc = {
         type: 'txt',
         data: {
+          markers: { abstract: { start: 0 } },
           content: {
             abstract: []
           },
@@ -245,6 +258,7 @@ describe('document should have valid date', () => {
       const doc = {
         type: 'txt',
         data: {
+          markers: { abstract: { start: 0 } },
           content: {
             abstract: [
               'This document obsoletes RFC 5678 and updates RFC 1234. Both changes aim to improve compatibility.'
@@ -267,6 +281,7 @@ describe('document should have valid date', () => {
       const doc = {
         type: 'txt',
         data: {
+          markers: { abstract: { start: 0 } },
           content: {
             abstract: ['This document provides new guidelines for implementation.']
           },
@@ -286,6 +301,7 @@ describe('document should have valid date', () => {
       const doc = {
         type: 'txt',
         data: {
+          markers: { abstract: { start: 0 } },
           content: {
             abstract: [
               'This document provides additional insights for RFC 2119 and its applicability.'
@@ -1314,5 +1330,47 @@ describe('lookups that fail are not reported as documents that do not exist', ()
     await expect(validateVersion(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     expect(warn).toHaveBeenCalledWith('Request to datatracker.ietf.org failed: HTTP 503')
     warn.mockRestore()
+  })
+})
+
+describe('text findings are located at the line they are about', () => {
+  // -> Intended status on line 8, Obsoletes on line 10, date on line 11, name on line 16, abstract on line 18
+  const draft = (replacements) => {
+    let text = CANONICAL_TXT
+    for (const [from, to] of replacements) {
+      text = text.replace(from, to)
+    }
+    return parseTxt(text, 'draft.txt')
+  }
+  const at = (line, pos) => [{ line, pos }]
+
+  test('the date, at the date', async () => {
+    const result = await validateDate(await draft([]))
+    expect(result).toHaveLength(1)
+    expect(result[0]).toMatchObject({ name: 'DOC_DATE_IN_PAST', lines: at(11, 49) })
+  })
+
+  test('the category, at the Intended status: line, else at a Category: line in its place', async () => {
+    const invalid = await validateCategory(await draft([['Intended status: Standards Track', 'Intended status: Bogus']]))
+    expect(invalid).toHaveLength(1)
+    expect(invalid[0]).toMatchObject({ name: 'INVALID_DOC_CATEGORY', lines: at(8, 1) })
+    const misplaced = await validateCategory(await draft([['Intended status: Standards Track', 'Category: Standards Track']]))
+    expect(misplaced).toHaveLength(1)
+    expect(misplaced[0]).toMatchObject({ name: 'MISSING_DOC_CATEGORY', lines: at(8, 1) })
+  })
+
+  test('the RFCs looked up, where the header line lists them; one stated in the abstract, at the abstract', async () => {
+    const doc = await draft([['Obsoletes: 5678', 'Obsoletes: 1235'], ['Updates: 1234 (if approved)', 'Updates: 4321']])
+    const result = await validateObsoleteUpdateRef(doc)
+    expect(result.find(r => r.name === 'OBSOLETES_OBSOLETED_RFC')).toMatchObject({ lines: at(10, 12) })
+    expect(result.find(r => r.name === 'UPDATES_RFC_NOT_FOUND')).toMatchObject({ lines: at(12, 10) })
+    expect(result.find(r => r.name === 'MENTIONED_NOT_IN_OBSOLETES')).toMatchObject({ lines: at(18, 1) })
+  })
+
+  test('the version, at the name', async () => {
+    const doc = await draft([[/draft-ietf-beep-boop-01/g, 'draft-ietf-beep-baap-01']])
+    const result = await validateVersion(doc, { mode: MODES.SUBMISSION })
+    expect(result).toHaveLength(1)
+    expect(result[0]).toMatchObject({ name: 'UNEXPECTED_DOC_VERSION', lines: at(16, 15) })
   })
 })
