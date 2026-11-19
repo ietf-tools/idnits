@@ -1166,6 +1166,54 @@ describe('document should have valid references sections', () => {
       )
     })
 
+    describe('references section under a heading the parser does not recognise', () => {
+      const parseWithBack = (back) => parseTXT(`${CANONICAL_TXT}
+1.  Introduction
+
+   This document uses [RFC4360].
+
+${back}
+
+   [RFC4360]  Sangli, S., "BGP Extended Communities Attribute",
+              RFC 4360, February 2006.
+
+Authors' Addresses
+`, '')
+
+      test('is reported at its heading, by mode', async () => {
+        const doc = await parseWithBack('Appendix A.  References')
+        const message = 'The heading "Appendix A.  References" is not recognised as the heading of the references section, so the references under it are not checked.'
+        const opts = { ref: 'https://authors.ietf.org/required-content#references', lines: [{ line: 26, pos: 1 }] }
+        await expect(validateReferencesSection(doc, { mode: MODES.NORMAL })).resolves.toEqual([
+          new ValidationError('UNRECOGNISED_REFERENCES_HEADING', message, opts)
+        ])
+        await expect(validateReferencesSection(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toEqual([
+          new ValidationWarning('UNRECOGNISED_REFERENCES_HEADING', message, opts)
+        ])
+        await expect(validateReferencesSection(doc, { mode: MODES.SUBMISSION })).resolves.toEqual([])
+      })
+
+      test('a heading numbered without a full stop is recognised', async () => {
+        const doc = await parseWithBack('2 References\n\n2.1 Normative References')
+        await expect(validateReferencesSection(doc, { mode: MODES.NORMAL })).resolves.toEqual([])
+      })
+
+      test('a document with no references heading still misses the section', async () => {
+        const doc = await parseTXT(`${CANONICAL_TXT}
+1.  Introduction
+
+   This document has no references.
+
+Authors' Addresses
+`, '')
+        await expect(validateReferencesSection(doc, { mode: MODES.NORMAL })).resolves.toEqual([
+          new ValidationComment('MISSING_REFERENCES_SECTION', 'The references section is missing.', {
+            ref: 'https://authors.ietf.org/required-content#references'
+          })
+        ])
+      })
+    })
+
     test('empty references section', async () => {
       const doc = {
         type: 'txt',

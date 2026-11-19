@@ -315,6 +315,7 @@ For text documents, `SUBMISSION_TYPE_UNEXPECTED` and `DATATRACKER_STREAM_NOT_SET
 | Code | normal | forgive-checklist | submission | Format | Notes |
 |---|---|---|---|---|---|
 | `MISSING_REFERENCES_SECTION` | Comment | Comment | — | both | XML: no `<references>` element, unless `<back>` has an `xi:include` or the document refers to an external entity or has an `<?rfc include?>` |
+| `UNRECOGNISED_REFERENCES_HEADING` | Error | Warning | — | text | Instead of `MISSING_REFERENCES_SECTION`: the first heading at the margin that reads as a references heading the parser doesn't recognise, e.g. "Appendix A.  References", "11.  11.  References", "14.  Normative" or "Appendix B.  Bibliography" |
 | `EMPTY_REFERENCES_SECTION` | Error | Warning | — | both | XML: each `<references>` element with no `<reference>`, `<referencegroup>`, include or `<references>` |
 | `REFERENCE_TYPE_NOT_DECLARED` | Error | Warning | — | text | Neither normative nor informative |
 | `UNCLASSIFIED_REFERENCES_SUBSECTION` | Error | Warning | — | text | |
