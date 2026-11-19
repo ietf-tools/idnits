@@ -76,3 +76,36 @@ describe('mentions in an XML document are inferred, located by path', () => {
     expect(await getMentions(doc, 'ipv4')).toEqual([])
   })
 })
+
+describe('mentions of domain names', () => {
+  test('in text, every time a domain is found, though the parser lists it once', async () => {
+    const doc = await parseTXT(`
+   See www.Foo.com and bar.net.
+
+   Then www.foo.com again.
+`, 'draft-test-00.txt')
+    expect(doc.data.extractedElements.fqdnDomains).toEqual(['www.foo.com', 'bar.net'])
+    expect(await getMentions(doc, 'fqdn')).toEqual([
+      { text: 'www.foo.com', certainty: CERTAINTY.INFERRED, location: { lines: [{ line: 2, pos: 8 }] } },
+      { text: 'www.foo.com', certainty: CERTAINTY.INFERRED, location: { lines: [{ line: 4, pos: 9 }] } },
+      { text: 'bar.net', certainty: CERTAINTY.INFERRED, location: { lines: [{ line: 2, pos: 24 }] } }
+    ])
+  })
+
+  test('in text, a domain of unknown location is found once', async () => {
+    const doc = { type: 'txt', data: { extractedElements: { fqdnDomains: ['foo.com'] } } }
+    expect(await getMentions(doc, 'fqdn')).toEqual([
+      { text: 'foo.com', certainty: CERTAINTY.INFERRED, location: { lines: undefined } }
+    ])
+  })
+
+  test('in XML, only in prose (not in attributes), as written', async () => {
+    const doc = await parseXmlDraft({
+      middle: '<section><name>Hosts</name><t>Use www.Foo.com.</t><t><eref target="other.org">bar.net</eref></t></section>'
+    })
+    expect(await getMentions(doc, 'fqdn')).toMatchObject([
+      { text: 'www.Foo.com', certainty: CERTAINTY.INFERRED, location: { path: 'rfc.middle.section.t[0]' } },
+      { text: 'bar.net', certainty: CERTAINTY.INFERRED, location: { path: 'rfc.middle.section.t[1].eref.#text' } }
+    ])
+  })
+})
