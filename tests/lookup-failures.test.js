@@ -141,7 +141,7 @@ describe('REFERENCE_STATUS_UNAVAILABLE', () => {
     const doc = await parseRefs({ normative: ['9999'] })
     const result = await checkReferences(doc, { mode: MODES.NORMAL })
     expect(result).toEqual([
-      new ValidationComment('UNDEFINED_STATUS', "RFC 9999 wasn't found on rfc-editor.org.", { ref: 'https://www.rfc-editor.org/info/rfc9999' })
+      new ValidationComment('UNDEFINED_STATUS', "RFC 9999 wasn't found on rfc-editor.org.", { ref: 'https://www.rfc-editor.org/info/rfc9999', path: 'rfc.back.references[0].reference[0]' })
     ])
   })
 

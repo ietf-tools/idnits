@@ -54,18 +54,20 @@ async function parseDraft (...rfcs) {
   return doc
 }
 
-const inRegistry = (rfc) => new ValidationWarning('DOWNREF_TO_LOWER_STATUS_IN_REGISTRY', `Reference to RFC ${rfc}, which has a lower status than this draft's intended status and is listed in the Downref Registry.`, { ref: BCP97_REF })
-const notInRegistry = (rfc, Severity = ValidationError) => new Severity('DOWNREF_TO_LOWER_STATUS', `Reference to RFC ${rfc}, which has a lower status than this draft's intended status. This reference is not in the Downref Registry.`, { ref: BCP97_REF })
-const unchecked = (rfc, Severity = ValidationWarning) => new Severity('DOWNREF_TO_LOWER_STATUS_UNCHECKED', `Reference to RFC ${rfc}, which has a lower status than this draft's intended status. The Downref Registry couldn't be checked for it.`, { ref: BCP97_REF })
+// -> Path of the nth <reference> of the document parseDraft gives
+const at = (n) => ({ ref: BCP97_REF, path: `rfc.back.references[0].reference[${n}]` })
+const inRegistry = (rfc, n) => new ValidationWarning('DOWNREF_TO_LOWER_STATUS_IN_REGISTRY', `Reference to RFC ${rfc}, which has a lower status than this draft's intended status and is listed in the Downref Registry.`, at(n))
+const notInRegistry = (rfc, n, Severity = ValidationError) => new Severity('DOWNREF_TO_LOWER_STATUS', `Reference to RFC ${rfc}, which has a lower status than this draft's intended status. This reference is not in the Downref Registry.`, at(n))
+const unchecked = (rfc, n, Severity = ValidationWarning) => new Severity('DOWNREF_TO_LOWER_STATUS_UNCHECKED', `Reference to RFC ${rfc}, which has a lower status than this draft's intended status. The Downref Registry couldn't be checked for it.`, at(n))
 const unavailable = (reason) => new ValidationComment('DOWNREF_REGISTRY_UNAVAILABLE', `The Downref Registry couldn't be checked (${reason}), so downrefs are reported without telling whether they are listed in it.`, { ref: REGISTRY_URL })
 
 describe('Downref Registry', () => {
   test('tells the downrefs listed in it from the others', async () => {
     const doc = await parseDraft('1094', '1234')
-    await expect(validateDownrefs(doc, { mode: MODES.NORMAL })).resolves.toEqual([inRegistry('1094'), notInRegistry('1234')])
+    await expect(validateDownrefs(doc, { mode: MODES.NORMAL })).resolves.toEqual([inRegistry('1094', 0), notInRegistry('1234', 1)])
     expect(registryRequests).toBe(1)
     // -> Fetched again for another document
-    await expect(validateDownrefs(await parseDraft('5678'), { mode: MODES.FORGIVE_CHECKLIST })).resolves.toEqual([notInRegistry('5678', ValidationWarning)])
+    await expect(validateDownrefs(await parseDraft('5678'), { mode: MODES.FORGIVE_CHECKLIST })).resolves.toEqual([notInRegistry('5678', 0, ValidationWarning)])
     expect(registryRequests).toBe(2)
   })
 
@@ -107,14 +109,14 @@ describe('Downref Registry', () => {
       const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
       const doc = await parseDraft('1094', '1234')
       // -> A Warning in both modes: the downref may be registered
-      expectFindings(await validateDownrefs(doc, { mode: MODES.NORMAL }), [unchecked('1094'), unchecked('1234')])
+      expectFindings(await validateDownrefs(doc, { mode: MODES.NORMAL }), [unchecked('1094', 0), unchecked('1234', 1)])
       // -> The failure is remembered for the document: fetched, and warned about, once for both downrefs
       expect(registryRequests).toBe(1)
       expect(warn).toHaveBeenCalledTimes(1)
       expect(warn.mock.calls[0][0]).toMatch(/^Failed to fetch Downref Registry: /)
 
       // -> Tried again, and warned about again, for another document
-      expectFindings(await validateDownrefs(await parseDraft('5678'), { mode: MODES.FORGIVE_CHECKLIST }), [unchecked('5678')])
+      expectFindings(await validateDownrefs(await parseDraft('5678'), { mode: MODES.FORGIVE_CHECKLIST }), [unchecked('5678', 0)])
       expect(registryRequests).toBe(2)
       expect(warn).toHaveBeenCalledTimes(2)
     })

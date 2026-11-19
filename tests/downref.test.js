@@ -2,12 +2,12 @@ import { beforeAll, afterEach, afterAll, describe, expect, test } from 'vitest'
 import { MODES } from '../lib/config/modes.mjs'
 import { toContainError, ValidationWarning, ValidationError, ValidationComment } from '../lib/helpers/error.mjs'
 import { baseXMLDoc, baseTXTDoc } from './fixtures/base-doc.mjs'
-import { cloneDeep, set } from 'lodash-es'
+import { castArray, cloneDeep, set } from 'lodash-es'
 import { parse } from '../lib/parsers/xml.mjs'
 import { parse as parseTXT } from '../lib/parsers/txt.mjs'
 import { CANONICAL_TXT } from './generators/doc-txt.js'
 import { validateDownrefs, validateInformativeReferences, validateNormativeReferences, validateUnclassifiedReferences, validatePublishedDraftReferences, validateReferenceForStale } from '../lib/modules/downref.mjs'
-import { getAllValidations } from '../lib/index.mjs'
+import { finalizeFindings, getAllValidations } from '../lib/index.mjs'
 import { MAX_LOOKUPS_PER_DOC } from '../lib/remote/lookups.mjs'
 import { setupServer } from 'msw/node'
 import { http, HttpResponse } from 'msw'
@@ -533,6 +533,18 @@ async function parseXMLDraftReferences ({ category = 'std', normative = [], info
   return doc
 }
 
+/**
+ * Path of the normative <reference> of an XML draft written by parseXMLDraftReferences() that cites a draft
+ *
+ * @param {Object} doc Parsed XML document
+ * @param {string} name Draft, with its version
+ * @returns {string} Path
+ */
+function xmlDraftPath (doc, name) {
+  const index = castArray(doc.data.rfc.back.references[0].reference).findIndex(ref => ref.seriesInfo._attr.value === name)
+  return `rfc.back.references[0].reference[${index}]`
+}
+
 describe('validateDownrefs', () => {
   const external = (name, opts) => new ValidationComment(
     'NORMATIVE_REFERENCE_EXTERNAL',
@@ -746,15 +758,15 @@ describe('validateDownrefs', () => {
 
     test('parsed single nested and flat references sections', async () => {
       const entry = '<reference anchor="RFC7322"><front/><seriesInfo name="RFC" value="7322"/></reference>'
-      const expected = [
+      const expected = (path) => [
         new ValidationWarning(
           'POSSIBLE_DOWNREF',
           'RFC 7322 has the status "UNKNOWN" on rfc-editor.org, so it may be a downref.',
-          { ref: 'https://www.rfc-editor.org/info/bcp97' }
+          { ref: 'https://www.rfc-editor.org/info/bcp97', path }
         )
       ]
-      await expect(validateDownrefs(await parseXMLBack(nestedReferences('Normative References', entry)), { mode: MODES.NORMAL })).resolves.toEqual(expected)
-      await expect(validateDownrefs(await parseXMLBack(`<references><name>Normative References</name>${entry}</references>`), { mode: MODES.NORMAL })).resolves.toEqual(expected)
+      await expect(validateDownrefs(await parseXMLBack(nestedReferences('Normative References', entry)), { mode: MODES.NORMAL })).resolves.toEqual(expected('rfc.back.references[0].references[0].reference[0]'))
+      await expect(validateDownrefs(await parseXMLBack(`<references><name>Normative References</name>${entry}</references>`), { mode: MODES.NORMAL })).resolves.toEqual(expected('rfc.back.references[0].reference[0]'))
     })
 
     test('normative reference pulled in by an <?rfc include?> instruction in a v2 section', async () => {
@@ -762,11 +774,12 @@ describe('validateDownrefs', () => {
       <?rfc include="reference.RFC.7322"?>
     </references>`)
 
+      // -> At the <references> element: the instruction is not an element
       await expect(validateDownrefs(doc, { mode: MODES.NORMAL })).resolves.toEqual([
         new ValidationWarning(
           'POSSIBLE_DOWNREF',
           'RFC 7322 has the status "UNKNOWN" on rfc-editor.org, so it may be a downref.',
-          { ref: 'https://www.rfc-editor.org/info/bcp97' }
+          { ref: 'https://www.rfc-editor.org/info/bcp97', path: 'rfc.back.references[0]' }
         )
       ])
     })
@@ -935,13 +948,14 @@ describe('Normative references to drafts', () => {
     { ref: BCP97 }
   )
 
-  // -> A finding of a text document says where the draft is linked to; an XML document gets lines centrally
+  // -> A finding of a text document says where the draft is linked to; one of an XML document gives the path of
+  //    the reference, and gets lines centrally
   const atTXTDraftLinks = (finding, doc, ...names) => Object.assign(finding, { lines: draftLinks(doc, ...names) })
-  const asXML = (finding) => finding
+  const atXMLDraft = (finding, doc, name) => Object.assign(finding, { path: xmlDraftPath(doc, name) })
 
   describe.each([
     ['TXT', parseTXTDraftReferences, 'intendedStatus', 'Informational', atTXTDraftLinks],
-    ['XML', parseXMLDraftReferences, 'category', 'info', asXML]
+    ['XML', parseXMLDraftReferences, 'category', 'info', atXMLDraft]
   ])('%s', (_type, parseDoc, statusKey, informational, at) => {
     test('drafts without an intended status are reported alike, and not as downrefs (#223)', async () => {
       const doc = await parseDoc({ normative: ['draft-ietf-bess-evpn-ipvpn-interworking-13', 'draft-ietf-bess-rfc7432bis-10'] })
@@ -1085,7 +1099,7 @@ describe('Normative references to drafts', () => {
       new ValidationError(
         'DOWNREF_TO_LOWER_STATUS',
         'Reference to RFC 1234, which has a lower status than this draft\'s intended status. This reference is not in the Downref Registry.',
-        { ref: BCP97 }
+        { ref: BCP97, path: 'rfc.back.references[0].reference[0]' }
       )
     ])
   })
@@ -1396,7 +1410,7 @@ Acknowledgements
         new ValidationComment(
           'UNDEFINED_STATUS',
           'RFC 4086 has no status on rfc-editor.org.',
-          { ref: 'https://www.rfc-editor.org/info/rfc4086' }
+          { ref: 'https://www.rfc-editor.org/info/rfc4086', path: 'rfc.back.references[0].references[0].reference[0]' }
         )
       ])
     })
@@ -1409,7 +1423,7 @@ Acknowledgements
         new ValidationComment(
           'UNDEFINED_STATUS',
           'RFC 4086 has no status on rfc-editor.org.',
-          { ref: 'https://www.rfc-editor.org/info/rfc4086' }
+          { ref: 'https://www.rfc-editor.org/info/rfc4086', path: 'rfc.back.references[0].references[0].reference[0]' }
         )
       ])
     })
@@ -1431,12 +1445,12 @@ Acknowledgements
         new ValidationError(
           'OBSOLETE_REFERENCE',
           'RFC 4087 is obsolete and has been replaced by: RFC9000.',
-          { ref: 'https://authors.ietf.org/en/required-content#references' }
+          { ref: 'https://authors.ietf.org/en/required-content#references', path: 'rfc.back.references[0].xi:include[0]' }
         ),
         new ValidationComment(
           'UNDEFINED_STATUS',
           'RFC 4086 has no status on rfc-editor.org.',
-          { ref: 'https://www.rfc-editor.org/info/rfc4086' }
+          { ref: 'https://www.rfc-editor.org/info/rfc4086', path: 'rfc.back.references[0]' }
         )
       ])
     })
@@ -1454,7 +1468,7 @@ Acknowledgements
         new ValidationError(
           'OBSOLETE_REFERENCE',
           'RFC 4087 is obsolete and has been replaced by: RFC9000.',
-          { ref: 'https://authors.ietf.org/en/required-content#references' }
+          { ref: 'https://authors.ietf.org/en/required-content#references', path: 'rfc.back.references[0].xi:include[1]' }
         )
       ])
     })
@@ -1470,7 +1484,7 @@ Acknowledgements
         new ValidationComment(
           'UNKNOWN_STATUS',
           'RFC 8141 has an unrecognized status: "Unknown Status".',
-          { ref: 'https://www.rfc-editor.org/info/rfc8141' }
+          { ref: 'https://www.rfc-editor.org/info/rfc8141', path: 'rfc.back.references[0].references[0].reference[0]' }
         )
       ])
     })
@@ -1561,7 +1575,7 @@ describe('validateUnclassifiedReferences', () => {
         new ValidationComment(
           'UNDEFINED_STATUS',
           'RFC 4086 has no status on rfc-editor.org.',
-          { ref: 'https://www.rfc-editor.org/info/rfc4086' }
+          { ref: 'https://www.rfc-editor.org/info/rfc4086', path: 'rfc.back.references[0].references[0].reference[0]' }
         )
       ])
     })
@@ -1577,7 +1591,7 @@ describe('validateUnclassifiedReferences', () => {
         new ValidationComment(
           'UNDEFINED_STATUS',
           'RFC 5678 has no status on rfc-editor.org.',
-          { ref: 'https://www.rfc-editor.org/info/rfc5678' }
+          { ref: 'https://www.rfc-editor.org/info/rfc5678', path: 'rfc.back.references[0].references[0].reference[0]' }
         )
       ])
     })
@@ -1680,7 +1694,7 @@ describe('Validating published as a RFC draft references', () => {
         new ValidationWarning(
           'UNDEFINED_STATE',
           'The draft reference draft-ietf-undefined-state wasn\'t found on Datatracker, or has no state there.',
-          { ref: 'https://datatracker.ietf.org/doc/draft-ietf-undefined-state' }
+          { ref: 'https://datatracker.ietf.org/doc/draft-ietf-undefined-state', path: 'rfc.back.references[0].references[0].reference[0]' }
         )
       ])
     })
@@ -1697,7 +1711,7 @@ describe('Validating published as a RFC draft references', () => {
         new ValidationWarning(
           'UNDEFINED_STATE',
           'The draft reference draft-ietf-rtgwg-segment-routing-ti-lfa wasn\'t found on Datatracker, or has no state there.',
-          { ref: 'https://datatracker.ietf.org/doc/draft-ietf-rtgwg-segment-routing-ti-lfa' }
+          { ref: 'https://datatracker.ietf.org/doc/draft-ietf-rtgwg-segment-routing-ti-lfa', path: 'rfc.back.references[0].references[0].reference[0]' }
         )
       ])
     })
@@ -1713,7 +1727,7 @@ describe('Validating published as a RFC draft references', () => {
         new ValidationWarning(
           'INVALID_STATE_FOR_DRAFT',
           'The draft reference draft-ietf-published-as-rfc is already published as an RFC and should not be referenced as a draft.',
-          { ref: 'https://datatracker.ietf.org/doc/draft-ietf-published-as-rfc' }
+          { ref: 'https://datatracker.ietf.org/doc/draft-ietf-published-as-rfc', path: 'rfc.back.references[0].references[0].reference[0]' }
         )
       ])
     })
@@ -1726,7 +1740,7 @@ describe('Validating published as a RFC draft references', () => {
         new ValidationWarning(
           'INVALID_STATE_FOR_DRAFT',
           'The draft reference draft-ietf-published-as-rfc is already published as an RFC and should not be referenced as a draft.',
-          { ref: 'https://datatracker.ietf.org/doc/draft-ietf-published-as-rfc' }
+          { ref: 'https://datatracker.ietf.org/doc/draft-ietf-published-as-rfc', path: 'rfc.back.references[0].references[0].reference[0]' }
         )
       ])
     })
@@ -1742,7 +1756,7 @@ describe('Validating published as a RFC draft references', () => {
         new ValidationWarning(
           'INVALID_STATE_FOR_DRAFT',
           'The draft reference draft-ietf-published-as-rfc is already published as an RFC and should not be referenced as a draft.',
-          { ref: 'https://datatracker.ietf.org/doc/draft-ietf-published-as-rfc' }
+          { ref: 'https://datatracker.ietf.org/doc/draft-ietf-published-as-rfc', path: 'rfc.back.references[0]' }
         )
       ])
     })
@@ -1834,7 +1848,7 @@ describe('validateInformativeReferences', () => {
       new ValidationWarning(
         'OBSOLETE_INFORMATIVE_REFERENCE',
         'Obsolete informative reference: RFC 5087 has been replaced by RFC9000, RFC9001. Is this intentional?',
-        { ref: 'https://authors.ietf.org/en/required-content#references' }
+        { ref: 'https://authors.ietf.org/en/required-content#references', path: 'rfc.back.references[1]' }
       )
     ])
   })
@@ -1848,7 +1862,7 @@ describe('validateInformativeReferences', () => {
       new ValidationComment(
         'OBSOLETE_INFORMATIVE_REFERENCE',
         'Obsolete informative reference: RFC 5087 has been replaced by RFC9000, RFC9001. Is this intentional?',
-        { ref: 'https://authors.ietf.org/en/required-content#references' }
+        { ref: 'https://authors.ietf.org/en/required-content#references', path: 'rfc.back.references[0].references[0].xi:include[0]' }
       )
     ])
   })
@@ -1912,7 +1926,7 @@ describe('validateInformativeReferences', () => {
       new ValidationWarning(
         'OBSOLETE_INFORMATIVE_REFERENCE',
         'Obsolete informative reference: RFC 5087 has been replaced by RFC9000, RFC9001. Is this intentional?',
-        { ref: 'https://authors.ietf.org/en/required-content#references' }
+        { ref: 'https://authors.ietf.org/en/required-content#references', path: 'rfc.back.references[0].xi:include[1]' }
       )
     ]
 
@@ -2185,7 +2199,7 @@ describe('validateReferenceForStale (XML)', () => {
       new ValidationWarning(
         'OUTDATED_DRAFT',
         'The draft reference draft-ietf-stale-01 is stale. draft-ietf-stale was replaced by draft-ietf-newer, whose latest revision is -03.',
-        { ref: 'https://datatracker.ietf.org/doc/draft-ietf-stale' }
+        { ref: 'https://datatracker.ietf.org/doc/draft-ietf-stale', path: 'rfc.back.references[0].references[0].reference[0]' }
       )
     ])
   })
@@ -2198,7 +2212,7 @@ describe('validateReferenceForStale (XML)', () => {
       new ValidationWarning(
         'OUTDATED_DRAFT',
         'The draft reference draft-ietf-stale-01 is stale. draft-ietf-stale was replaced by draft-ietf-newer, whose latest revision is -03.',
-        { ref: 'https://datatracker.ietf.org/doc/draft-ietf-stale' }
+        { ref: 'https://datatracker.ietf.org/doc/draft-ietf-stale', path: 'rfc.back.references[0].references[0].reference[0]' }
       )
     ])
   })
@@ -2211,7 +2225,7 @@ describe('validateReferenceForStale (XML)', () => {
       new ValidationWarning(
         'OUTDATED_DRAFT',
         'The draft reference draft-ietf-bess-rfc7432bis-10 is stale. Its latest revision is -14.',
-        { ref: 'https://datatracker.ietf.org/doc/draft-ietf-bess-rfc7432bis' }
+        { ref: 'https://datatracker.ietf.org/doc/draft-ietf-bess-rfc7432bis', path: 'rfc.back.references[0].references[0].reference[0]' }
       )
     ])
   })
@@ -2225,7 +2239,7 @@ describe('validateReferenceForStale (XML)', () => {
       new ValidationWarning(
         'OUTDATED_DRAFT',
         'The draft reference draft-ietf-bess-rfc7432bis-10 is stale. Its latest revision is -14.',
-        { ref: 'https://datatracker.ietf.org/doc/draft-ietf-bess-rfc7432bis' }
+        { ref: 'https://datatracker.ietf.org/doc/draft-ietf-bess-rfc7432bis', path: 'rfc.back.references[0].references[0].reference[0]' }
       )
     ])
   })
@@ -2239,7 +2253,7 @@ describe('validateReferenceForStale (XML)', () => {
       new ValidationWarning(
         'OUTDATED_DRAFT',
         'The draft reference draft-ietf-stale is stale. draft-ietf-stale was replaced by draft-ietf-newer, whose latest revision is -03.',
-        { ref: 'https://datatracker.ietf.org/doc/draft-ietf-stale' }
+        { ref: 'https://datatracker.ietf.org/doc/draft-ietf-stale', path: 'rfc.back.references[0].references[0].xi:include[0]' }
       )
     ])
   })
@@ -2277,7 +2291,7 @@ describe('Draft references are checked for both document types', () => {
       new ValidationWarning(
         'INVALID_STATE_FOR_DRAFT',
         'The draft reference draft-ietf-published-as-rfc is already published as an RFC and should not be referenced as a draft.',
-        { ref: 'https://datatracker.ietf.org/doc/draft-ietf-published-as-rfc' }
+        { ref: 'https://datatracker.ietf.org/doc/draft-ietf-published-as-rfc', path: 'rfc.back.references[0].reference[0]' }
       )
     ])
   })
@@ -2300,7 +2314,7 @@ describe('Draft names ending in what looks like a revision', () => {
       new ValidationWarning(
         'OUTDATED_DRAFT',
         'The draft reference draft-test-psi-04-00 is stale. Its latest revision is -01.',
-        { ref: 'https://datatracker.ietf.org/doc/draft-test-psi-04' }
+        { ref: 'https://datatracker.ietf.org/doc/draft-test-psi-04', path: 'rfc.back.references[0].reference[0]' }
       )
     ])
     expect(psiRequests).toEqual(['draft-test-psi-04'])
@@ -2313,7 +2327,7 @@ describe('Draft names ending in what looks like a revision', () => {
       new ValidationWarning(
         'UNDEFINED_STATE',
         'The draft reference draft-test-psi wasn\'t found on Datatracker, or has no state there.',
-        { ref: 'https://datatracker.ietf.org/doc/draft-test-psi' }
+        { ref: 'https://datatracker.ietf.org/doc/draft-test-psi', path: 'rfc.back.references[0].reference[0]' }
       )
     ])
     await expect(validateReferenceForStale(doc, { mode: MODES.NORMAL })).resolves.toEqual([])
@@ -2389,8 +2403,14 @@ ${entry('draft-ietf-missing-01', 'C')}
     )
   ]
 
+  // -> In an XML document, at the first reference to the draft: draft-ietf-missing is cited by B and C
+  const expectedXML = [
+    new ValidationWarning(expected[0].name, expected[0].message, { ref: expected[0].refUrl, path: 'rfc.back.references[0].reference[0]' }),
+    new ValidationWarning(expected[1].name, expected[1].message, { ref: expected[1].refUrl, path: 'rfc.back.references[0].reference[1]' })
+  ]
+
   test('a draft that cannot be fetched is reported once (XML)', async () => {
-    await expect(runDraftChecks(await parseXMLDraftRefs(''))).resolves.toEqual(expected)
+    await expect(runDraftChecks(await parseXMLDraftRefs(''))).resolves.toEqual(expectedXML)
   })
 
   test('a draft that cannot be fetched is reported once (TXT)', async () => {
@@ -2411,7 +2431,7 @@ ${entry('draft-ietf-missing-01', 'C')}
 
   test('checked for an RFC Editor working copy (XML)', async () => {
     const doc = await parseXMLDraftRefs(' number="9999"')
-    await expect(runTask(doc, 'draftrefs')).resolves.toEqual(expected)
+    await expect(runTask(doc, 'draftrefs')).resolves.toEqual(expectedXML)
   })
 
   test('not checked for a published RFC (TXT)', async () => {
@@ -2477,6 +2497,48 @@ describe('Remote lookups are shared by the checks of a run', () => {
   })
 })
 
+describe('Findings about the references of an XML document are located at a reference', () => {
+  test('an RFC cited by several references is located at the first, labelled with its section and anchor', async () => {
+    const { doc } = await parse(`<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3" category="std" docName="draft-test-references-00"><back>
+<references><name>References</name>
+<references><name>Normative References</name>
+<reference anchor="RFC1234"><front><title>T</title></front><seriesInfo name="RFC" value="1234"/></reference>
+<referencegroup anchor="BCP99">
+<reference anchor="RFC1234-again"><front><title>T</title></front><seriesInfo name="RFC" value="1234"/></reference>
+</referencegroup>
+<xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.7322.xml"/>
+</references>
+</references>
+</back></rfc>`, 'draft-test-references-00.xml')
+
+    const result = finalizeFindings(await validateDownrefs(doc, { mode: MODES.NORMAL }), doc)
+    expect(result.map(({ name, path, label, lines }) => ({ name, path, label, lines }))).toEqual([
+      {
+        name: 'DOWNREF_TO_LOWER_STATUS',
+        path: 'rfc.back.references[0].references[0].reference[0]',
+        label: 'Normative References, reference [RFC1234]',
+        lines: [{ line: 4, pos: 1 }]
+      },
+      // -> An include is labelled with its section only
+      {
+        name: 'POSSIBLE_DOWNREF',
+        path: 'rfc.back.references[0].references[0].xi:include[0]',
+        label: 'Normative References',
+        lines: [{ line: 8, pos: 1 }]
+      }
+    ])
+  })
+
+  test('a reference pulled in by an <?rfc include?> instruction is located at its references section', async () => {
+    const doc = await parseV2XML('', `<references title="Normative References">
+      <?rfc include="reference.RFC.7322"?>
+    </references>`)
+
+    const [finding] = finalizeFindings(await validateDownrefs(doc, { mode: MODES.NORMAL }), doc)
+    expect(finding).toMatchObject({ name: 'POSSIBLE_DOWNREF', path: 'rfc.back.references[0]', label: 'Normative References', lines: [{ line: 10, pos: 1 }] })
+  })
+})
+
 describe('Possible downrefs depend on the status of the citing document', () => {
   const parseCategory = async (category, normative, informative = '') => {
     const entry = n => `<reference anchor="RFC${n}"><front/><seriesInfo name="RFC" value="${n}"/></reference>`
@@ -2495,7 +2557,7 @@ describe('Possible downrefs depend on the status of the citing document', () => 
 
   test.each(['std', 'bcp'])('a Warning in normal and forgive-checklist, nothing in submission, for a %s document citing an RFC of status UNKNOWN', async (category) => {
     const doc = await parseCategory(category, ['7322'])
-    const expected = [new ValidationWarning('POSSIBLE_DOWNREF', 'RFC 7322 has the status "UNKNOWN" on rfc-editor.org, so it may be a downref.', { ref: 'https://www.rfc-editor.org/info/bcp97' })]
+    const expected = [new ValidationWarning('POSSIBLE_DOWNREF', 'RFC 7322 has the status "UNKNOWN" on rfc-editor.org, so it may be a downref.', { ref: 'https://www.rfc-editor.org/info/bcp97', path: 'rfc.back.references[0].reference[0]' })]
     await expect(validateDownrefs(doc, { mode: MODES.NORMAL })).resolves.toEqual(expected)
     await expect(validateDownrefs(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toEqual(expected)
     await expect(validateDownrefs(doc, { mode: MODES.SUBMISSION })).resolves.toEqual([])
@@ -2509,7 +2571,7 @@ describe('Possible downrefs depend on the status of the citing document', () => 
 })
 
 describe('References to RFC numbers that were never issued', () => {
-  const finding = (Type) => new Type('REFERENCE_NOT_ISSUED', 'RFC 8646 was never issued: rfc-editor.org lists RFC 8646 as "NOT ISSUED".', { ref: 'https://www.rfc-editor.org/info/rfc8646' })
+  const finding = (Type) => new Type('REFERENCE_NOT_ISSUED', 'RFC 8646 was never issued: rfc-editor.org lists RFC 8646 as "NOT ISSUED".', { ref: 'https://www.rfc-editor.org/info/rfc8646', path: 'rfc.back.references[0].reference[0]' })
   const parseRefs = async (section) => {
     const { doc } = await parse(`<rfc version="3" category="std" docName="draft-test-references-00"><back>
       <references><name>${section}</name><reference anchor="RFC8646"><front/><seriesInfo name="RFC" value="8646"/></reference></references>
