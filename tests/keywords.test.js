@@ -5,6 +5,7 @@ import {
   validate2119Keywords,
   validateTermsStyle
 } from '../lib/modules/keywords.mjs'
+import { addXmlSourceLines, labelFindings } from '../lib/helpers/location.mjs'
 import { baseTXTDoc, baseXMLDoc } from './fixtures/base-doc.mjs'
 import { parse } from '../lib/parsers/xml.mjs'
 import { parse as parseTXT } from '../lib/parsers/txt.mjs'
@@ -778,6 +779,8 @@ describe('document should have valid RFC2119 keywords', () => {
           // The citation and the reference
           ['MISSING_RFC8174_REF', [{ line: 6, pos: 60 }, { line: 14, pos: 4 }]]
         ])
+        // (and no path)
+        expect(result.map((e) => e.path)).toEqual([undefined, undefined, undefined])
         expect(at(doc, result[0].lines[0])).toMatch(/^The key words/)
         expect(at(doc, result[1].lines[10])).toMatch(/^MUST NOT be placed/)
         expect(result[2].lines.map((loc) => at(doc, loc))).toEqual([
@@ -1361,6 +1364,88 @@ ${entities}<rfc xmlns:xi="http://www.w3.org/2001/XInclude" version="3">
         const doc = cloneDeep(baseXMLDoc)
         set(doc, 'data.rfc.middle.t', 'Lorem ipsum SHOULD not lorem ipsum.')
         await expect(validate2119Keywords(doc)).resolves.toContainError('INVALID_REQLEVEL_KEYWORD', ValidationComment)
+      })
+    })
+    describe('locations of findings in a parsed XML draft', () => {
+      const parseXML = async ({ middle, back = '' }) => {
+        const { doc } = await parse(`<?xml version="1.0" encoding="UTF-8"?>
+<rfc version="3" docName="draft-test-bcp14-locations-00">
+  <front><title>Test</title></front>
+  <middle>
+${middle}
+  </middle>
+  <back><references><name>Normative References</name>
+${back}
+  </references></back>
+</rfc>`, 'draft-test-bcp14-locations-00.xml')
+        return doc
+      }
+      const reference = (anchor) => `<reference anchor="${anchor}"><front><title>${anchor}</title></front></reference>`
+      // Findings about the keywords as a whole, with the label and line their path gives
+      const located = async (doc) => {
+        const result = (await validate2119Keywords(doc)).filter(r => !['MISSING_BCP14_TAGS', 'INVALID_REQLEVEL_KEYWORD'].includes(r.name))
+        addXmlSourceLines(labelFindings(result, doc), doc)
+        return result.map(r => [r.name, r.path, r.label, r.lines])
+      }
+
+      test('keywords without a boilerplate: the first keyword; RFC 2119 cited without RFC 8174: its first <xref>', async () => {
+        const doc = await parseXML({
+          middle: `    <section><name>Introduction</name>
+      <t>Nothing required.</t>
+      <t>Clients <bcp14>MUST</bcp14> retry, as in <xref target="RFC2119"/>.</t>
+    </section>`,
+          back: reference('RFC2119')
+        })
+        expect(await located(doc)).toEqual([
+          ['MISSING_REQLEVEL_BOILERPLATE_REFERENCED', 'rfc.middle.section.t[1].bcp14', 'Section 1 (Introduction), paragraph 2', [{ line: 7, pos: 18 }]],
+          ['MISSING_RFC8174_REF', 'rfc.middle.section.t[1].xref', 'Section 1 (Introduction), paragraph 2', [{ line: 7, pos: 51 }]]
+        ])
+      })
+
+      test('a boilerplate without keywords: its paragraph; [BCP14] cited: its <xref>', async () => {
+        const doc = await parseXML({
+          middle: `    <section><name>Terminology</name>
+      <t>The key words "MUST" and "MAY" in this document are to be interpreted as described in BCP 14 <xref target="BCP14"/>.</t>
+    </section>`,
+          back: reference('BCP14')
+        })
+        expect(await located(doc)).toEqual([
+          ['MISSING_REQLEVEL_KEYWORDS', 'rfc.middle.section.t', 'Section 1 (Terminology), paragraph 1', [{ line: 6, pos: 7 }]],
+          ['BCP14_CITED_INSTEAD_OF_RFCS', 'rfc.middle.section.t.xref', 'Section 1 (Terminology), paragraph 1', [{ line: 6, pos: 103 }]]
+        ])
+      })
+
+      test('a boilerplate without a reference: its paragraph', async () => {
+        const doc = await parseXML({
+          middle: `    <section><name>Terminology</name>
+      <t>The key words "MUST" and "MAY" in this document are to be interpreted as described in BCP 14.</t>
+    </section>
+    <section><name>Protocol</name>
+      <t>Clients <bcp14>MUST</bcp14> connect.</t>
+    </section>`,
+          back: reference('X')
+        })
+        expect(await located(doc)).toEqual([
+          ['MISSING_REQLEVEL_REF', 'rfc.middle.section[0].t', 'Section 1 (Terminology), paragraph 1', [{ line: 6, pos: 7 }]]
+        ])
+      })
+
+      test('NOT RECOMMENDED used but not in the boilerplate: where it is used; RFC 8174 not cited: its <reference>', async () => {
+        const doc = await parseXML({
+          middle: `    <section><name>Terminology</name>
+      <t>The key words "MUST" and "MAY" in this document are to be interpreted as described in BCP 14.</t>
+    </section>
+    <section><name>Protocol</name>
+      <t>Clients <bcp14>MUST</bcp14> connect.</t>
+      <t>Retrying is <bcp14>NOT RECOMMENDED</bcp14>.</t>
+    </section>`,
+          back: `${reference('X')}
+${reference('RFC8174')}`
+        })
+        expect(await located(doc)).toEqual([
+          ['MISSING_NOTRECOMMENDED_IN_BOILERPLATE', 'rfc.middle.section[1].t[1].bcp14', 'Section 2 (Protocol), paragraph 2', [{ line: 10, pos: 22 }]],
+          ['MISSING_RFC2119_REF', 'rfc.back.references.reference[1]', 'Normative References, reference [RFC8174]', [{ line: 15, pos: 1 }]]
+        ])
       })
     })
   })
