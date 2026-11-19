@@ -1965,12 +1965,12 @@ Author's Address
         new ValidationWarning(
           'REFERENCE_NOT_USED',
           'The reference RFC8174 is listed in the References section but is not mentioned in the document text.',
-          { ref: 'https://authors.ietf.org/en/required-content#references' }
+          { ref: 'https://authors.ietf.org/en/required-content#references', path: 'rfc.back.references[0].references[0].reference[1]' }
         ),
         new ValidationWarning(
           'REFERENCE_NOT_USED',
           'The reference RFC1234 is listed in the References section but is not mentioned in the document text.',
-          { ref: 'https://authors.ietf.org/en/required-content#references' }
+          { ref: 'https://authors.ietf.org/en/required-content#references', path: 'rfc.back.references[0].references[0].reference[2]' }
         )
       ])
     })
@@ -2010,19 +2010,23 @@ Author's Address
         <reference anchor="RFC2119"/>
         <reference anchor="RFC8174"/>
       </references>`
-      const unused = [
+      const unused = (path) => [
         new ValidationWarning(
           'REFERENCE_NOT_USED',
           'The reference RFC8174 is listed in the References section but is not mentioned in the document text.',
-          { ref: 'https://authors.ietf.org/en/required-content#references' }
+          { ref: 'https://authors.ietf.org/en/required-content#references', path }
         )
       ]
-      for (const back of [references, `<references><name>References</name>${references}</references>`]) {
+      const layouts = [
+        [references, 'rfc.back.references[0].reference[1]'],
+        [`<references><name>References</name>${references}</references>`, 'rfc.back.references[0].references[0].reference[1]']
+      ]
+      for (const [back, path] of layouts) {
         const { doc } = await parse(`<rfc version="3">
           <middle><section><name>Terminology</name><t>See <xref target="RFC2119"/>.</t></section></middle>
           <back>${back}</back>
         </rfc>`, 'draft-test-references-00.xml')
-        await expect(validateReferencesInText(doc)).resolves.toEqual(unused)
+        await expect(validateReferencesInText(doc)).resolves.toEqual(unused(path))
       }
     })
 
@@ -2078,12 +2082,8 @@ Author's Address
           <reference anchor="RFC2119"><front><title>Key words</title></front></reference>
           <reference anchor="QUIC"><front><title>QUIC</title></front></reference>`)
         await expect(validateReferencesInText(doc)).resolves.toEqual([
-          new ValidationWarning('REFERENCE_CITED_AS_TEXT', 'TLS13 is mentioned only as typed text; cite it with <xref>.', {
-            ref: 'https://authors.ietf.org/en/references-in-rfcxml'
-          }),
-          new ValidationWarning('REFERENCE_NOT_USED', 'The reference QUIC is listed in the References section but is not mentioned in the document text.', {
-            ref: 'https://authors.ietf.org/en/required-content#references'
-          })
+          citedAsText('TLS13', 'rfc.back.references[0].reference[0]'),
+          unusedWarning('QUIC', 'rfc.back.references[0].reference[2]')
         ])
       })
 
@@ -2134,10 +2134,10 @@ Author's Address
         <reference anchor="RFC8792"><front><title>Handling Long Lines</title></front><seriesInfo name="RFC" value="8792"/></reference>
         <reference anchor="LONG-LINES"><front><title>Handling Long Lines</title></front><seriesInfo name="RFC" value="8792"/></reference>
       </references>`
-      const unusedWarning = (ref) => new ValidationWarning(
+      const unusedWarning = (ref, idx) => new ValidationWarning(
         'REFERENCE_NOT_USED',
         `The reference ${ref} is listed in the References section but is not mentioned in the document text.`,
-        { ref: 'https://authors.ietf.org/en/required-content#references' }
+        { ref: 'https://authors.ietf.org/en/required-content#references', path: `rfc.back.references[0].reference[${idx}]` }
       )
       const parseWithFigure = async (figure) => {
         const { doc } = await parse(`<rfc version="3">
@@ -2154,7 +2154,7 @@ Author's Address
 {"key": "a very long \\
   value"}
 </sourcecode>`)
-        await expect(validateReferencesInText(doc)).resolves.toEqual([unusedWarning('RFC8174')])
+        await expect(validateReferencesInText(doc)).resolves.toEqual([unusedWarning('RFC8174', 1)])
       })
 
       test('should treat RFC 8792 as used when the folding header is in <artwork> CDATA', async () => {
@@ -2164,7 +2164,7 @@ NOTE: '\\\\' line wrapping per RFC 8792
 a very long \\
 \\line
 ]]></artwork>`)
-        await expect(validateReferencesInText(doc)).resolves.toEqual([unusedWarning('RFC8174')])
+        await expect(validateReferencesInText(doc)).resolves.toEqual([unusedWarning('RFC8174', 1)])
       })
 
       test('should still report RFC 8792 as unused without the folding header', async () => {
@@ -2172,9 +2172,9 @@ a very long \\
 {"key": "a very long value, not folded"}
 </sourcecode>`)
         await expect(validateReferencesInText(doc)).resolves.toEqual([
-          unusedWarning('RFC8174'),
-          unusedWarning('RFC8792'),
-          unusedWarning('LONG-LINES')
+          unusedWarning('RFC8174', 1),
+          unusedWarning('RFC8792', 2),
+          unusedWarning('LONG-LINES', 3)
         ])
       })
 
@@ -2183,8 +2183,8 @@ a very long \\
 {"key": "RFC 8792 is mentioned here but this is not a folding header"}
 </sourcecode>`)
         await expect(validateReferencesInText(doc)).resolves.toEqual([
-          unusedWarning('RFC8174'),
-          unusedWarning('LONG-LINES')
+          unusedWarning('RFC8174', 1),
+          unusedWarning('LONG-LINES', 3)
         ])
       })
     })
@@ -2207,6 +2207,26 @@ a very long \\
       const result = await validateReferencesInText(xmlDoc)
 
       expect(result).toEqual([])
+    })
+
+    test('locates each finding at its <reference> or <referencegroup>, with its label and line', async () => {
+      const { doc } = await parse(`<rfc version="3">
+<middle><section><name>Terminology</name><t>See [TLS13].</t></section></middle>
+<back><references><name>References</name>
+<references><name>Informative References</name>
+<reference anchor="TLS13"/>
+<referencegroup anchor="BCP14">
+<reference anchor="RFC2119"/>
+</referencegroup>
+</references>
+</references></back>
+</rfc>`, 'draft-test-references-00.xml')
+      const findings = await validateReferencesInText(doc)
+      addXmlSourceLines(labelFindings(findings, doc), doc)
+      expect(findings.map(f => [f.name, f.path, f.label, f.lines])).toEqual([
+        ['REFERENCE_CITED_AS_TEXT', 'rfc.back.references[0].references[0].reference[0]', 'Informative References, reference [TLS13]', [{ line: 5, pos: 1 }]],
+        ['REFERENCE_NOT_USED', 'rfc.back.references[0].references[0].referencegroup[0]', 'Informative References, reference group [BCP14]', [{ line: 6, pos: 1 }]]
+      ])
     })
   })
 })
