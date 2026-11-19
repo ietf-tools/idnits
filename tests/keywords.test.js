@@ -1325,6 +1325,48 @@ module example {
           expect(used.map(kw => kw.keyword)).toEqual(['MUST NOT', 'SHOULD NOT'])
         })
       })
+
+      describe('keywords beside a boilerplate in the same text', () => {
+        const findings = async (boilerplate, body) => {
+          return (await validate2119Keywords(await parseXML({ boilerplate, body }))).map(r => [r.name, r.message, r.path])
+        }
+        const tags = (keyword, path) => {
+          return ['MISSING_BCP14_TAGS', `The BCP14 keyword "${keyword}" should be enclosed in <bcp14></bcp14> tags.`, path]
+        }
+
+        test('an untagged keyword after an untagged boilerplate is flagged, the boilerplate\'s aren\'t', async () => {
+          const boilerplate = untagged.replace('as shown here.', 'as shown here. A client MUST NOT retry.')
+          expect(await findings(boilerplate, '<t>The client <bcp14>MUST</bcp14> connect.</t>')).toEqual([
+            tags('MUST NOT', 'rfc.middle.section[0].t.#text')
+          ])
+        })
+        test('an untagged keyword after a tagged boilerplate is flagged', async () => {
+          const boilerplate = tagged().replace('as shown here.', 'as shown here. A client SHOULD retry.')
+          expect(await findings(boilerplate, '<t>Nothing required.</t>')).toEqual([
+            tags('SHOULD', 'rfc.middle.section[0].t.#text')
+          ])
+        })
+        test('a paragraph read as a boilerplate: the keywords after its span are flagged', async () => {
+          const body = '<t>The keywords introduced in this document extend the core. They MAY be combined.</t>'
+          expect(await findings(tagged(), body)).toEqual([tags('MAY', 'rfc.middle.section[1].t')])
+        })
+        test('a YANG module repeating the boilerplate: invalid keywords are flagged, untagged ones aren\'t', async () => {
+          const yang = `<sourcecode type="yang"><![CDATA[
+module example {
+  description
+    "The key words 'MUST', 'MUST NOT', 'REQUIRED', 'SHALL', 'SHALL NOT', 'SHOULD', 'SHOULD NOT',
+     'RECOMMENDED', 'NOT RECOMMENDED', 'MAY', and 'OPTIONAL' in this document are to be
+     interpreted as described in BCP 14 (RFC 2119) (RFC 8174) when, and only when, they
+     appear in all capitals, as shown here.";
+  leaf a { description "The path MUST
+    not begin with '/'. A server MUST reject it."; }
+}
+]]></sourcecode>`
+          expect(await findings(tagged(), yang)).toEqual([
+            ['INVALID_REQLEVEL_KEYWORD', 'MUST not is not a valid BCP14 Requirement Level keyword.', 'rfc.middle.section[1].sourcecode.#text']
+          ])
+        })
+      })
     })
 
     describe('BCP14 reference detection (parsed XML)', () => {
