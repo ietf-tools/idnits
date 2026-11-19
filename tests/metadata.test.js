@@ -650,6 +650,15 @@ describe('document should have valid category', () => {
       const [finding] = await validateCategory(doc)
       expect(finding.message).toContain('Category:')
     })
+    test('an Intended status: line on an RFC is not a category', async () => {
+      const doc = txtDoc({ intendedStatus: 'Informational' }, 'rfc')
+      for (const mode of [MODES.NORMAL, MODES.FORGIVE_CHECKLIST, MODES.SUBMISSION]) {
+        const result = await validateCategory(doc, { mode })
+        expect(result).toHaveLength(1)
+        expect(result).toContainError('MISSING_DOC_CATEGORY', ValidationWarning)
+        expect(result[0].message).toBe('The RFC gives its status on an Intended status: line; RFCs use a Category: line.')
+      }
+    })
     test('invalid category on an RFC', async () => {
       await allModes(txtDoc({ category: 'xyz123' }, 'rfc'), 'INVALID_DOC_CATEGORY')
     })
@@ -1369,6 +1378,17 @@ describe('text findings are located at the line they are about', () => {
     const misplaced = await validateCategory(await draft([['Intended status: Standards Track', 'Category: Standards Track']]))
     expect(misplaced).toHaveLength(1)
     expect(misplaced[0]).toMatchObject({ name: 'MISSING_DOC_CATEGORY', lines: at(8, 1) })
+  })
+
+  test('the category of an RFC, at an Intended status: line in its place, which the message names', async () => {
+    const source = txtStreamRfc('Independent Submission', '9991').replace('Category: Informational', 'Intended status: Informational')
+    const result = await validateCategory(await parseTxt(source, 'rfc9991.txt'))
+    expect(result).toHaveLength(1)
+    expect(result[0]).toMatchObject({
+      name: 'MISSING_DOC_CATEGORY',
+      message: 'The RFC gives its status on an Intended status: line; RFCs use a Category: line.',
+      lines: at(8, 1)
+    })
   })
 
   test('the RFCs looked up, where the header line lists them; one stated in the abstract, at the abstract', async () => {
