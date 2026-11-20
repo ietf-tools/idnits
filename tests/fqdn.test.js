@@ -23,7 +23,7 @@ describe('document should have valid FQDN mentions', () => {
         }
       }
 
-      const result = await validateFQDNs(doc, { mode: MODES.NORMAL, offline: true })
+      const result = await validateFQDNs(doc, { mode: MODES.NORMAL })
       expect(result).toHaveLength(0)
     })
 
@@ -40,7 +40,7 @@ describe('document should have valid FQDN mentions', () => {
         }
       }
 
-      const result = await validateFQDNs(doc, { mode: MODES.NORMAL, offline: false })
+      const result = await validateFQDNs(doc, { mode: MODES.NORMAL })
       expect(result).toEqual([
         new ValidationWarning('INVALID_DOMAIN_TLD', 'Domain "invalid.not-example.com" is not an allowed reserved domain. Consider using ".example.(com|org|net)" instead.', {
           ref: 'https://www.rfc-editor.org/rfc/rfc6761',
@@ -66,7 +66,7 @@ describe('document should have valid FQDN mentions', () => {
         }
       }
 
-      const result = await validateFQDNs(doc, { mode: MODES.NORMAL, offline: false })
+      const result = await validateFQDNs(doc, { mode: MODES.NORMAL })
       expect(result).toEqual([
         new ValidationWarning('INVALID_ARPA_DOMAIN', 'ARPA domain "random.arpa" usage is invalid.', {
           ref: 'https://www.iana.org/domains/arpa',
@@ -91,7 +91,7 @@ describe('document should have valid FQDN mentions', () => {
         }
       }
 
-      const result = await validateFQDNs(doc, { mode: MODES.NORMAL, offline: true })
+      const result = await validateFQDNs(doc, { mode: MODES.NORMAL })
       expect(result).toHaveLength(0)
     })
 
@@ -105,8 +105,8 @@ describe('document should have valid FQDN mentions', () => {
         }
       }
 
-      await expect(validateFQDNs(doc, { mode: MODES.NORMAL, offline: true })).resolves.toHaveLength(0)
-      await expect(validateFQDNs(doc, { mode: MODES.NORMAL, offline: true, allowedDomains: [] })).resolves.toContainError('INVALID_DOMAIN_TLD', ValidationWarning)
+      await expect(validateFQDNs(doc, { mode: MODES.NORMAL })).resolves.toHaveLength(0)
+      await expect(validateFQDNs(doc, { mode: MODES.NORMAL, allowedDomains: [] })).resolves.toContainError('INVALID_DOMAIN_TLD', ValidationWarning)
     })
 
     test('allowed domains and their subdomains are not reported', async () => {
@@ -119,7 +119,7 @@ describe('document should have valid FQDN mentions', () => {
         }
       }
 
-      const result = await validateFQDNs(doc, { mode: MODES.NORMAL, offline: true, allowedDomains: ['ietf.org', 'rfc-editor.org', 'github.com', 'foo.org'] })
+      const result = await validateFQDNs(doc, { mode: MODES.NORMAL, allowedDomains: ['ietf.org', 'rfc-editor.org', 'github.com', 'foo.org'] })
       expect(result.map(({ name, text }) => [name, text])).toEqual([
         ['INVALID_DOMAIN_TLD', 'notfoo.org']
       ])
@@ -137,7 +137,7 @@ describe('document should have valid FQDN mentions', () => {
         }
       }
 
-      const result = await validateFQDNs(doc, { mode: MODES.NORMAL, offline: true })
+      const result = await validateFQDNs(doc, { mode: MODES.NORMAL })
       expect(result).toHaveLength(0)
     })
 
@@ -154,7 +154,7 @@ describe('document should have valid FQDN mentions', () => {
         }
       }
 
-      const result = await validateFQDNs(doc, { mode: MODES.NORMAL, offline: true, allowedDomains: [] })
+      const result = await validateFQDNs(doc, { mode: MODES.NORMAL, allowedDomains: [] })
       expect(result).toEqual([
         new ValidationComment('POSSIBLE_INVALID_TLD', 'Ensure "github.com" isn\'t used as an example. For example domains, consider using ".example.(com|org|net)" instead.', {
           ref: 'https://www.rfc-editor.org/rfc/rfc6761',
@@ -181,7 +181,7 @@ describe('document should have valid FQDN mentions', () => {
         }
       }
 
-      const result = await validateFQDNs(doc, { mode: MODES.NORMAL, offline: false })
+      const result = await validateFQDNs(doc, { mode: MODES.NORMAL })
       expect(result).toEqual([
         new ValidationWarning('INVALID_ARPA_DOMAIN', 'ARPA domain "random.arpa" usage is invalid.', {
           ref: 'https://www.iana.org/domains/arpa',
@@ -201,7 +201,7 @@ describe('document should have valid FQDN mentions', () => {
               editor.org/info/rfc2236>
       `, 'draft-bichot-msync-20.txt')
 
-      const result = await validateFQDNs(doc, { mode: MODES.NORMAL, offline: true })
+      const result = await validateFQDNs(doc, { mode: MODES.NORMAL })
       expect(result).toHaveLength(0)
     })
     test('an email address broken mid-word is reported as such, not as a domain', async () => {
@@ -219,9 +219,9 @@ describe('document should have valid FQDN mentions', () => {
           text: 'iesg@ietf.org'
         })
       ]
-      await expect(validateFQDNs(doc, { mode: MODES.NORMAL, offline: true })).resolves.toEqual(expected)
-      await expect(validateFQDNs(doc, { mode: MODES.FORGIVE_CHECKLIST, offline: true })).resolves.toEqual(expected)
-      await expect(validateFQDNs(doc, { mode: MODES.SUBMISSION, offline: true })).resolves.toHaveLength(0)
+      await expect(validateFQDNs(doc, { mode: MODES.NORMAL })).resolves.toEqual(expected)
+      await expect(validateFQDNs(doc, { mode: MODES.FORGIVE_CHECKLIST })).resolves.toEqual(expected)
+      await expect(validateFQDNs(doc, { mode: MODES.SUBMISSION })).resolves.toHaveLength(0)
     })
     test('an ARPA domain is reported with where it is mentioned', async () => {
       // From draft-ietf-core-coap-over-gatt-00
@@ -235,7 +235,7 @@ describe('document should have valid FQDN mentions', () => {
    name space as described in [rfc6761]: the suffixes .ble.arpa.
       `, 'draft-ietf-core-coap-over-gatt-00.txt')
 
-      const result = await validateFQDNs(doc, { mode: MODES.NORMAL, offline: true })
+      const result = await validateFQDNs(doc, { mode: MODES.NORMAL })
       expect(result).toEqual([
         new ValidationWarning('INVALID_ARPA_DOMAIN', 'ARPA domain "ble.arpa" usage is invalid.', {
           ref: 'https://www.iana.org/domains/arpa',
@@ -254,7 +254,7 @@ SEQUENCE (1 elem)
       PrintableString github.com
       `, 'draft-mahy-mimi-credential-preauth-00.txt')
 
-      const result = await validateFQDNs(doc, { mode: MODES.NORMAL, offline: true, allowedDomains: [] })
+      const result = await validateFQDNs(doc, { mode: MODES.NORMAL, allowedDomains: [] })
       expect(result).toEqual([
         new ValidationComment('POSSIBLE_INVALID_TLD', 'Ensure "github.com" isn\'t used as an example. For example domains, consider using ".example.(com|org|net)" instead.', {
           ref: 'https://www.rfc-editor.org/rfc/rfc6761',
@@ -290,7 +290,7 @@ SEQUENCE (1 elem)
    bar.org >>> doe.org {
       `, 'draft-varnagy-iid-protocol-00.txt')
 
-      const result = await validateFQDNs(doc, { mode: MODES.NORMAL, offline: true })
+      const result = await validateFQDNs(doc, { mode: MODES.NORMAL })
       expect(result.map(({ name, text }) => [name, text])).toEqual([
         ['INVALID_DOMAIN_TLD', 'foo.org'],
         ['INVALID_DOMAIN_TLD', 'doe.org'],
