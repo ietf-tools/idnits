@@ -96,9 +96,9 @@ describe('BCP 14 keywords in <sourcecode> and <artwork>', () => {
         ['INVALID_REQLEVEL_KEYWORD', 'MUST not is not a valid BCP14 Requirement Level keyword.', 'rfc.middle.section[1].artwork']
       ])
     })
-    test('the document\'s only boilerplate', async () => {
+    test('the document\'s only boilerplate: read for its keywords, not as the document\'s', async () => {
       const doc = await parseXML({ boilerplate: '<t>No requirements.</t>', body: `<artwork><![CDATA[${yangModule}]]></artwork>` })
-      expect(getBcp14Boilerplate(doc)).toMatchObject({ present: true, location: { path: 'rfc.middle.section[1].artwork' } })
+      expect(getBcp14Boilerplate(doc)).toMatchObject({ present: false, location: {} })
       expect(used(doc)).toEqual([['MUST', 'rfc.middle.section[1].artwork']])
     })
   })
