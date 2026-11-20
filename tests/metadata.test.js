@@ -1387,3 +1387,44 @@ describe('text findings are located at the line they are about', () => {
     expect(result[0]).toMatchObject({ name: 'UNEXPECTED_DOC_VERSION', lines: at(16, 15) })
   })
 })
+
+describe('a published RFC is left out of the RFCs that obsolete or update the RFCs it lists', () => {
+  // -> As rfc-editor.org lists them once RFC 9051 is published: RFC 3501 obsoleted by it, RFC 7988 updated by
+  //    it, RFC 6514 updated by it and by another RFC, RFC 2222 obsoleted by it and by another RFC
+  const handlers = [
+    http.get('https://www.rfc-editor.org/rfc/rfc3501.json', () => HttpResponse.json({ obsoleted_by: ['RFC9051'], updated_by: [] })),
+    http.get('https://www.rfc-editor.org/rfc/rfc7988.json', () => HttpResponse.json({ obsoleted_by: [], updated_by: ['RFC9051'] })),
+    http.get('https://www.rfc-editor.org/rfc/rfc6514.json', () => HttpResponse.json({ obsoleted_by: [], updated_by: ['RFC6515', 'RFC9051'] })),
+    http.get('https://www.rfc-editor.org/rfc/rfc2222.json', () => HttpResponse.json({ obsoleted_by: ['RFC4422', 'RFC9051'], updated_by: [] }))
+  ]
+  const lookups = result => result.filter(r => /_OBSOLETED_RFC$|_UPDATED_RFC$/.test(r.name)).map(r => [r.name, r.message])
+  const expected = (listedAt) => [
+    ['OBSOLETES_OBSOLETED_RFC', `${listedAt} but it's already obsoleted by RFC 4422.`],
+    ['UPDATES_UPDATED_RFC', 'This document updates RFC 6514. That RFC is already updated by RFC 6515. Verify that this document does not conflict with those.']
+  ]
+
+  test('in text', async () => {
+    server.use(...handlers)
+    const doc = await parseTxt(txtStreamRfc('Internet Engineering Task Force (IETF)', '9051', { obsoletes: '3501, 2222', updates: '7988, 6514' }), 'rfc9051.txt')
+    for (const mode of [MODES.NORMAL, MODES.FORGIVE_CHECKLIST]) {
+      expect(lookups(await validateObsoleteUpdateRef(doc, { mode }))).toEqual(expected('The Obsoletes header line lists RFC 2222'))
+    }
+  })
+
+  test('in XML', async () => {
+    server.use(...handlers)
+    const { doc } = await parse(xmlStreamDoc({ docName: 'draft-ietf-foo-bar-02', number: '9051', obsoletes: '3501, 2222', updates: '7988, 6514' }), 'rfc9051.xml')
+    for (const mode of [MODES.NORMAL, MODES.FORGIVE_CHECKLIST]) {
+      expect(lookups(await validateObsoleteUpdateRef(doc, { mode }))).toEqual(expected('The <rfc> field states that it obsoletes RFC 2222'))
+    }
+  })
+
+  test('a draft still gets every RFC', async () => {
+    server.use(...handlers)
+    const doc = await parseTxt(txtStreamDraft('draft-ietf-foo-bar-02', { obsoletes: '3501', updates: '7988' }), 'draft-ietf-foo-bar-02.txt')
+    expect(lookups(await validateObsoleteUpdateRef(doc))).toEqual([
+      ['OBSOLETES_OBSOLETED_RFC', 'The Obsoletes header line lists RFC 3501 but it\'s already obsoleted by RFC 9051.'],
+      ['UPDATES_UPDATED_RFC', 'This document updates RFC 7988. That RFC is already updated by RFC 9051. Verify that this document does not conflict with those.']
+    ])
+  })
+})
