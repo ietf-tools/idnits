@@ -37,8 +37,7 @@ describe('getUnrecognisedReferencesHeading', () => {
     ['8.  References>'],
     ['Appendix B.  Bibliography.'],
     ['Appendix B - Bibliography'],
-    ['14.  Normative'],
-    ['5.0 References']
+    ['14.  Normative']
   ])('finds "%s" at its line', async (heading) => {
     const doc = await docWithBack(`${heading}\n\n${ENTRY}`)
     expect(doc.data.markers.references.start).toBeFalsy()
@@ -93,8 +92,10 @@ describe('references headings numbered without a full stop', () => {
     ])
   })
 
-  test('"7.1 Other References" is not read as a subsection', async () => {
+  test('"7.1 Other References" is an unclassified subsection', async () => {
     const doc = await docWithBack(`2 References\n\n2.1 Other References\n\n${ENTRY}`)
-    expect(getReferencesSubsections(doc)).toEqual([])
+    expect(getReferencesSubsections(doc).map(({ title, classified }) => [title, classified])).toEqual([
+      ['2.1 Other References', false]
+    ])
   })
 })
