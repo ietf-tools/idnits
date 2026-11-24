@@ -2280,6 +2280,36 @@ a very long \\
         ['REFERENCE_NOT_USED', 'rfc.back.references[0].references[0].referencegroup[0]', 'Informative References, reference group [BCP14]', [{ line: 6, pos: 1 }]]
       ])
     })
+
+    describe('an <xref> target that names no anchor', () => {
+      const xml = `<rfc version="3">
+<middle><section anchor="intro"><name>Introduction</name>
+<t>See <xref target="intro"/> and <xref target="TLS13"/>.</t>
+</section></middle>
+<back><references><name>Informative References</name>
+<reference anchor="RFC8446"><front><title>TLS</title></front></reference>
+</references></back>
+</rfc>`
+      const message = 'The <xref> target "TLS13" names no anchor in the document.'
+      const opts = { ref: 'https://authors.ietf.org/en/references-in-rfcxml', path: 'rfc.middle.section.t.xref[1]' }
+
+      test.each([
+        ['normal', MODES.NORMAL, new ValidationError('XREF_TARGET_NOT_FOUND', message, opts)],
+        ['forgive-checklist', MODES.FORGIVE_CHECKLIST, new ValidationWarning('XREF_TARGET_NOT_FOUND', message, opts)],
+        ['submission', MODES.SUBMISSION, new ValidationWarning('XREF_TARGET_NOT_FOUND', message, opts)]
+      ])('is reported at the <xref> in %s mode', async (name, mode, finding) => {
+        const { doc } = await parse(xml, 'draft-test-references-00.xml')
+        const findings = await validateReferencesInText(doc, { mode })
+        expect(findings.filter(f => f.name === 'XREF_TARGET_NOT_FOUND')).toEqual([finding])
+      })
+
+      test('is located at the line of the <xref>', async () => {
+        const { doc } = await parse(xml, 'draft-test-references-00.xml')
+        const findings = (await validateReferencesInText(doc)).filter(f => f.name === 'XREF_TARGET_NOT_FOUND')
+        addXmlSourceLines(labelFindings(findings, doc), doc)
+        expect(findings.map(f => f.lines)).toEqual([[{ line: 3, pos: 35 }]])
+      })
+    })
   })
 })
 
